@@ -1,0 +1,571 @@
+
+/*
+    Grax library will concern itself with
+        - immediate rendering
+        - loading of textures
+        - draw basic 2D shapes
+        - draw text
+        - draw images/sprites
+
+    TODO:
+    - shader program
+    - rect rendering
+*/
+
+namespace Grax;
+
+GLFWwindow* window;
+Shader shader;
+
+DrawBuffers immediate_buffer;
+vertex* immediate_vertices;
+uint32* immediate_indices;
+
+
+int32 key(char c) {
+    return glfwGetKey(window, c as int32);
+}
+
+int32 key(int32 c) {
+    return glfwGetKey(window, c);
+}
+
+const Left_Mouse = 0;
+const Right_Mouse = 1;
+int32 mouse(int32 btn) {
+    return glfwGetMouseButton(window, btn);
+}
+
+int32 loop() {
+
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+
+    if glfwWindowShouldClose(window) {
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return false;
+    }
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    return true;
+}
+
+void on_resize(GLFWwindow* window, int32 w, int32 h) {
+    print("resize: ", w, ", ", h, "\n");
+
+    float32 aspect = h as float32 / w as float32;
+
+    let aspect_loc = glGetUniformLocation(shader.gl_handle, "aspect");
+    glUniform1f(aspect_loc, aspect);
+
+    glViewport(0, 0, w, h);
+}
+
+void init() {
+
+    if !glfwInit() {
+        print("ERROR: failed to initilize glfw.\n");
+        return;
+    }
+
+    window = glfwCreateWindow(1600, 900, "Grax", null, null);
+    if !window {
+        glfwTerminate();
+        print("ERROR: failed to initilize window.\n");
+        return;
+    }
+
+    glfwMakeContextCurrent(window);
+
+    // glfw callbacks
+    glfwSetFramebufferSizeCallback(window, on_resize);
+
+    load_opengl(glfwGetProcAddress);
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(opengl_debug_callback, null);
+
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glClearColor(0.1, 0.1, 0.1, 1.0);
+
+    {
+        immediate_vertices = list_create((sizeof vertex) as uint32);
+        immediate_indices  = list_create((sizeof uint32) as uint32);
+        immediate_buffer = create_draw_buffers();
+    }
+
+    {
+        // TODO: the "../grax/" here is a hack!
+        char* fragsrc = fileread("../grax/shaders/frag.glsl");
+        char* vertsrc = fileread("../grax/shaders/vert.glsl");
+        shader = create_shader(fragsrc, vertsrc);
+        free(fragsrc);
+        free(vertsrc);
+
+        glUseProgram(shader.gl_handle);
+    }
+
+    // TODO: the "../grax/" here is a hack!
+    let image = load_bitmap("../grax/CascadiaMono.bmp");
+    let texture = create_texture2D(image);
+    bind(texture);
+}
+
+
+void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, /*const*/ GLchar* message, /*const*/ void* userParam) {
+
+    switch (_type) {
+        case GL_DEBUG_TYPE_ERROR: print("ERROR: "); break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: print("DEPRECATED BEHAVIOR: "); break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: print("UDEFINED BEHAVIOR: "); break;
+        case GL_DEBUG_TYPE_PORTABILITY: print("PORTABILITY: "); break;
+        case GL_DEBUG_TYPE_PERFORMANCE: print("PERFORMANCE: "); break;
+        case GL_DEBUG_TYPE_OTHER: return; // spams terminal // print("OTHER: "); break;
+        case GL_DEBUG_TYPE_MARKER: print("MARKER: "); break;
+    }
+
+    print(message, "\n");
+}
+
+struct Shader {
+    uint32 gl_handle;
+}
+
+uint32 makeshader(uint32 program, GLenum _type, char* code) {
+    uint32 s = glCreateShader(_type);
+    glShaderSource(s, 1, *code, null); // null assumes null-terminated string
+    glAttachShader(program, s);
+    return s;
+}
+
+Shader create_shader(char* fragsrc, char* vertsrc) {
+    uint32 program = glCreateProgram();
+    let f = makeshader(program, GL_FRAGMENT_SHADER, fragsrc);
+    let v = makeshader(program, GL_VERTEX_SHADER, vertsrc);
+
+    glLinkProgram(program);
+
+    glDetachShader(program, f);
+    glDeleteShader(f);
+
+    glDetachShader(program, v);
+    glDeleteShader(v);
+
+    GLsizei size = 1024;
+    char buffer[size];
+    glGetProgramInfoLog(program, size, *size, buffer);
+    print(buffer as char*);
+
+    Shader s;
+    s.gl_handle = program;
+    return s;
+}
+
+struct Framebuffer {
+    uint32 width, height;
+    uint32 gl_handle;
+}
+
+struct Texture2D {
+    uint32 width, height;
+    uint32 gl_handle;
+}
+
+struct Color {
+    uint8 r, g, b, a;
+}
+
+Color rgba(uint32 i) {
+    Color c;
+    // c.r = (i >> 24) & 0xFF;
+    // c.g = (i >> 16) & 0xFF;
+    // c.b = (i >> 8 ) & 0xFF;
+    // c.a = (i >> 0 ) & 0xFF;
+
+    uint8* b = *i as uint8*;
+    c.r = b[3];
+    c.g = b[2];
+    c.b = b[1];
+    c.a = b[0];
+
+    return c;
+}
+
+const White  = {255, 255, 255, 255} as Color;
+const Gray   = {128, 128, 128, 255} as Color;
+const Black  = {0,   0,   0,   255} as Color;
+const Red    = {255, 0,   0,   255} as Color;
+const Green  = {0,   255, 0,   255} as Color;
+const Blue   = {0,   0,   255, 255} as Color;
+const Yellow = {255, 255, 0,   255} as Color;
+const Cyan   = {0,   255, 255, 255} as Color;
+const Purple = {255, 0,   255, 255} as Color;
+
+struct ColorRgb {
+    uint8 r, g, b;
+}
+
+
+struct Image {
+    uint32 width, height;
+    Color* pixels;
+}
+
+Image load_bitmap(char* filename) {
+
+    struct Header {
+        uint16 magic_num;
+        // 2 bytes pad
+        uint32 file_bytesize;
+        uint16 reserved1;
+        uint16 reserved2;
+        uint32 data_offset;
+    }
+
+    struct InfoHeader {
+        uint32 size; // 40
+        int32 width;
+        int32 height;
+        uint16 planes;
+        uint16 bits_per_pixel;
+        uint32 compression;
+        uint32 image_size;
+        int32 x_pixels_per_m;
+        int32 y_pixels_per_m;
+        uint32 colors_used;
+        uint32 important_colors;
+    }
+
+    print("Header size: ", sizeof Header, "\n");
+    print("InfoHeader size: ", sizeof InfoHeader, "\n");
+
+
+    Header* head = fileread(filename, "rb") as Header*;
+    InfoHeader* info = (head as uint64 + 14) as InfoHeader*;
+    uint32 data_offset = @((head as uint64 + 10) as uint32*);
+    void* data = (head as uint64 + data_offset) as void*;
+    Color* color_table = (head as uint64 + 54) as Color*;
+
+    print("Data Offset: ", data_offset, "\n");
+
+    print(head.magic_num as char, (head.magic_num >> 8) as char, "\n");
+
+    print("bits per pixel: ", info.bits_per_pixel, "\n");
+
+    Image image;
+    image.width = info.width as uint32;
+    image.height = info.height as uint32;
+    image.pixels = malloc(image.width * image.height * sizeof Color);
+
+    switch info.bits_per_pixel {
+        case 1: break;
+        case 4: break;
+        case 8: {
+            uint8* bytes = data;
+            for i in 0 .. info.width * info.height {
+                image.pixels[i] = color_table[bytes[i]];
+            }
+        } break;
+
+        case 16: break;
+
+        case 24: {
+            ColorRgb* colors = data;
+            for i in 0 .. info.width * info.height {
+                image.pixels[i].r = colors[i].r;
+                image.pixels[i].g = colors[i].g;
+                image.pixels[i].b = colors[i].b;
+                image.pixels[i].a = 255;
+            }
+        } break;
+
+        case 32: {
+            Color* colors = data;
+            for i in 0 .. info.width * info.height {
+                image.pixels[i] = colors[i];
+            }
+        } break;
+
+        default: break; // TODO: error msg
+    }
+
+    free(head);
+
+    return image;
+}
+
+Texture2D create_texture2D(Image image) {
+    Texture2D tex;
+    tex.width = image.width;
+    tex.height = image.height;
+    glGenTextures(1, *tex.gl_handle);
+    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+
+    const filter = GL_LINEAR; // GL_NEAREST
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
+
+void bind(with Texture2D tex) {
+    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
+}
+
+struct DrawBuffers {
+    uint32 vao, vbo, ebo;
+    int32 elements_count;
+}
+
+struct vertex {
+    float32 x, y;
+    float32 u, v;
+    Color color;
+}
+
+DrawBuffers create_draw_buffers() {
+    DrawBuffers db;
+    db.elements_count = 0;
+
+    glGenVertexArrays(1, *db.vao);
+    glBindVertexArray(db.vao);
+
+    glGenBuffers(1, *db.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER , db.vbo);
+    glGenBuffers(1, *db.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
+
+    vertex* v = null;
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof vertex, *v.x);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof vertex, *v.u);
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, true, sizeof vertex, *v.color);
+
+    glBindVertexArray(0);
+
+    return db;
+}
+
+void update_buffers(with DrawBuffers* db, vertex* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
+    db.elements_count = indices_count as int32;
+
+    glBindVertexArray(db.vao);
+    glBufferData(GL_ARRAY_BUFFER, (sizeof vertex) * vertices_count, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof uint32) * indices_count, indices, GL_STATIC_DRAW);
+    glBindVertexArray(0);
+}
+
+void draw_elements(with DrawBuffers db) {
+    glBindVertexArray(db.vao);
+    glDrawElements(GL_TRIANGLES, db.elements_count, GL_UNSIGNED_INT, null);
+}
+
+void draw_elements(with DrawBuffers db, uint32 instanceCount) {
+    glBindVertexArray(db.vao);
+    glDrawElementsInstanced(GL_TRIANGLES, db.elements_count, GL_UNSIGNED_INT, null, instanceCount);
+}
+
+
+
+
+const ListStartingCapacity = 2;
+
+struct List {
+    uint32 stride;
+    uint32 capacity;
+    uint32 length;
+}
+
+void* list_create(uint32 stride) {
+    List* head = malloc(sizeof List + stride * ListStartingCapacity);
+    head.stride = stride;
+    head.capacity = ListStartingCapacity;
+    head.length = 0;
+    return *head[1];
+}
+
+List* list_head(void* list) {
+    return *(list as List*)[-1];
+}
+
+void list_clear(void* list) {
+    list_head(list).length = 0;
+}
+
+void list_add(void** list, void* data) {
+    List* head = list_head(@list);
+
+    if head.capacity == head.length {
+        head.capacity *= 2;
+        head = realloc(head, sizeof List + head.capacity * head.stride);
+        @list = *head[1];
+    }
+
+    uint64 dst = @list as uint64;
+    dst += head.length * head.stride;
+    memcpy(dst as void*, data, head.stride);
+
+    head.length++;
+}
+
+uint32 list_length(void* list) {
+    return list_head(list).length;
+}
+
+void dispatch_immediate() {
+    let vert_count = list_length(immediate_vertices);
+    let ind_count = list_length(immediate_indices);
+    update_buffers(*immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
+
+    draw_elements(immediate_buffer);
+
+    // print("Rendering: verts = ", vert_count, "\n");
+
+    list_clear(immediate_vertices);
+    list_clear(immediate_indices);
+    base_index = 0;
+}
+
+void immediate_vertex(float32 x, float32 y, float32 u, float32 v) {
+    immediate_vertex(x, y, u, v, White);
+}
+
+void immediate_vertex(float32 x, float32 y, float32 u, float32 v, Color color) {
+    vertex vert;
+    vert.x = x;
+    vert.y = y;
+    vert.u = u;
+    vert.v = v;
+    vert.color = color;
+    list_add(*immediate_vertices, *vert);
+}
+
+uint32 base_index;
+
+void immediate_triangle(uint32 i1, uint32 i2, uint32 i3) {
+    i1 += base_index;
+    i2 += base_index;
+    i3 += base_index;
+    list_add(*immediate_indices, *i1);
+    list_add(*immediate_indices, *i2);
+    list_add(*immediate_indices, *i3);
+}
+
+void draw_rect(vec2 pos, vec2 size) {
+
+    let sx = size.x * 0.5;
+    let sy = size.y * 0.5;
+
+    immediate_vertex(pos.x + -sx, pos.y + -sy,  0, 0);
+    immediate_vertex(pos.x +  sx, pos.y + -sy,  1, 0);
+    immediate_vertex(pos.x + -sx, pos.y +  sy,  0, 1);
+    immediate_vertex(pos.x +  sx, pos.y +  sy,  1, 1);
+
+    immediate_triangle(0, 1, 2);
+    immediate_triangle(1, 3, 2);
+    base_index += 4;
+}
+
+
+void draw_image(Texture2D* image) {
+
+}
+
+void draw_char(vec2 pos, float32 size, char c, Color color) {
+
+    const hor_frac = 1.0 / 14.0;
+    const ver_frac = 1.0 / 7.0;
+
+    uint32 b = c as uint8 - ' ';
+    float32 col = b % 14;
+    float32 row = b / 14 + 1;
+
+    // print("col, row = ", col, ", ", row, "\n");
+
+    float32 u = col / 14.0;
+    float32 v = row / 7.0;
+    v = 1 - v;
+
+    let sx = size * 0.5 * 0.5;
+    let sy = size * 0.5;
+
+    immediate_vertex(pos.x + -sx, pos.y + -sy, u, v, color);
+    immediate_vertex(pos.x +  sx, pos.y + -sy, u + hor_frac, v, color);
+    immediate_vertex(pos.x + -sx, pos.y +  sy, u, v + ver_frac, color);
+    immediate_vertex(pos.x +  sx, pos.y +  sy, u + hor_frac, v + ver_frac, color);
+
+    immediate_triangle(0, 1, 2);
+    immediate_triangle(1, 3, 2);
+    base_index += 4;
+}
+
+vec2 draw_text(vec2 pos, float32 size, string text, Color color) {
+    float32 start = pos.x;
+
+    for i in 0 .. text.length {
+        char c = text.chars[i];
+
+        if c == @"\n" {
+            pos.x = start;
+            pos.y -= size;
+            continue;
+        }
+
+        if c != ' ' draw_char(pos, size, c, color);
+        pos.x += size * 0.5;
+    }
+
+    return pos;
+}
+
+vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) {
+    int32 i = text.length as int32 - 1;
+    while i >= 0 {
+        let c = text.chars[i--];
+
+        if c != ' ' draw_char(pos, size, c, color);
+        pos.x -= size * 0.5;
+    }
+
+    return pos;
+}
+
+vec2 draw_text(vec2 pos, float32 size, char* text) {
+
+    float32 start = pos.x;
+
+    while @text {
+        switch @text {
+            case @"\n": // TODO: escape sequence in char
+                pos.x = start;
+                pos.y -= size;
+                break;
+            default:
+                draw_char(pos, size, @text, White);
+            case ' ':
+                pos.x += size * 0.5;
+                break;
+        }
+        text++;
+    }
+
+    return pos;
+}
