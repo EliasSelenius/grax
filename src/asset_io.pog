@@ -1,0 +1,90 @@
+
+namespace Grax;
+
+struct Image {
+    uint32 width, height;
+    Color* pixels;
+}
+
+Image load_bitmap(char* filename) {
+
+    struct Header {
+        uint16 magic_num;
+        // 2 bytes pad (that should not be here)
+        uint32 file_bytesize;
+        uint16 reserved1;
+        uint16 reserved2;
+        uint32 data_offset;
+    }
+
+    struct InfoHeader {
+        uint32 size; // 40
+        int32 width;
+        int32 height;
+        uint16 planes;
+        uint16 bits_per_pixel;
+        uint32 compression;
+        uint32 image_size;
+        int32 x_pixels_per_m;
+        int32 y_pixels_per_m;
+        uint32 colors_used;
+        uint32 important_colors;
+    }
+
+    print("Header size: ", sizeof Header, "\n");
+    print("InfoHeader size: ", sizeof InfoHeader, "\n");
+
+
+    Header* head = fileread(filename, "rb") as Header*;
+    InfoHeader* info = (head as uint64 + 14) as InfoHeader*;
+    uint32 data_offset = @((head as uint64 + 10) as uint32*);
+    void* data = (head as uint64 + data_offset) as void*;
+    Color* color_table = (head as uint64 + 54) as Color*;
+
+    print("Data Offset: ", data_offset, "\n");
+
+    print(head.magic_num as char, (head.magic_num >> 8) as char, "\n");
+
+    print("bits per pixel: ", info.bits_per_pixel, "\n");
+
+    Image image;
+    image.width = info.width as uint32;
+    image.height = info.height as uint32;
+    image.pixels = malloc(image.width * image.height * sizeof Color);
+
+    switch info.bits_per_pixel {
+        case 1: break;
+        case 4: break;
+        case 8: {
+            uint8* bytes = data;
+            for i in 0 .. info.width * info.height {
+                image.pixels[i] = color_table[bytes[i]];
+            }
+        } break;
+
+        case 16: break;
+
+        case 24: {
+            ColorRgb* colors = data;
+            for i in 0 .. info.width * info.height {
+                image.pixels[i].r = colors[i].r;
+                image.pixels[i].g = colors[i].g;
+                image.pixels[i].b = colors[i].b;
+                image.pixels[i].a = 255;
+            }
+        } break;
+
+        case 32: {
+            Color* colors = data;
+            for i in 0 .. info.width * info.height {
+                image.pixels[i] = colors[i];
+            }
+        } break;
+
+        default: break; // TODO: error msg
+    }
+
+    free(head);
+
+    return image;
+}

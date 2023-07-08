@@ -5,5 +5,7 @@ include "../plang/common/OpenGL.pog";
 include "../plang/common/glfw3.pog";
 
 // the "../grax" part here is a temp solution until properly implemented relative paths (the paths are not relative to file)
-include "../grax/renderer.pog";
-include "../grax/math.pog";
+include "../grax/src/renderer.pog";
+include "../grax/src/list.pog";
+include "../grax/src/immediate_renderer.pog";
+include "../grax/src/math.pog";
