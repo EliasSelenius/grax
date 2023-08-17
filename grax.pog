@@ -3,9 +3,12 @@
 include "../plang/common/basic.pog";
 include "../plang/common/OpenGL.pog";
 include "../plang/common/glfw3.pog";
+include "../plang/common/string.pog";
+
 
 // the "../grax" part here is a temp solution until properly implemented relative paths (the paths are not relative to file)
 include "../grax/src/renderer.pog";
 include "../grax/src/list.pog";
 include "../grax/src/immediate_renderer.pog";
 include "../grax/src/math.pog";
+include "../grax/src/asset_io.pog";

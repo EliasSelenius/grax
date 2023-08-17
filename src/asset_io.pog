@@ -1,6 +1,4 @@
 
-namespace Grax;
-
 struct Image {
     uint32 width, height;
     Color* pixels;
@@ -53,8 +51,8 @@ Image load_bitmap(char* filename) {
     image.pixels = malloc(image.width * image.height * sizeof Color);
 
     switch info.bits_per_pixel {
-        case 1: break;
-        case 4: break;
+        case 1: print("ERROR: .bmp file \"", filename, "\" with 1 bits per pixel not implemented yet.\n"); break;
+        case 4: print("ERROR: .bmp file \"", filename, "\" with 4 bits per pixel not implemented yet.\n"); break;
         case 8: {
             uint8* bytes = data;
             for i in 0 .. info.width * info.height {
@@ -62,7 +60,7 @@ Image load_bitmap(char* filename) {
             }
         } break;
 
-        case 16: break;
+        case 16: print("ERROR: .bmp file \"", filename, "\" with 16 bits per pixel not implemented yet.\n"); break;
 
         case 24: {
             ColorRgb* colors = data;

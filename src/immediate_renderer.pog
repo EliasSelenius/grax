@@ -1,24 +1,28 @@
 
-namespace Grax;
 
-
+Shader immediate_shader;
 DrawBuffers immediate_buffer;
-vertex* immediate_vertices;
-uint32* immediate_indices;
+
+Texture2D text_atlas;
+
+vertex* immediate_vertices; // list
+uint32* immediate_indices; // list
 
 
 void dispatch_immediate() {
     let vert_count = list_length(immediate_vertices);
     let ind_count = list_length(immediate_indices);
-    update_buffers(*immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
 
-    draw_elements(immediate_buffer);
 
-    // print("Rendering: verts = ", vert_count, "\n");
+    if vert_count != 0 {
+        update_buffers(*immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
+        bind(text_atlas);
+        glUseProgram(immediate_shader.gl_handle);
+        draw_elements(immediate_buffer);
+    }
 
     list_clear(immediate_vertices);
     list_clear(immediate_indices);
-    base_index = 0;
 }
 
 void immediate_vertex(float32 x, float32 y, float32 u, float32 v) {
@@ -35,12 +39,13 @@ void immediate_vertex(float32 x, float32 y, float32 u, float32 v, Color color) {
     list_add(*immediate_vertices, *vert);
 }
 
-uint32 base_index;
 
 void immediate_triangle(uint32 i1, uint32 i2, uint32 i3) {
-    i1 += base_index;
-    i2 += base_index;
-    i3 += base_index;
+
+    let base = list_length(immediate_vertices);
+    i1 += base;
+    i2 += base;
+    i3 += base;
     list_add(*immediate_indices, *i1);
     list_add(*immediate_indices, *i2);
     list_add(*immediate_indices, *i3);
@@ -51,14 +56,13 @@ void draw_rect(vec2 pos, vec2 size) {
     let sx = size.x * 0.5;
     let sy = size.y * 0.5;
 
+    immediate_triangle(0, 1, 2);
+    immediate_triangle(1, 3, 2);
+
     immediate_vertex(pos.x + -sx, pos.y + -sy,  0, 0);
     immediate_vertex(pos.x +  sx, pos.y + -sy,  1, 0);
     immediate_vertex(pos.x + -sx, pos.y +  sy,  0, 1);
     immediate_vertex(pos.x +  sx, pos.y +  sy,  1, 1);
-
-    immediate_triangle(0, 1, 2);
-    immediate_triangle(1, 3, 2);
-    base_index += 4;
 }
 
 
@@ -84,14 +88,14 @@ void draw_char(vec2 pos, float32 size, char c, Color color) {
     let sx = size * 0.5 * 0.5;
     let sy = size * 0.5;
 
+    immediate_triangle(0, 1, 2);
+    immediate_triangle(1, 3, 2);
+
     immediate_vertex(pos.x + -sx, pos.y + -sy, u, v, color);
     immediate_vertex(pos.x +  sx, pos.y + -sy, u + hor_frac, v, color);
     immediate_vertex(pos.x + -sx, pos.y +  sy, u, v + ver_frac, color);
     immediate_vertex(pos.x +  sx, pos.y +  sy, u + hor_frac, v + ver_frac, color);
 
-    immediate_triangle(0, 1, 2);
-    immediate_triangle(1, 3, 2);
-    base_index += 4;
 }
 
 vec2 draw_text(vec2 pos, float32 size, string text, Color color) {
@@ -131,7 +135,7 @@ vec2 draw_text(vec2 pos, float32 size, char* text) {
 
     while @text {
         switch @text {
-            case @"\n": // TODO: escape sequence in char
+            case '\n':
                 pos.x = start;
                 pos.y -= size;
                 break;

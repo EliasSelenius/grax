@@ -1,8 +1,6 @@
 
 // Temp list implementation until we extraxt out to common lib or make language integrated lists
 
-namespace Grax;
-
 const ListStartingCapacity = 2;
 
 struct List {
