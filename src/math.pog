@@ -1,47 +1,89 @@
 
 
-declare float64 sin(float64 t);
-declare float32 sinf(float32 t);
-declare float64 cos(float64 t);
-declare float32 cosf(float32 t);
-declare float64 sqrt(float64 x);
-declare float32 sqrtf(float32 x);
+float64 sin(float64 t);
+float32 sinf(float32 t);
+float64 cos(float64 t);
+float32 cosf(float32 t);
+float64 sqrt(float64 x);
+float32 sqrtf(float32 x);
+float32 floorf(float32 x);
 
 const Pi = 3.14159265359;
 const Tau = Pi * 2.0;
 
 float32 random(int32 seed) {
     seed = (seed << 13) ^ seed;
-    return (1.0f - ((seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0f);
+    return (1.0 - ((seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0);
 }
+
+vec2 random_vec2(float32 x, float32 y) {
+    vec2 v;
+    v.x = x * 127.1 + y * 311.7;
+    v.y = x * 268.5 + y * 183.3;
+
+    v.x = fract(sinf(v.x) * 43758.5453123) * 2.0 - 1.0;
+    v.y = fract(sinf(v.y) * 43758.5453123) * 2.0 - 1.0;
+
+    return v;
+}
+
+
+float32 gnoise(float32 x, float32 y) {
+    float32 ix = floorf(x);
+    float32 iy = floorf(y);
+    float32 fx = fract(x);
+    float32 fy = fract(y);
+
+    float32 ux = fx * fx * (-fx * 2.0 + 3.0);
+    float32 uy = fy * fy * (-fy * 2.0 + 3.0);
+
+    vec2 r = random_vec2(ix, iy);
+    float32 d1 = r.x * fx + r.y * fy;
+
+    r = random_vec2(ix + 1.0, iy);
+    float32 d2 = r.x * (fx - 1.0) + r.y * fy;
+
+    r = random_vec2(ix, iy + 1.0);
+    float32 d3 = r.x * fx + r.y * (fy - 1.0);
+
+    r = random_vec2(ix + 1.0, iy + 1.0);
+    float32 d4 = r.x * (fx - 1.0) + r.y * (fy - 1.0);
+
+    return lerp(uy, lerp(ux, d1, d2), lerp(ux, d3, d4));
+}
+
 
 // // TODO: the 'quality' of randomnes is not tested here
 // float32 random(int32 seed_x, int32 seed_y) {
 //     return random(seed_x + seed_y * 57);
 // }
 
-int32 clamp(int32 t, int32 min, int32 max) {
-    return t < min ? min : t > max ? max : t;
-}
-float32 clamp(float32 t, float32 min, float32 max) {
-    return t < min ? min : t > max ? max : t;
-}
+int32 min(int32 a, int32 b) { return a < b ? a : b; }
+int32 max(int32 a, int32 b) { return a < b ? b : a; }
 
-float32 lerp(float32 t, float32 a, float32 b) {
-    return a + (b - a) * t;
-}
+int32 clamp(int32 t, int32 min, int32 max) { return t < min ? min : t > max ? max : t; }
+float32 clamp(float32 t, float32 min, float32 max) { return t < min ? min : t > max ? max : t; }
+
+float32 lerp(float32 t, float32 a, float32 b) { return a + (b - a) * t; }
 
 int32 round2int(float32 x) { return (x + 0.5) as int32; }
+float32 fract(float32 x) { return x - floorf(x); }
+
+int32 is_nan(float32 x) { return x != x; }
+int32 is_nan(vec2 v) { return is_nan(v.x) or is_nan(v.y); }
 
 struct vec2 { float32 x, y; }
 struct ivec2 { int32 x, y; }
 
-vec2 vec(float32 x, float32 y) {
-    vec2 res;
-    res.x = x;
-    res.y = y;
-    return res;
-}
+struct vec3 { float32 x, y, z; }
+struct ivec3 { int32 x, y, z; }
+
+struct vec4 { float32 x, y, z, w; }
+struct ivec4 { int32 x, y, z, w; }
+
+vec2 vec(float32 x, float32 y) { return {x, y} as vec2; }
+vec3 vec(float32 x, float32 y, float32 z) { return {x, y, z} as vec3; }
+vec4 vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w} as vec4; }
 
 vec2 sub(vec2 a, vec2 b) { return vec(a.x - b.x, a.y - b.y); }
 vec2 add(vec2 a, vec2 b) { return vec(a.x + b.x, a.y + b.y); }
@@ -49,9 +91,36 @@ vec2 mul(vec2 a, vec2 b) { return vec(a.x * b.x, a.y * b.y); }
 vec2 mul(vec2 a, float32 s) { return vec(a.x * s, a.y * s); }
 vec2 neg(vec2 a) { return vec(-a.x, -a.y); }
 
+vec3 sub(vec3 a, vec3 b) { return vec(a.x - b.x, a.y - b.y, a.z - b.z); }
+vec3 add(vec3 a, vec3 b) { return vec(a.x + b.x, a.y + b.y, a.z + b.z); }
+vec3 mul(vec3 a, vec3 b) { return vec(a.x * b.x, a.y * b.y, a.z * b.z); }
+vec3 mul(vec3 a, float32 s) { return vec(a.x * s, a.y * s, a.z * s); }
+vec3 neg(vec3 a) { return vec(-a.x, -a.y, -a.z); }
+
+vec4 sub(vec4 a, vec4 b) { return vec(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w); }
+vec4 add(vec4 a, vec4 b) { return vec(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w); }
+vec4 mul(vec4 a, vec4 b) { return vec(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w); }
+vec4 mul(vec4 a, float32 s) { return vec(a.x * s, a.y * s, a.z * s, a.w * s); }
+vec4 neg(vec4 a) { return vec(-a.x, -a.y, -a.z, -a.w); }
+
+
 float32 dot(vec2 a, vec2 b) { return a.x * b.x + a.y * b.y; }
 float32 sqlength(vec2 a) { return dot(a, a); }
 float32 length(vec2 a) { return sqrtf(dot(a, a)); }
 vec2 normalize(vec2 a) { return mul(a, 1.0 / length(a)); }
 vec2 reflect(vec2 a, vec2 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 vec2 lerp(float32 t, vec2 a, vec2 b) { return add(a, mul(sub(b, a), t)); }
+
+float32 dot(vec3 a, vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+float32 sqlength(vec3 a) { return dot(a, a); }
+float32 length(vec3 a) { return sqrtf(dot(a, a)); }
+vec3 normalize(vec3 a) { return mul(a, 1.0 / length(a)); }
+vec3 reflect(vec3 a, vec3 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
+vec3 lerp(float32 t, vec3 a, vec3 b) { return add(a, mul(sub(b, a), t)); }
+
+float32 dot(vec4 a, vec4 b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
+float32 sqlength(vec4 a) { return dot(a, a); }
+float32 length(vec4 a) { return sqrtf(dot(a, a)); }
+vec4 normalize(vec4 a) { return mul(a, 1.0 / length(a)); }
+vec4 reflect(vec4 a, vec4 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
+vec4 lerp(float32 t, vec4 a, vec4 b) { return add(a, mul(sub(b, a), t)); }
