@@ -15,7 +15,17 @@
 
 
 GLFWwindow* main_window;
+float32 main_window_width = 1600;
+float32 main_window_height = 900;
+float32 main_window_aspect;
 
+
+vec2 window_size() {
+    int32 w;
+    int32 h;
+    glfwGetWindowSize(main_window, *w, *h);
+    return {w, h} as vec2;
+}
 
 int32 key(char c) {
     return glfwGetKey(main_window, c as int32);
@@ -48,17 +58,6 @@ int32 grax_loop() {
     return true;
 }
 
-void on_resize(GLFWwindow* main_window, int32 w, int32 h) {
-    print("resize: ", w, ", ", h, "\n");
-
-    float32 aspect = h as float32 / w as float32;
-
-    let aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect");
-    glUniform1f(aspect_loc, aspect);
-
-    glViewport(0, 0, w, h);
-}
-
 void grax_init() {
 
     if !glfwInit() {
@@ -66,7 +65,8 @@ void grax_init() {
         return;
     }
 
-    main_window = glfwCreateWindow(1600, 900, "Grax", null, null);
+    main_window = glfwCreateWindow(main_window_width as int32, main_window_height as int32, "Grax", null, null);
+    main_window_aspect = main_window_height / main_window_width;
     if !main_window {
         glfwTerminate();
         print("ERROR: failed to initilize main_window.\n");
@@ -111,6 +111,19 @@ void grax_init() {
     free(image.pixels); // TODO: consider different free api, like free_image()
 }
 
+void on_resize(GLFWwindow* window, int32 w, int32 h) {
+
+    main_window_width = w as float32;
+    main_window_height = h as float32;
+    main_window_aspect = main_window_height / main_window_width;
+
+    print("Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
+
+    let aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect");
+    glUniform1f(aspect_loc, main_window_aspect);
+
+    glViewport(0, 0, w, h);
+}
 
 void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, /*const*/ GLchar* message, /*const*/ void* userParam) {
 
@@ -125,6 +138,58 @@ void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severi
     }
 
     print(message, "\n");
+}
+
+GLFWmonitor* get_ideal_monitor() {
+
+    int32 x;
+    int32 y;
+    int32 w;
+    int32 h;
+    glfwGetWindowPos(main_window, *x, *y);
+    glfwGetWindowSize(main_window, *w, *h);
+
+    int32 monitor_count;
+    GLFWmonitor** monitors = glfwGetMonitors(*monitor_count);
+
+    int32 ideal = 0;
+    int32 highest_area = 0;
+    for i : 0 .. monitor_count {
+        GLFWmonitor* m = monitors[i];
+
+        int32 mX;
+        int32 mY;
+        glfwGetMonitorPos(m, *mX, *mY);
+        GLFWvidmode* mode = glfwGetVideoMode(m);
+
+        int32 area = max(0, min(x + w, mX + mode.width ) - max(x, mX))
+                   * max(0, min(y + h, mY + mode.height) - max(y, mY));
+
+        if area > highest_area {
+            highest_area = area;
+            ideal = i;
+        }
+    }
+
+    return monitors[ideal];
+}
+
+void toggle_fullscreen(GLFWwindow* window) {
+    GLFWmonitor* monitor = glfwGetWindowMonitor(window);
+    if (monitor) {
+        // set to windowed
+        int32 mX;
+        int32 mY;
+        glfwGetMonitorPos(monitor, *mX, *mY);
+        // TODO: calc better values here instead of +60, for example we could center the window, or remember its last position
+        glfwSetWindowMonitor(window, null, mX + 60, mY + 60, 1600, 900, 0);
+
+    } else {
+        // set to fullscreen
+        GLFWmonitor* m = get_ideal_monitor();
+        GLFWvidmode* mode = glfwGetVideoMode(m);
+        glfwSetWindowMonitor(window, m, 0, 0, mode.width, mode.height, mode.refreshRate);
+    }
 }
 
 struct Shader {
