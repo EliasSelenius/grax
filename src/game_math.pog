@@ -1,0 +1,47 @@
+
+struct Transform {
+    vec3 position;
+    vec3 scale;
+    quat rotation;
+}
+
+mat4 to_matrix(with Transform t) {
+
+}
+
+struct Transform2D {
+    vec2 pos;
+    float32 rot;
+    float32 scale;
+}
+
+vec2 right(Transform2D t) { return make_vec(cosf(t.rot), sinf(t.rot)); }
+vec2 up(Transform2D t) { return make_vec(-sinf(t.rot), cosf(t.rot)); }
+
+vec2 local2world(Transform2D t, vec2 p) { return local2world(t, p.x, p.y); }
+vec2 local2world(Transform2D t, float32 x, float32 y) {
+    float32 c = cosf(t.rot) * t.scale;
+    float32 s = sinf(t.rot) * t.scale;
+
+    vec2 res;
+    res.x = c*x + s*y + t.pos.x;
+    res.y = -s*x + c*y + t.pos.y;
+    return res;
+}
+
+vec2 world2local(Transform2D t, vec2 p) { return world2local(t, p.x, p.y); }
+vec2 world2local(Transform2D t, float32 x, float32 y) {
+    float32 c = cosf(t.rot) / t.scale;
+    float32 s = sinf(t.rot) / t.scale;
+
+    float32 px = x - t.pos.x;
+    float32 py = y - t.pos.y;
+
+    vec2 res;
+    res.x = c*px - s*py;
+    res.y = c*py + s*px;
+    return res;
+}
+
+
+

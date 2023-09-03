@@ -4,12 +4,17 @@ float64 sin(float64 t);
 float32 sinf(float32 t);
 float64 cos(float64 t);
 float32 cosf(float32 t);
+float64 tan(float64 t);
+float32 tanf(float32 t);
 float64 sqrt(float64 x);
 float32 sqrtf(float32 x);
 float32 floorf(float32 x);
 
 const Pi = 3.14159265359;
 const Tau = Pi * 2.0;
+
+const deg2rad = Pi / 180.0;
+const rad2deg = 180.0 / Pi;
 
 float32 random(int32 seed) {
     seed = (seed << 13) ^ seed;
@@ -81,27 +86,27 @@ struct ivec3 { int32 x, y, z; }
 struct vec4 { float32 x, y, z, w; }
 struct ivec4 { int32 x, y, z, w; }
 
-vec2 vec(float32 x, float32 y) { return {x, y} as vec2; }
-vec3 vec(float32 x, float32 y, float32 z) { return {x, y, z} as vec3; }
-vec4 vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w} as vec4; }
+vec2 make_vec(float32 x, float32 y) { return {x, y}; }
+vec3 make_vec(float32 x, float32 y, float32 z) { return {x, y, z}; }
+vec4 make_vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w}; }
 
-vec2 sub(vec2 a, vec2 b) { return vec(a.x - b.x, a.y - b.y); }
-vec2 add(vec2 a, vec2 b) { return vec(a.x + b.x, a.y + b.y); }
-vec2 mul(vec2 a, vec2 b) { return vec(a.x * b.x, a.y * b.y); }
-vec2 mul(vec2 a, float32 s) { return vec(a.x * s, a.y * s); }
-vec2 neg(vec2 a) { return vec(-a.x, -a.y); }
+vec2 sub(vec2 a, vec2 b) { return make_vec(a.x - b.x, a.y - b.y); }
+vec2 add(vec2 a, vec2 b) { return make_vec(a.x + b.x, a.y + b.y); }
+vec2 mul(vec2 a, vec2 b) { return make_vec(a.x * b.x, a.y * b.y); }
+vec2 mul(vec2 a, float32 s) { return make_vec(a.x * s, a.y * s); }
+vec2 neg(vec2 a) { return make_vec(-a.x, -a.y); }
 
-vec3 sub(vec3 a, vec3 b) { return vec(a.x - b.x, a.y - b.y, a.z - b.z); }
-vec3 add(vec3 a, vec3 b) { return vec(a.x + b.x, a.y + b.y, a.z + b.z); }
-vec3 mul(vec3 a, vec3 b) { return vec(a.x * b.x, a.y * b.y, a.z * b.z); }
-vec3 mul(vec3 a, float32 s) { return vec(a.x * s, a.y * s, a.z * s); }
-vec3 neg(vec3 a) { return vec(-a.x, -a.y, -a.z); }
+vec3 sub(vec3 a, vec3 b) { return make_vec(a.x - b.x, a.y - b.y, a.z - b.z); }
+vec3 add(vec3 a, vec3 b) { return make_vec(a.x + b.x, a.y + b.y, a.z + b.z); }
+vec3 mul(vec3 a, vec3 b) { return make_vec(a.x * b.x, a.y * b.y, a.z * b.z); }
+vec3 mul(vec3 a, float32 s) { return make_vec(a.x * s, a.y * s, a.z * s); }
+vec3 neg(vec3 a) { return make_vec(-a.x, -a.y, -a.z); }
 
-vec4 sub(vec4 a, vec4 b) { return vec(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w); }
-vec4 add(vec4 a, vec4 b) { return vec(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w); }
-vec4 mul(vec4 a, vec4 b) { return vec(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w); }
-vec4 mul(vec4 a, float32 s) { return vec(a.x * s, a.y * s, a.z * s, a.w * s); }
-vec4 neg(vec4 a) { return vec(-a.x, -a.y, -a.z, -a.w); }
+vec4 sub(vec4 a, vec4 b) { return make_vec(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w); }
+vec4 add(vec4 a, vec4 b) { return make_vec(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w); }
+vec4 mul(vec4 a, vec4 b) { return make_vec(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w); }
+vec4 mul(vec4 a, float32 s) { return make_vec(a.x * s, a.y * s, a.z * s, a.w * s); }
+vec4 neg(vec4 a) { return make_vec(-a.x, -a.y, -a.z, -a.w); }
 
 
 float32 dot(vec2 a, vec2 b) { return a.x * b.x + a.y * b.y; }
@@ -117,6 +122,11 @@ float32 length(vec3 a) { return sqrtf(dot(a, a)); }
 vec3 normalize(vec3 a) { return mul(a, 1.0 / length(a)); }
 vec3 reflect(vec3 a, vec3 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 vec3 lerp(float32 t, vec3 a, vec3 b) { return add(a, mul(sub(b, a), t)); }
+vec3 cross(vec3 a, vec3 b) {
+    return { a.y * b.z - a.z * b.y,
+             a.z * b.x - a.x * b.z,
+             a.x * b.y - a.y * b.x };
+}
 
 float32 dot(vec4 a, vec4 b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
 float32 sqlength(vec4 a) { return dot(a, a); }
@@ -124,3 +134,163 @@ float32 length(vec4 a) { return sqrtf(dot(a, a)); }
 vec4 normalize(vec4 a) { return mul(a, 1.0 / length(a)); }
 vec4 reflect(vec4 a, vec4 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 vec4 lerp(float32 t, vec4 a, vec4 b) { return add(a, mul(sub(b, a), t)); }
+
+struct mat4 {
+    vec4 row1, row2, row3, row4;
+}
+
+vec4 col1(mat4 m) { return { m.row1.x, m.row2.x, m.row3.x, m.row4.x }; }
+vec4 col2(mat4 m) { return { m.row1.y, m.row2.y, m.row3.y, m.row4.y }; }
+vec4 col3(mat4 m) { return { m.row1.z, m.row2.z, m.row3.z, m.row4.z }; }
+vec4 col4(mat4 m) { return { m.row1.w, m.row2.w, m.row3.w, m.row4.w }; }
+
+mat4 transpose(mat4 m) { return { col1(m), col2(m), col3(m), col4(m) }; }
+
+mat4 mul(mat4 a, mat4 b) {
+    mat4 res;
+
+    res.row1.x = dot(a.row1, col1(b));
+    res.row1.y = dot(a.row1, col2(b));
+    res.row1.z = dot(a.row1, col3(b));
+    res.row1.w = dot(a.row1, col4(b));
+
+    res.row2.x = dot(a.row2, col1(b));
+    res.row2.y = dot(a.row2, col2(b));
+    res.row2.z = dot(a.row2, col3(b));
+    res.row2.w = dot(a.row2, col4(b));
+
+    res.row3.x = dot(a.row3, col1(b));
+    res.row3.y = dot(a.row3, col2(b));
+    res.row3.z = dot(a.row3, col3(b));
+    res.row3.w = dot(a.row3, col4(b));
+
+    res.row4.x = dot(a.row4, col1(b));
+    res.row4.y = dot(a.row4, col2(b));
+    res.row4.z = dot(a.row4, col3(b));
+    res.row4.w = dot(a.row4, col4(b));
+
+    return res;
+}
+
+vec4 mul(mat4 m, vec4 v) {
+    return { dot(m.row1, v), dot(m.row2, v), dot(m.row3, v), dot(m.row4, v) };
+}
+
+vec4 mul(vec4 v, mat4 m) {
+    return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)), dot(v, col4(m)) };
+}
+
+mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth) {
+    float32 maxY = near_depth * tanf(0.5 * fovy);
+    float32 minY = -maxY;
+    float32 minX = minY * aspect;
+    float32 maxX = maxY * aspect;
+
+    return perspective_off_center(minX, maxX, minY, maxY, near_depth, far_depth);
+}
+
+mat4 perspective_off_center(
+    float32 left,
+    float32 right,
+    float32 bottom,
+    float32 top,
+    float32 near_depth,
+    float32 far_depth
+) {
+    float32 x = 2.0 * near_depth / (right - left);
+    float32 y = 2.0 * near_depth / (top - bottom);
+    float32 a = (right + left) / (right - left);
+    float32 b = (top + bottom) / (top - bottom);
+    float32 c = -(far_depth + near_depth) / (far_depth - near_depth);
+    float32 d = -(2.0 * far_depth * near_depth) / (far_depth - near_depth);
+
+    return {
+        { x,  0,  0,  0 },
+        { 0,  y,  0,  0 },
+        { a,  b,  c, -1 },
+        { 0,  0,  d,  0 }
+    };
+}
+
+
+// Quaternion in the form:
+//     w + xi + yj + zk
+struct quat {
+    float32 x, y, z, w;
+}
+
+quat conj(quat q) { return { -q.x, -q.y, -q.z, q.w }; }
+quat normalize(quat q) {
+    let l = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+    return { q.x / l, q.y / l, q.z / l, q.w / l };
+}
+
+quat mul(quat l, quat r) {
+    float32 a = l.w;
+    float32 b = l.x;
+    float32 c = l.y;
+    float32 d = l.z;
+    float32 e = r.w;
+    float32 f = r.x;
+    float32 g = r.y;
+    float32 h = r.z;
+
+    return {
+        b*e + a*f + c*h - d*g,
+        a*g - b*h + c*e + d*f,
+        a*h + b*g - c*f + d*e,
+        a*e - b*f - c*g - d*h
+    };
+}
+
+// quat matrix2quat(mat4 m) {
+//     float32 trace = m->m[0][0] + m->m[1][1] + m->m[2][2];
+//     if trace > 0 {
+//         float32 s = 0.5 / sqrtf(trace + 1.0);
+//         return {
+//             ( m->m[2][1] - m->m[1][2] ) * s,
+//             ( m->m[0][2] - m->m[2][0] ) * s,
+//             ( m->m[1][0] - m->m[0][1] ) * s,
+//             0.25f / s
+//         };
+//     }
+
+//     if ( m->m[0][0] > m->m[1][1] && m->m[0][0] > m->m[2][2] ) {
+//         float s = 2.0f * sqrtf( 1.0f + m->m[0][0] - m->m[1][1] - m->m[2][2]);
+//         out_result->w = (m->m[2][1] - m->m[1][2] ) / s;
+//         out_result->x = 0.25f * s;
+//         out_result->y = (m->m[0][1] + m->m[1][0] ) / s;
+//         out_result->z = (m->m[0][2] + m->m[2][0] ) / s;
+//     } else if (m->m[1][1] > m->m[2][2]) {
+//         float s = 2.0f * sqrtf( 1.0f + m->m[1][1] - m->m[0][0] - m->m[2][2]);
+//         out_result->w = (m->m[0][2] - m->m[2][0] ) / s;
+//         out_result->x = (m->m[0][1] + m->m[1][0] ) / s;
+//         out_result->y = 0.25f * s;
+//         out_result->z = (m->m[1][2] + m->m[2][1] ) / s;
+//     } else {
+//         float s = 2.0f * sqrtf( 1.0f + m->m[2][2] - m->m[0][0] - m->m[1][1] );
+//         out_result->w = (m->m[1][0] - m->m[0][1] ) / s;
+//         out_result->x = (m->m[0][2] + m->m[2][0] ) / s;
+//         out_result->y = (m->m[1][2] + m->m[2][1] ) / s;
+//         out_result->z = 0.25f * s;
+//     }
+// }
+
+mat4 quat2matrix(quat q) {
+    float32 xx = q.x * q.x;
+    float32 xy = q.x * q.y;
+    float32 xz = q.x * q.z;
+    float32 xw = q.x * q.w;
+    float32 yy = q.y * q.y;
+    float32 yz = q.y * q.z;
+    float32 yw = q.y * q.w;
+    float32 zz = q.z * q.z;
+    float32 zw = q.z * q.w;
+
+    return {
+        1.0 - (yy + zz)*2.0,         (xy - zw)*2.0,         (xz + yw)*2.0,    0,
+              (xy + zw)*2.0,   1.0 - (xx + zz)*2.0,         (yz - xw)*2.0,    0,
+              (xz - yw)*2.0,         (yz + xw)*2.0,   1.0 - (xx + yy)*2.0,    0,
+        0,                0,                     0,                           1
+    };
+}
