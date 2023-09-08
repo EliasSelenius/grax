@@ -101,7 +101,7 @@ void draw_char(vec2 pos, float32 size, char c, Color color) {
 vec2 draw_text(vec2 pos, float32 size, string text, Color color) {
     float32 start = pos.x;
 
-    for i in 0 .. text.length {
+    for i : 0 .. text.length {
         char c = text.chars[i];
 
         if c == @"\n" {

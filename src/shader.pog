@@ -1,0 +1,151 @@
+
+struct Shader {
+    uint32 gl_handle;
+}
+
+void use(Shader s) {
+    glUseProgram(s.gl_handle);
+}
+
+Shader create_shader(char* fragsrc, char* vertsrc) {
+
+    uint32 makeshader(uint32 program, GLenum _type, char* code) {
+        uint32 s = glCreateShader(_type);
+        glShaderSource(s, 1, *code, null); // null assumes null-terminated string
+        glAttachShader(program, s);
+        return s;
+    }
+
+    uint32 program = glCreateProgram();
+    let f = makeshader(program, GL_FRAGMENT_SHADER, fragsrc);
+    let v = makeshader(program, GL_VERTEX_SHADER, vertsrc);
+
+    glLinkProgram(program);
+
+    glDetachShader(program, f);
+    glDeleteShader(f);
+
+    glDetachShader(program, v);
+    glDeleteShader(v);
+
+    int32 status;
+    glGetProgramiv(program, GL_LINK_STATUS, *status);
+    if status == 0 {
+        GLsizei size = 1024;
+        char buffer[size];
+        glGetProgramInfoLog(program, size, *size, buffer);
+        print(buffer as char*);
+    }
+
+
+    Shader s;
+    s.gl_handle = program;
+    return s;
+}
+
+// void set_uniform(with Shader s, char* name, float64 x) {}
+
+// void set_uniform(GLint loc, float64 x) { glUniform1d(loc, x); }
+// void set_uniform(GLint loc, uint32 count, float64* values) { glUniform1dv(loc, count, values); }
+
+// type proc_glUniform1d                 = void(GLint /*location*/, GLdouble /*x*/);
+// type proc_glUniform1dv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniform1f                 = void(GLint /*location*/, GLfloat /*v0*/);
+// type proc_glUniform1fv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniform1i                 = void(GLint /*location*/, GLint /*v0*/);
+// type proc_glUniform1iv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glUniform1ui                = void(GLint /*location*/, GLuint /*v0*/);
+// type proc_glUniform1uiv               = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glUniform2d                 = void(GLint /*location*/, GLdouble /*x*/, GLdouble /*y*/);
+// type proc_glUniform2dv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniform2f                 = void(GLint /*location*/, GLfloat /*v0*/, GLfloat /*v1*/);
+// type proc_glUniform2fv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniform2i                 = void(GLint /*location*/, GLint /*v0*/, GLint /*v1*/);
+// type proc_glUniform2iv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glUniform2ui                = void(GLint /*location*/, GLuint /*v0*/, GLuint /*v1*/);
+// type proc_glUniform2uiv               = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glUniform3d                 = void(GLint /*location*/, GLdouble /*x*/, GLdouble /*y*/, GLdouble /*z*/);
+// type proc_glUniform3dv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniform3f                 = void(GLint /*location*/, GLfloat /*v0*/, GLfloat /*v1*/, GLfloat /*v2*/);
+// type proc_glUniform3fv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniform3i                 = void(GLint /*location*/, GLint /*v0*/, GLint /*v1*/, GLint /*v2*/);
+// type proc_glUniform3iv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glUniform3ui                = void(GLint /*location*/, GLuint /*v0*/, GLuint /*v1*/, GLuint /*v2*/);
+// type proc_glUniform3uiv               = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glUniform4d                 = void(GLint /*location*/, GLdouble /*x*/, GLdouble /*y*/, GLdouble /*z*/, GLdouble /*w*/);
+// type proc_glUniform4dv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniform4f                 = void(GLint /*location*/, GLfloat /*v0*/, GLfloat /*v1*/, GLfloat /*v2*/, GLfloat /*v3*/);
+// type proc_glUniform4fv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniform4i                 = void(GLint /*location*/, GLint /*v0*/, GLint /*v1*/, GLint /*v2*/, GLint /*v3*/);
+// type proc_glUniform4iv                = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glUniform4ui                = void(GLint /*location*/, GLuint /*v0*/, GLuint /*v1*/, GLuint /*v2*/, GLuint /*v3*/);
+// type proc_glUniform4uiv               = void(GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glUniformMatrix2dv          = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix2fv          = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix2x3dv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix2x3fv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix2x4dv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix2x4fv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix3dv          = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix3fv          = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix3x2dv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix3x2fv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix3x4dv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix3x4fv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix4dv          = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix4fv          = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix4x2dv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix4x2fv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glUniformMatrix4x3dv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glUniformMatrix4x3fv        = void(GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+
+// type proc_glProgramUniform1d          = void(GLuint /*program*/, GLint /*location*/, GLdouble /*v0*/);
+// type proc_glProgramUniform1dv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniform1f          = void(GLuint /*program*/, GLint /*location*/, GLfloat /*v0*/);
+// type proc_glProgramUniform1fv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniform1i          = void(GLuint /*program*/, GLint /*location*/, GLint /*v0*/);
+// type proc_glProgramUniform1iv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glProgramUniform1ui         = void(GLuint /*program*/, GLint /*location*/, GLuint /*v0*/);
+// type proc_glProgramUniform1uiv        = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glProgramUniform2d          = void(GLuint /*program*/, GLint /*location*/, GLdouble /*v0*/, GLdouble /*v1*/);
+// type proc_glProgramUniform2dv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniform2f          = void(GLuint /*program*/, GLint /*location*/, GLfloat /*v0*/, GLfloat /*v1*/);
+// type proc_glProgramUniform2fv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniform2i          = void(GLuint /*program*/, GLint /*location*/, GLint /*v0*/, GLint /*v1*/);
+// type proc_glProgramUniform2iv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glProgramUniform2ui         = void(GLuint /*program*/, GLint /*location*/, GLuint /*v0*/, GLuint /*v1*/);
+// type proc_glProgramUniform2uiv        = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glProgramUniform3d          = void(GLuint /*program*/, GLint /*location*/, GLdouble /*v0*/, GLdouble /*v1*/, GLdouble /*v2*/);
+// type proc_glProgramUniform3dv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniform3f          = void(GLuint /*program*/, GLint /*location*/, GLfloat /*v0*/, GLfloat /*v1*/, GLfloat /*v2*/);
+// type proc_glProgramUniform3fv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniform3i          = void(GLuint /*program*/, GLint /*location*/, GLint /*v0*/, GLint /*v1*/, GLint /*v2*/);
+// type proc_glProgramUniform3iv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glProgramUniform3ui         = void(GLuint /*program*/, GLint /*location*/, GLuint /*v0*/, GLuint /*v1*/, GLuint /*v2*/);
+// type proc_glProgramUniform3uiv        = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glProgramUniform4d          = void(GLuint /*program*/, GLint /*location*/, GLdouble /*v0*/, GLdouble /*v1*/, GLdouble /*v2*/, GLdouble /*v3*/);
+// type proc_glProgramUniform4dv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniform4f          = void(GLuint /*program*/, GLint /*location*/, GLfloat /*v0*/, GLfloat /*v1*/, GLfloat /*v2*/, GLfloat /*v3*/);
+// type proc_glProgramUniform4fv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniform4i          = void(GLuint /*program*/, GLint /*location*/, GLint /*v0*/, GLint /*v1*/, GLint /*v2*/, GLint /*v3*/);
+// type proc_glProgramUniform4iv         = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLint* /*value*/);
+// type proc_glProgramUniform4ui         = void(GLuint /*program*/, GLint /*location*/, GLuint /*v0*/, GLuint /*v1*/, GLuint /*v2*/, GLuint /*v3*/);
+// type proc_glProgramUniform4uiv        = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, /*const*/ GLuint* /*value*/);
+// type proc_glProgramUniformMatrix2dv   = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix2fv   = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix2x3dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix2x3fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix2x4dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix2x4fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix3dv   = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix3fv   = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix3x2dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix3x2fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix3x4dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix3x4fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix4dv   = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix4fv   = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix4x2dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix4x2fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+// type proc_glProgramUniformMatrix4x3dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
+// type proc_glProgramUniformMatrix4x3fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);

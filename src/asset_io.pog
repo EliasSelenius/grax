@@ -55,7 +55,7 @@ Image load_bitmap(char* filename) {
         case 4: print("ERROR: .bmp file \"", filename, "\" with 4 bits per pixel not implemented yet.\n"); break;
         case 8: {
             uint8* bytes = data;
-            for i in 0 .. info.width * info.height {
+            for i : 0 .. info.width * info.height {
                 image.pixels[i] = color_table[bytes[i]];
             }
         } break;
@@ -64,7 +64,7 @@ Image load_bitmap(char* filename) {
 
         case 24: {
             ColorRgb* colors = data;
-            for i in 0 .. info.width * info.height {
+            for i : 0 .. info.width * info.height {
                 image.pixels[i].r = colors[i].r;
                 image.pixels[i].g = colors[i].g;
                 image.pixels[i].b = colors[i].b;
@@ -74,7 +74,7 @@ Image load_bitmap(char* filename) {
 
         case 32: {
             Color* colors = data;
-            for i in 0 .. info.width * info.height {
+            for i : 0 .. info.width * info.height {
                 image.pixels[i] = colors[i];
             }
         } break;

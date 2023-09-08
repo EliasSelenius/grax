@@ -192,44 +192,6 @@ void toggle_fullscreen(GLFWwindow* window) {
     }
 }
 
-struct Shader {
-    uint32 gl_handle;
-}
-
-uint32 makeshader(uint32 program, GLenum _type, char* code) {
-    uint32 s = glCreateShader(_type);
-    glShaderSource(s, 1, *code, null); // null assumes null-terminated string
-    glAttachShader(program, s);
-    return s;
-}
-
-Shader create_shader(char* fragsrc, char* vertsrc) {
-    uint32 program = glCreateProgram();
-    let f = makeshader(program, GL_FRAGMENT_SHADER, fragsrc);
-    let v = makeshader(program, GL_VERTEX_SHADER, vertsrc);
-
-    glLinkProgram(program);
-
-    glDetachShader(program, f);
-    glDeleteShader(f);
-
-    glDetachShader(program, v);
-    glDeleteShader(v);
-
-    int32 status;
-    glGetProgramiv(program, GL_LINK_STATUS, *status);
-    if status == 0 {
-        GLsizei size = 1024;
-        char buffer[size];
-        glGetProgramInfoLog(program, size, *size, buffer);
-        print(buffer as char*);
-    }
-
-
-    Shader s;
-    s.gl_handle = program;
-    return s;
-}
 
 struct Framebuffer {
     uint32 width, height;
