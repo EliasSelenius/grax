@@ -27,19 +27,6 @@ vec2 window_size() {
     return {w, h} as vec2;
 }
 
-int32 key(char c) {
-    return glfwGetKey(main_window, c as int32);
-}
-
-int32 key(int32 c) {
-    return glfwGetKey(main_window, c);
-}
-
-const Left_Mouse = 0;
-const Right_Mouse = 1;
-int32 mouse(int32 btn) {
-    return glfwGetMouseButton(main_window, btn);
-}
 
 int32 grax_loop() {
 
@@ -91,7 +78,7 @@ void grax_init() {
     glClearColor(0.1, 0.1, 0.1, 1.0);
 
     {
-        immediate_vertices = list_create((sizeof vertex) as uint32);
+        immediate_vertices = list_create((sizeof vertex2D) as uint32);
         immediate_indices  = list_create((sizeof uint32) as uint32);
         immediate_buffer = create_draw_buffers();
     }
@@ -140,14 +127,14 @@ void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severi
     print(message, "\n");
 }
 
-GLFWmonitor* get_ideal_monitor() {
+GLFWmonitor* get_ideal_monitor(GLFWwindow* window) {
 
     int32 x;
     int32 y;
     int32 w;
     int32 h;
-    glfwGetWindowPos(main_window, *x, *y);
-    glfwGetWindowSize(main_window, *w, *h);
+    glfwGetWindowPos(window, *x, *y);
+    glfwGetWindowSize(window, *w, *h);
 
     int32 monitor_count;
     GLFWmonitor** monitors = glfwGetMonitors(*monitor_count);
@@ -186,7 +173,7 @@ void toggle_fullscreen(GLFWwindow* window) {
 
     } else {
         // set to fullscreen
-        GLFWmonitor* m = get_ideal_monitor();
+        GLFWmonitor* m = get_ideal_monitor(window);
         GLFWvidmode* mode = glfwGetVideoMode(m);
         glfwSetWindowMonitor(window, m, 0, 0, mode.width, mode.height, mode.refreshRate);
     }
@@ -271,68 +258,3 @@ void set_filter(with Texture2D tex, uint32 filter) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
-
-struct DrawBuffers {
-    uint32 vao, vbo, ebo;
-    int32 elements_count;
-}
-
-struct vertex {
-    float32 x, y;
-    float32 u, v;
-    Color color;
-}
-
-DrawBuffers create_draw_buffers() {
-    DrawBuffers db;
-    db.elements_count = 0;
-
-    glGenVertexArrays(1, *db.vao);
-    glBindVertexArray(db.vao);
-
-    glGenBuffers(1, *db.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER , db.vbo);
-    glGenBuffers(1, *db.ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
-
-    vertex* v = null;
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof vertex, *v.x);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof vertex, *v.u);
-
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, true, sizeof vertex, *v.color);
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER , 0);
-
-    return db;
-}
-
-void update_buffers(with DrawBuffers* db, vertex* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
-    db.elements_count = indices_count as int32;
-    update_buffer(db.vbo, vertices_count * (sizeof vertex) as uint32, vertices);
-    update_buffer(db.ebo, indices_count * (sizeof uint32) as uint32, indices);
-}
-
-void update_buffer(uint32 buffer, uint32 size, void* data) {
-    glBindBuffer(GL_ARRAY_BUFFER , buffer);
-    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER , 0);
-}
-
-void draw_elements(with DrawBuffers db) {
-    glBindVertexArray(db.vao);
-    glDrawElements(GL_TRIANGLES, db.elements_count, GL_UNSIGNED_INT, null);
-    glBindVertexArray(0);
-}
-
-void draw_elements(with DrawBuffers db, uint32 instanceCount) {
-    glBindVertexArray(db.vao);
-    glDrawElementsInstanced(GL_TRIANGLES, db.elements_count, GL_UNSIGNED_INT, null, instanceCount);
-    glBindVertexArray(0);
-}
-

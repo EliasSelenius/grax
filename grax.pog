@@ -1,4 +1,5 @@
 
+// this file is a temp solution until we have a way of building 'libraries'
 
 include "../plang/common/basic.pog";
 include "../plang/common/list.pog";
@@ -14,3 +15,5 @@ include "../grax/src/immediate_renderer.pog";
 include "../grax/src/math.pog";
 include "../grax/src/game_math.pog";
 include "../grax/src/asset_io.pog";
+include "../grax/src/input.pog";
+include "../grax/src/mesh.pog";

@@ -1,0 +1,126 @@
+
+
+struct vertex3D {
+    vec3 pos;
+    vec3 normal;
+    vec2 uv;
+}
+
+struct vertex2D {
+    vec2 pos;
+    vec2 uv;
+    Color color;
+}
+
+struct Mesh {
+    vertex3D* vertices;
+    uint32* indices;
+    uint32 vertices_count;
+    uint32 indices_count;
+
+    vec3 bb_min, bb_max;
+}
+
+struct DrawBuffers {
+    uint32 vao, vbo, ebo;
+    int32 elements_count;
+}
+
+
+void setup_vertex2D_attributes() {
+    vertex2D* v = null;
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof vertex2D, *v.pos);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof vertex2D, *v.uv);
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, true, sizeof vertex2D, *v.color);
+
+}
+
+void setup_vertex3D_attributes() {
+    const size = sizeof vertex3D;
+    vertex3D* v = null;
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, size, *v.pos);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, size, *v.normal);
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, false, size, *v.uv);
+
+}
+
+DrawBuffers create_draw_buffers(Mesh mesh) {
+    DrawBuffers db;
+    db.elements_count = 0;
+
+    glGenVertexArrays(1, *db.vao);
+    glBindVertexArray(db.vao);
+
+    glGenBuffers(1, *db.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER , db.vbo);
+    glGenBuffers(1, *db.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
+
+    glBufferData(GL_ARRAY_BUFFER, mesh.vertices_count * sizeof vertex3D, mesh.vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_count * sizeof uint32, mesh.indices, GL_STATIC_DRAW);
+
+    setup_vertex3D_attributes();
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    return db;
+}
+
+DrawBuffers create_draw_buffers() {
+    DrawBuffers db;
+    db.elements_count = 0;
+
+    glGenVertexArrays(1, *db.vao);
+    glBindVertexArray(db.vao);
+
+    glGenBuffers(1, *db.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER , db.vbo);
+    glGenBuffers(1, *db.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
+
+    setup_vertex2D_attributes();
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    return db;
+}
+
+void update_buffers(with DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
+    db.elements_count = indices_count as int32;
+    // TODO: sizeof should not have to be casted to uint32, solve by making sizeof expressions be ambiguous integers?
+    update_buffer(db.vbo, vertices_count * (sizeof vertex2D) as uint32, vertices);
+    update_buffer(db.ebo, indices_count * (sizeof uint32) as uint32, indices);
+}
+
+void update_buffer(uint32 buffer, uint32 size, void* data) {
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void draw_elements(with DrawBuffers db) {
+    glBindVertexArray(db.vao);
+    glDrawElements(GL_TRIANGLES, db.elements_count, GL_UNSIGNED_INT, null);
+    glBindVertexArray(0);
+}
+
+void draw_elements(with DrawBuffers db, uint32 instanceCount) {
+    glBindVertexArray(db.vao);
+    glDrawElementsInstanced(GL_TRIANGLES, db.elements_count, GL_UNSIGNED_INT, null, instanceCount);
+    glBindVertexArray(0);
+}
+

@@ -9,6 +9,8 @@ float32 tanf(float32 t);
 float64 sqrt(float64 x);
 float32 sqrtf(float32 x);
 float32 floorf(float32 x);
+float64 pow(float64 b, float64 e);
+float32 powf(float32 b, float32 e);
 
 const Pi = 3.14159265359;
 const Tau = Pi * 2.0;

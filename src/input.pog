@@ -1,0 +1,14 @@
+
+int32 key(char c) { return glfwGetKey(main_window, c as int32); }
+int32 key(int32 c) { return glfwGetKey(main_window, c); }
+
+// TODO: we need to keep track of the key state to implement this function
+// int32 key_released(char c) { return glfwGetKey(main_window, c as int32) == GLFW_RELEASE; }
+// int32 key_released(int32 c) { return glfwGetKey(main_window, c) == GLFW_RELEASE; }
+
+
+const Left_Mouse = 0;
+const Right_Mouse = 1;
+int32 mouse(int32 btn) {
+    return glfwGetMouseButton(main_window, btn);
+}

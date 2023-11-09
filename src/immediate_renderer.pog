@@ -5,7 +5,7 @@ DrawBuffers immediate_buffer;
 
 Texture2D text_atlas;
 
-vertex* immediate_vertices; // list
+vertex2D* immediate_vertices; // list
 uint32* immediate_indices; // list
 
 
@@ -30,11 +30,9 @@ void immediate_vertex(float32 x, float32 y, float32 u, float32 v) {
 }
 
 void immediate_vertex(float32 x, float32 y, float32 u, float32 v, Color color) {
-    vertex vert;
-    vert.x = x;
-    vert.y = y;
-    vert.u = u;
-    vert.v = v;
+    vertex2D vert;
+    vert.pos = {x, y};
+    vert.uv = {u, v};
     vert.color = color;
     list_add(*immediate_vertices, *vert);
 }
@@ -104,7 +102,7 @@ vec2 draw_text(vec2 pos, float32 size, string text, Color color) {
     for i : 0 .. text.length {
         char c = text.chars[i];
 
-        if c == @"\n" {
+        if c == '\n' {
             pos.x = start;
             pos.y -= size;
             continue;

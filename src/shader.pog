@@ -1,9 +1,12 @@
 
+Shader* active_shader;
+
 struct Shader {
     uint32 gl_handle;
 }
 
-void use(Shader s) {
+void use(Shader* s) {
+    active_shader = s;
     glUseProgram(s.gl_handle);
 }
 
@@ -32,9 +35,10 @@ Shader create_shader(char* fragsrc, char* vertsrc) {
     glGetProgramiv(program, GL_LINK_STATUS, *status);
     if status == 0 {
         GLsizei size = 1024;
-        char buffer[size];
+        char* buffer = malloc(size as uint64); // TODO: consider not doing a malloc here, when we get fixed arrays
         glGetProgramInfoLog(program, size, *size, buffer);
-        print(buffer as char*);
+        print(buffer);
+        free(buffer);
     }
 
 
