@@ -23,6 +23,11 @@ float32 random(int32 seed) {
     return (1.0 - ((seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0);
 }
 
+// // TODO: the 'quality' of randomnes is not tested here
+// float32 random(int32 seed_x, int32 seed_y) {
+//     return random(seed_x + seed_y * 57);
+// }
+
 vec2 random_vec2(float32 x, float32 y) {
     vec2 v;
     v.x = x * 127.1 + y * 311.7;
@@ -59,11 +64,6 @@ float32 gnoise(float32 x, float32 y) {
     return lerp(uy, lerp(ux, d1, d2), lerp(ux, d3, d4));
 }
 
-
-// // TODO: the 'quality' of randomnes is not tested here
-// float32 random(int32 seed_x, int32 seed_y) {
-//     return random(seed_x + seed_y * 57);
-// }
 
 int32 min(int32 a, int32 b) { return a < b ? a : b; }
 int32 max(int32 a, int32 b) { return a < b ? b : a; }
@@ -143,6 +143,11 @@ struct mat2 {
     vec2 row1, row2;
 }
 
+mat2 mat2_identity() {
+    return {1,0,
+            0,1};
+}
+
 vec2 col1(mat2 m) { return { m.row1.x, m.row2.x }; }
 vec2 col2(mat2 m) { return { m.row1.y, m.row2.y }; }
 mat2 transpose(mat2 m) { return { col1(m), col2(m) }; }
@@ -168,6 +173,12 @@ vec2 mul(vec2 v, mat2 m) {
 
 struct mat3 {
     vec3 row1, row2, row3;
+}
+
+mat3 mat3_identity() {
+    return {1,0,0,
+            0,1,0,
+            0,0,1};
 }
 
 vec3 col1(mat3 m) { return { m.row1.x, m.row2.x, m.row3.x }; }
@@ -204,6 +215,13 @@ vec3 mul(vec3 v, mat3 m) {
 
 struct mat4 {
     vec4 row1, row2, row3, row4;
+}
+
+mat4 mat4_identity() {
+    return {1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1};
 }
 
 vec4 col1(mat4 m) { return { m.row1.x, m.row2.x, m.row3.x, m.row4.x }; }
@@ -289,6 +307,16 @@ quat conj(quat q) { return { -q.x, -q.y, -q.z, q.w }; }
 quat normalize(quat q) {
     let l = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
     return { q.x / l, q.y / l, q.z / l, q.w / l };
+}
+
+
+quat sub(quat a, quat b) { return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w}; }
+quat add(quat a, quat b) { return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w}; }
+quat mul(quat a, float32 s) { return {a.x * s, a.y * s, a.z * s, a.w * s}; }
+
+quat lerp(float32 t, quat a, quat b) { return add(a, mul(sub(b, a), t)); } // TODO: are these correct? lerp and nlerp
+quat nlerp(float32 t, quat a, quat b) {
+    return normalize(lerp(t, a, b));
 }
 
 quat mul(quat l, quat r) {

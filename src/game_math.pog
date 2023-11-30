@@ -5,14 +5,38 @@ struct Transform {
     quat rotation;
 }
 
-// mat4 to_matrix(with Transform t) {
+mat4 to_matrix(with Transform t) {
+    mat4 res = quat2matrix(t.rotation);
 
-// }
+    // TODO: scale
+
+    res.row4.x = t.position.x;
+    res.row4.y = t.position.y;
+    res.row4.z = t.position.z;
+
+    return res;
+}
+
+Transform transform_default() {
+    return {
+        position = {0,0,0},
+        scale    = {1,1,1},
+        rotation = {0,0,0,1}
+    };
+}
 
 struct Transform2D {
     vec2 pos;
     float32 rot;
     float32 scale;
+}
+
+Transform2D lerp(float32 t, Transform2D a, Transform2D b) {
+    Transform2D res = {};
+    res.pos = lerp(t, a.pos, b.pos);
+    res.rot = lerp(t, a.rot, b.rot); // TODO: this is definitely wrong!
+    res.scale = lerp(t, a.scale, b.scale);
+    return res;
 }
 
 vec2 right(with Transform2D t) { return make_vec(cosf(t.rot), sinf(t.rot)); }
@@ -45,3 +69,29 @@ vec2 world2local(with Transform2D t, float32 x, float32 y) {
 
 
 
+struct Camera {
+    Transform transform;
+    float32 fov;
+    float32 near_plane, far_plane;
+
+    mat4 view, projection;
+}
+
+Camera camera(float32 fov, float32 near, float32 far) {
+    Camera cam = {};
+    cam.transform = transform_default();
+    cam.fov = fov;
+    cam.near_plane = near;
+    cam.far_plane = far;
+
+    cam.view = mat4_identity();
+    cam.projection = mat4_identity();
+
+    return cam;
+}
+
+void update_matrices(with Camera* cam) {
+    cam.projection = perspective(cam.fov, main_window_aspect, cam.near_plane, cam.far_plane);
+
+    // TODO: view matrix
+}
