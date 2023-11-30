@@ -10,6 +10,70 @@ void use(Shader* s) {
     glUseProgram(s.gl_handle);
 }
 
+
+void process_glsl_source(StringBuilder* sb, char* filename) {
+    char* src = fileread(filename);
+
+    char* buffer = src;
+    uint32 line_num = 1;
+    while @buffer {
+        let line = substr_until(buffer, '\n');
+        if buffer[line.length] != 0  line.length += 1; // to include the delimiter '\n' in the string
+
+        if starts_with(line.chars, "#include \"") {
+            char* fn = buffer + 10;
+            let len = substr_until(fn, '"').length;
+            fn[len] = 0 as char;
+            process_glsl_source(sb, fn);
+        } else {
+            sb_append(sb, line);
+        }
+
+        line_num++;
+        buffer += line.length;
+    }
+
+    free(src);
+}
+
+Shader load_shader(char* filename) {
+
+    StringBuilder src = sb_create();
+    process_glsl_source(*src, filename);
+
+    StringBuilder frag = sb_create();
+    StringBuilder vert = sb_create();
+
+    sb_append(*frag, "#version 330 core\n");
+    sb_append(*frag, "#define IO in\n");
+    sb_append(*frag, "#define FragmentShader\n");
+    sb_append(*frag, src.content);
+
+    sb_append(*vert, "#version 330 core\n");
+    sb_append(*vert, "#define IO out\n");
+    sb_append(*vert, "#define VertexShader\n");
+    sb_append(*vert, src.content);
+
+    Shader s = create_shader(frag.content, vert.content);
+
+    sb_free(frag);
+    sb_free(vert);
+    sb_free(src);
+    return s;
+}
+
+Shader load_shader(char* frag_filename, char* vert_filename) {
+    char* frag_src = fileread(frag_filename);
+    char* vert_src = fileread(vert_filename);
+
+    let s = create_shader(frag_src, vert_src);
+
+    free(frag_src);
+    free(vert_src);
+
+    return s;
+}
+
 Shader create_shader(char* fragsrc, char* vertsrc) {
 
     uint32 makeshader(uint32 program, GLenum _type, char* code) {

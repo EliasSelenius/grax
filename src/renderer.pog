@@ -85,11 +85,7 @@ void grax_init() {
 
     {
         // TODO: the "../grax/" here is a hack!
-        char* fragsrc = fileread("../grax/shaders/frag.glsl");
-        char* vertsrc = fileread("../grax/shaders/vert.glsl");
-        immediate_shader = create_shader(fragsrc, vertsrc);
-        free(fragsrc);
-        free(vertsrc);
+        immediate_shader = load_shader("../grax/shaders/frag.glsl", "../grax/shaders/vert.glsl");
     }
 
     // TODO: the "../grax/" here is a hack!

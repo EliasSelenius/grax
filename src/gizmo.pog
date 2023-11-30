@@ -1,0 +1,60 @@
+
+struct GizmoPoint {
+    vec3 pos;
+    Color color;
+}
+
+// TODO: make GizmoPoint[..]
+GizmoPoint* gizmo_points_list;
+Color gizmo_current_color = White;
+
+uint32 gizmo_points_vbo;
+uint32 gizmo_points_vao;
+
+Shader gizmo_points_shader;
+
+void gizmo_setup() {
+    gizmo_points_list = list_create(sizeof GizmoPoint);
+
+    { // vao/vbo
+        glGenVertexArrays(1, *gizmo_points_vao);
+        glBindVertexArray(gizmo_points_vao);
+
+        glGenBuffers(1, *gizmo_points_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, gizmo_points_vbo);
+
+        GizmoPoint* gp = null;
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof GizmoPoint, *gp.pos);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, true, sizeof GizmoPoint, *gp.color);
+
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    gizmo_points_shader = load_shader("../grax/shaders/gizmo_points3D.glsl");
+
+    glEnable(GL_PROGRAM_POINT_SIZE);
+}
+
+void gizmo_dispatch() {
+    uint32 len = list_length(gizmo_points_list);
+
+    update_buffer(gizmo_points_vbo, len * sizeof GizmoPoint, gizmo_points_list);
+
+    use(*gizmo_points_shader);
+
+    glBindVertexArray(gizmo_points_vao);
+    glDrawArrays(GL_POINTS, 0, len);
+    glBindVertexArray(0);
+
+    list_clear(gizmo_points_list);
+}
+
+
+void gizmo_point(vec3 pos) { gizmo_point(pos, gizmo_current_color); }
+void gizmo_point(vec3 pos, Color color) {
+    GizmoPoint gp = { pos = pos, color = color };
+    list_add(*gizmo_points_list, *gp);
+}

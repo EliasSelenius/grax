@@ -17,3 +17,4 @@ include "../grax/src/game_math.pog";
 include "../grax/src/asset_io.pog";
 include "../grax/src/input.pog";
 include "../grax/src/mesh.pog";
+include "../grax/src/gizmo.pog";
