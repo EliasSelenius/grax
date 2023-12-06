@@ -23,11 +23,14 @@ float calcPointSize(vec4 viewPos, float size) {
 
 void main() {
 
-    vec4 viewPos = camera.view * vec4(a_Pos, 1.0);
+    // vec4 viewPos = camera.view * vec4(a_Pos, 1.0);
 
     v2f.color = a_Color;
-    gl_PointSize = calcPointSize(viewPos, pointSize);
-    gl_Position = camera.projection * viewPos;
+    // gl_PointSize = calcPointSize(viewPos, pointSize);
+    // gl_Position = camera.projection * viewPos;
+
+    gl_PointSize = 10;
+    gl_Position = vec4(a_Pos, 1.0);
 }
 
 #endif

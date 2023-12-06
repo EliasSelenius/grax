@@ -206,6 +206,15 @@ Color rgba(uint32 i) {
     return c;
 }
 
+Color color_from_vec(vec3 v) {
+    Color c;
+    c.r = (v.x * 255) as uint8;
+    c.g = (v.y * 255) as uint8;
+    c.b = (v.z * 255) as uint8;
+    c.a = 255;
+    return c;
+}
+
 const White  = {255, 255, 255, 255} as Color;
 const Gray   = {128, 128, 128, 255} as Color;
 const Black  = {0,   0,   0,   255} as Color;

@@ -102,8 +102,8 @@ DrawBuffers create_draw_buffers() {
 void update_buffers(with DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
     db.elements_count = indices_count as int32;
     // TODO: sizeof should not have to be casted to uint32, solve by making sizeof expressions be ambiguous integers?
-    update_buffer(db.vbo, vertices_count * (sizeof vertex2D) as uint32, vertices);
-    update_buffer(db.ebo, indices_count * (sizeof uint32) as uint32, indices);
+    update_buffer(db.vbo, vertices_count * sizeof vertex2D, vertices);
+    update_buffer(db.ebo, indices_count * sizeof uint32, indices);
 }
 
 void update_buffer(uint32 buffer, uint32 size, void* data) {

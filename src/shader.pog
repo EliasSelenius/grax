@@ -1,5 +1,12 @@
 
 Shader* active_shader;
+UBO* uniform_buffer_objects = list_create(sizeof UBO); // list;
+
+struct UBO {
+    string name;
+    uint32 binding_point;
+    uint32 buffer_id;
+}
 
 struct Shader {
     uint32 gl_handle;
@@ -10,9 +17,52 @@ void use(Shader* s) {
     glUseProgram(s.gl_handle);
 }
 
+UBO* get_ubo(string name) {
+    uint32 len = list_length(uniform_buffer_objects);
+    for 0 .. len {
+        UBO* ubo = *uniform_buffer_objects[it];
+        if string_equals(name, ubo.name) return ubo;
+    }
+
+    UBO ubo;
+    ubo.binding_point = len;
+    ubo.name = name;
+
+    glGenBuffers(1, *ubo.buffer_id);
+    glBindBufferBase(GL_UNIFORM_BUFFER, ubo.binding_point, ubo.buffer_id);
+
+    list_add(*uniform_buffer_objects, *ubo);
+
+    return *uniform_buffer_objects[len];
+}
+
+void bind_ubos(with Shader* s) {
+    int32 num_ubos;
+    int32 max_name_len;
+    glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCKS, *num_ubos);
+    glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, *max_name_len);
+
+    char* ubo_name = malloc(max_name_len as uint64);
+    let free_name = true;
+
+    for 0 .. num_ubos {
+        int32 name_len;
+        glGetActiveUniformBlockName(s.gl_handle, it, max_name_len, *name_len, ubo_name);
+        uint32 ubo_index = glGetUniformBlockIndex(s.gl_handle, ubo_name);
+        UBO* ubo = get_ubo(make_string(ubo_name));
+        if ubo.name.chars == ubo_name  free_name = false;
+        glUniformBlockBinding(s.gl_handle, ubo_index, ubo.binding_point);
+    }
+
+    if free_name free(ubo_name);
+}
 
 void process_glsl_source(StringBuilder* sb, char* filename) {
     char* src = fileread(filename);
+
+    sb_append(sb, "#line 1 \"");
+    sb_append(sb, filename);
+    sb_append(sb, "\"\n");
 
     char* buffer = src;
     uint32 line_num = 1;
@@ -24,10 +74,19 @@ void process_glsl_source(StringBuilder* sb, char* filename) {
             char* fn = buffer + 10;
             let len = substr_until(fn, '"').length;
             fn[len] = 0 as char;
+
             process_glsl_source(sb, fn);
+
+            sb_append(sb, "\n#line ");
+            sb_append(sb, to_string(line_num + 1));
+            sb_append(sb, " \"");
+            sb_append(sb, filename);
+            sb_append(sb, "\"");
+            sb_append(sb, "\n");
         } else {
             sb_append(sb, line);
         }
+
 
         line_num++;
         buffer += line.length;
@@ -40,6 +99,7 @@ Shader load_shader(char* filename) {
 
     StringBuilder src = sb_create();
     process_glsl_source(*src, filename);
+    // print(src.content);
 
     StringBuilder frag = sb_create();
     StringBuilder vert = sb_create();
@@ -76,24 +136,25 @@ Shader load_shader(char* frag_filename, char* vert_filename) {
 
 Shader create_shader(char* fragsrc, char* vertsrc) {
 
-    uint32 makeshader(uint32 program, GLenum _type, char* code) {
+    uint32 make_shader(uint32 program, GLenum _type, char* code) {
         uint32 s = glCreateShader(_type);
         glShaderSource(s, 1, *code, null); // null assumes null-terminated string
         glAttachShader(program, s);
         return s;
     }
 
+    void cleanup_shader(uint32 program, uint32 shader) {
+        glDetachShader(program, shader);
+        glDeleteShader(shader);
+    }
+
     uint32 program = glCreateProgram();
-    let f = makeshader(program, GL_FRAGMENT_SHADER, fragsrc);
-    let v = makeshader(program, GL_VERTEX_SHADER, vertsrc);
-
+    let f = make_shader(program, GL_FRAGMENT_SHADER, fragsrc);
+    let v = make_shader(program, GL_VERTEX_SHADER, vertsrc);
     glLinkProgram(program);
+    cleanup_shader(program, f);
+    cleanup_shader(program, v);
 
-    glDetachShader(program, f);
-    glDeleteShader(f);
-
-    glDetachShader(program, v);
-    glDeleteShader(v);
 
     int32 status;
     glGetProgramiv(program, GL_LINK_STATUS, *status);
@@ -108,6 +169,9 @@ Shader create_shader(char* fragsrc, char* vertsrc) {
 
     Shader s;
     s.gl_handle = program;
+
+    bind_ubos(*s);
+
     return s;
 }
 

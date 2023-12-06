@@ -94,4 +94,7 @@ void update_matrices(with Camera* cam) {
     cam.projection = perspective(cam.fov, main_window_aspect, cam.near_plane, cam.far_plane);
 
     // TODO: view matrix
+    cam.view = to_matrix(cam.transform);
+
+    
 }
