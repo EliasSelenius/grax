@@ -7,8 +7,9 @@ struct Image {
 Image load_bitmap(char* filename) {
 
     struct Header {
-        uint16 magic_num;
+        // uint16 magic_num;
         // 2 bytes pad (that should not be here)
+        // NOTE: we exclude magic num from this struct as we have no way of removing struct padding
         uint32 file_bytesize;
         uint16 reserved1;
         uint16 reserved2;
@@ -29,21 +30,17 @@ Image load_bitmap(char* filename) {
         uint32 important_colors;
     }
 
-    print("Header size: ", sizeof Header, "\n");
-    print("InfoHeader size: ", sizeof InfoHeader, "\n");
+    char* file_contents = fileread(filename, "rb");
 
+    // TODO: assert correct magic number
 
-    Header* head = fileread(filename, "rb") as Header*;
-    InfoHeader* info = (head as uint64 + 14) as InfoHeader*;
-    uint32 data_offset = @((head as uint64 + 10) as uint32*);
-    void* data = (head as uint64 + data_offset) as void*;
-    Color* color_table = (head as uint64 + 54) as Color*;
+    Header* head = (file_contents + 2) as Header*;
+    InfoHeader* info = (file_contents + 14) as InfoHeader*;
 
-    print("Data Offset: ", data_offset, "\n");
+    void* data = (file_contents + head.data_offset) as void*;
+    Color* color_table = (file_contents + 54) as Color*;
 
-    print(head.magic_num as char, (head.magic_num >> 8) as char, "\n");
-
-    print("bits per pixel: ", info.bits_per_pixel, "\n");
+    print("[INFO]: Loading bitmap file \"", filename, "\" (", head.file_bytesize, " bytes) (", info.bits_per_pixel, " bpp) (", info.width, "x", info.height, " pixels)\n");
 
     Image image;
     image.width = info.width as uint32;
@@ -51,8 +48,8 @@ Image load_bitmap(char* filename) {
     image.pixels = malloc(image.width * image.height * sizeof Color);
 
     switch info.bits_per_pixel {
-        case 1: print("ERROR: .bmp file \"", filename, "\" with 1 bits per pixel not implemented yet.\n"); break;
-        case 4: print("ERROR: .bmp file \"", filename, "\" with 4 bits per pixel not implemented yet.\n"); break;
+        case 1: print("[ERROR]: .bmp file \"", filename, "\" with 1 bits per pixel not implemented yet.\n"); break;
+        case 4: print("[ERROR]: .bmp file \"", filename, "\" with 4 bits per pixel not implemented yet.\n"); break;
         case 8: {
             uint8* bytes = data;
             for i : 0 .. info.width * info.height {
@@ -60,14 +57,14 @@ Image load_bitmap(char* filename) {
             }
         } break;
 
-        case 16: print("ERROR: .bmp file \"", filename, "\" with 16 bits per pixel not implemented yet.\n"); break;
+        case 16: print("[ERROR]: .bmp file \"", filename, "\" with 16 bits per pixel not implemented yet.\n"); break;
 
         case 24: {
             ColorRgb* colors = data;
             for i : 0 .. info.width * info.height {
-                image.pixels[i].r = colors[i].r;
+                image.pixels[i].r = colors[i].b; // bitmap format is bgr, not rgb
                 image.pixels[i].g = colors[i].g;
-                image.pixels[i].b = colors[i].b;
+                image.pixels[i].b = colors[i].r;
                 image.pixels[i].a = 255;
             }
         } break;
@@ -82,7 +79,7 @@ Image load_bitmap(char* filename) {
         default: break; // TODO: error msg
     }
 
-    free(head);
+    free(file_contents);
 
     return image;
 }
