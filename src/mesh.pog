@@ -27,6 +27,36 @@ struct DrawBuffers {
 }
 
 
+void gen_normals(Mesh* mesh) {
+    // set normals to zero
+    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = {0, 0, 0};
+
+    // add every triangles contribution to every vertex normal
+    uint32 i = 0; // TODO: we really need to add traditional for loops
+    while i < mesh.indices_count {
+        uint32 i0 = mesh.indices[i];
+        uint32 i1 = mesh.indices[i + 1];
+        uint32 i2 = mesh.indices[i + 2];
+
+        vec3 v0 = mesh.vertices[i0].pos;
+        vec3 v1 = mesh.vertices[i1].pos;
+        vec3 v2 = mesh.vertices[i2].pos;
+
+        vec3 normal = cross(sub(v0, v2), sub(v1, v2));
+
+        // TODO: += operator overload would make this significantly neater
+        mesh.vertices[i0].normal = add(mesh.vertices[i0].normal, normal);
+        mesh.vertices[i1].normal = add(mesh.vertices[i1].normal, normal);
+        mesh.vertices[i2].normal = add(mesh.vertices[i2].normal, normal);
+
+        i += 3;
+    }
+
+    // normalize normals
+    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = normalize(mesh.vertices[it].normal);
+}
+
+
 void setup_vertex2D_attributes() {
     vertex2D* v = null;
 
