@@ -20,13 +20,6 @@ void use(Shader* s) {
 UBO* get_ubo(char* name) { return get_ubo(make_string(name)); }
 UBO* get_ubo(string name) {
 
-    string alloc_copy(string s) {
-        char* c = malloc(s.length + 1);
-        for 0 .. s.length  c[it] = s.chars[it];
-        c[s.length] = 0 as char;
-        return {c, s.length};
-    }
-
     uint32 len = list_length(uniform_buffer_objects);
     for 0 .. len {
         UBO* ubo = uniform_buffer_objects[it];
@@ -35,7 +28,7 @@ UBO* get_ubo(string name) {
 
     UBO* ubo = malloc(sizeof UBO);
     ubo.binding_point = len;
-    ubo.name = alloc_copy(name);
+    ubo.name = alloc_string_copy(name);
 
     glGenBuffers(1, *ubo.buffer_id);
     glBindBufferBase(GL_UNIFORM_BUFFER, ubo.binding_point, ubo.buffer_id);
