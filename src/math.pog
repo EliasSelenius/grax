@@ -1,11 +1,17 @@
 
 
 float64 sin(float64 t);
+float64 asin(float64 t);
 float32 sinf(float32 t);
+float32 asinf(float32 t);
 float64 cos(float64 t);
+float64 acos(float64 t);
 float32 cosf(float32 t);
+float32 acosf(float32 t);
 float64 tan(float64 t);
+float64 atan(float64 t);
 float32 tanf(float32 t);
+float32 atanf(float32 t);
 float64 sqrt(float64 x);
 float32 sqrtf(float32 x);
 float32 floorf(float32 x);
@@ -137,6 +143,10 @@ vec4 normalize(vec4 a) { return mul(a, 1.0 / length(a)); }
 vec4 reflect(vec4 a, vec4 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 vec4 lerp(float32 t, vec4 a, vec4 b) { return add(a, mul(sub(b, a), t)); }
 
+
+vec2 xy(vec3 a) { return {a.x, a.y}; }
+vec2 xy(vec4 a) { return {a.x, a.y}; }
+vec3 xyz(vec4 a) { return {a.x, a.y, a.z}; }
 
 
 struct mat2 {
@@ -335,6 +345,18 @@ quat mul(quat l, quat r) {
         a*h + b*g - c*f + d*e,
         a*e - b*f - c*g - d*h
     };
+}
+
+quat axisangle2quat(vec3 axis, float32 angle) {
+    let ha = angle / 2.0;
+    let s = sinf(ha);
+
+    quat res;
+    res.x = axis.x * s;
+    res.y = axis.y * s;
+    res.z = axis.z * s;
+    res.w = cosf(ha);
+    return res;
 }
 
 // quat matrix2quat(mat4 m) {

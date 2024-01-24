@@ -1,6 +1,6 @@
 
 Shader* active_shader;
-UBO* uniform_buffer_objects = list_create(sizeof UBO); // list;
+UBO** uniform_buffer_objects = list_create(sizeof UBO*) as UBO**;
 
 struct UBO {
     string name;
@@ -17,23 +17,32 @@ void use(Shader* s) {
     glUseProgram(s.gl_handle);
 }
 
+UBO* get_ubo(char* name) { return get_ubo(make_string(name)); }
 UBO* get_ubo(string name) {
+
+    string alloc_copy(string s) {
+        char* c = malloc(s.length + 1);
+        for 0 .. s.length  c[it] = s.chars[it];
+        c[s.length] = 0 as char;
+        return {c, s.length};
+    }
+
     uint32 len = list_length(uniform_buffer_objects);
     for 0 .. len {
-        UBO* ubo = *uniform_buffer_objects[it];
+        UBO* ubo = uniform_buffer_objects[it];
         if string_equals(name, ubo.name) return ubo;
     }
 
-    UBO ubo;
+    UBO* ubo = malloc(sizeof UBO);
     ubo.binding_point = len;
-    ubo.name = name;
+    ubo.name = alloc_copy(name);
 
     glGenBuffers(1, *ubo.buffer_id);
     glBindBufferBase(GL_UNIFORM_BUFFER, ubo.binding_point, ubo.buffer_id);
 
     list_add(*uniform_buffer_objects, *ubo);
 
-    return *uniform_buffer_objects[len];
+    return uniform_buffer_objects[len];
 }
 
 void bind_ubos(with Shader* s) {
@@ -43,18 +52,16 @@ void bind_ubos(with Shader* s) {
     glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, *max_name_len);
 
     char* ubo_name = malloc(max_name_len as uint64);
-    let free_name = true;
 
     for 0 .. num_ubos {
         int32 name_len;
         glGetActiveUniformBlockName(s.gl_handle, it, max_name_len, *name_len, ubo_name);
         uint32 ubo_index = glGetUniformBlockIndex(s.gl_handle, ubo_name);
         UBO* ubo = get_ubo(make_string(ubo_name));
-        if ubo.name.chars == ubo_name  free_name = false;
         glUniformBlockBinding(s.gl_handle, ubo_index, ubo.binding_point);
     }
 
-    if free_name free(ubo_name);
+    free(ubo_name);
 }
 
 void process_glsl_source(StringBuilder* sb, char* filename) {
@@ -68,11 +75,10 @@ void process_glsl_source(StringBuilder* sb, char* filename) {
     uint32 line_num = 1;
     while @buffer {
         let line = substr_until(buffer, '\n');
-        if buffer[line.length] != 0  line.length += 1; // to include the delimiter '\n' in the string
 
         if starts_with(line.chars, "#include \"") {
             char* fn = buffer + 10;
-            let len = substr_until(fn, '"').length;
+            let len = substr_until(fn, '"').length - 1;
             fn[len] = 0 as char;
 
             process_glsl_source(sb, fn);

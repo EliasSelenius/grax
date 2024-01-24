@@ -58,3 +58,10 @@ void gizmo_point(vec3 pos, Color color) {
     GizmoPoint gp = { pos = pos, color = color };
     list_add(*gizmo_points_list, *gp);
 }
+
+void gizmo_transform(Transform* tr) {
+    gizmo_point(tr.position, White); // TODO: implement
+}
+void gizmo_transform(Transform2D* tr) {
+
+}

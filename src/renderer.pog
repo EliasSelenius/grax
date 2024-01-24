@@ -14,11 +14,18 @@
 */
 
 
+Shader default_object_shader;
+UBO* camera_ubo;
+UBO* application_ubo;
+
 GLFWwindow* main_window;
 float32 main_window_width = 1600;
 float32 main_window_height = 900;
-float32 main_window_aspect;
+float32 main_window_aspect; // height / width
 
+float64 time;
+float64 deltatime;
+float64 sim_speed = 1.0;
 
 vec2 window_size() {
     int32 w;
@@ -41,7 +48,25 @@ int32 grax_loop() {
         return false;
     }
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    input_update();
+
+    deltatime = (1.0 / 60.0) * sim_speed;
+    time += deltatime;
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    { // update application UBO
+        struct app {
+            float32 time, delta, width, height;
+        }
+        app a;
+        a.time = time as float32;
+        a.delta = deltatime as float32;
+        a.width = main_window_width;
+        a.height = main_window_height;
+        update_buffer(application_ubo.buffer_id, sizeof app, *a);
+    }
+
     return true;
 }
 
@@ -51,6 +76,12 @@ void grax_init() {
         print("ERROR: failed to initilize glfw.\n");
         return;
     }
+
+    // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     main_window = glfwCreateWindow(main_window_width as int32, main_window_height as int32, "Grax", null, null);
     main_window_aspect = main_window_height / main_window_width;
@@ -66,26 +97,31 @@ void grax_init() {
     glfwSetFramebufferSizeCallback(main_window, on_resize);
 
     load_opengl(glfwGetProcAddress);
+    print(glGetString(GL_VERSION) as char*, "\n");
+
 
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(opengl_debug_callback, null);
 
-    glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+    enable_alpha_blending();
+    glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_CULL_FACE);
     glClearColor(0.1, 0.1, 0.1, 1.0);
 
+    camera_ubo = get_ubo("Camera");
+    application_ubo = get_ubo("Application");
+
     {
-        immediate_vertices = list_create((sizeof vertex2D) as uint32);
-        immediate_indices  = list_create((sizeof uint32) as uint32);
+        immediate_vertices = list_create(sizeof vertex2D);
+        immediate_indices  = list_create(sizeof uint32);
         immediate_buffer = create_draw_buffers();
     }
 
     {
         // TODO: the "../grax/" here is a hack!
         immediate_shader = load_shader("../grax/shaders/frag.glsl", "../grax/shaders/vert.glsl");
+        default_object_shader = load_shader("../grax/shaders/default.glsl");
     }
 
     // TODO: the "../grax/" here is a hack!
@@ -102,6 +138,7 @@ void on_resize(GLFWwindow* window, int32 w, int32 h) {
 
     print("Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
 
+    // TODO: use UBO
     let aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect");
     glUniform1f(aspect_loc, main_window_aspect);
 
@@ -175,91 +212,12 @@ void toggle_fullscreen(GLFWwindow* window) {
     }
 }
 
-
-struct Framebuffer {
-    uint32 width, height;
-    uint32 gl_handle;
+void disable_blending() {
+    glDisable(GL_BLEND);
 }
 
-struct Texture2D {
-    uint32 width, height;
-    uint32 gl_handle;
-}
-
-struct Color {
-    uint8 r, g, b, a;
-}
-
-Color rgba(uint32 i) {
-    Color c;
-    // c.r = (i >> 24) & 0xFF;
-    // c.g = (i >> 16) & 0xFF;
-    // c.b = (i >> 8 ) & 0xFF;
-    // c.a = (i >> 0 ) & 0xFF;
-
-    uint8* b = *i as uint8*;
-    c.r = b[3];
-    c.g = b[2];
-    c.b = b[1];
-    c.a = b[0];
-
-    return c;
-}
-
-Color color_from_vec(vec3 v) {
-    Color c;
-    c.r = (v.x * 255) as uint8;
-    c.g = (v.y * 255) as uint8;
-    c.b = (v.z * 255) as uint8;
-    c.a = 255;
-    return c;
-}
-
-const White  = {255, 255, 255, 255} as Color;
-const Gray   = {128, 128, 128, 255} as Color;
-const Black  = {0,   0,   0,   255} as Color;
-const Red    = {255, 0,   0,   255} as Color;
-const Green  = {0,   255, 0,   255} as Color;
-const Blue   = {0,   0,   255, 255} as Color;
-const Yellow = {255, 255, 0,   255} as Color;
-const Cyan   = {0,   255, 255, 255} as Color;
-const Purple = {255, 0,   255, 255} as Color;
-
-struct ColorRgb {
-    uint8 r, g, b;
-}
-
-
-Texture2D create_texture2D(Image image) {
-    Texture2D tex;
-    tex.width = image.width;
-    tex.height = image.height;
-    glGenTextures(1, *tex.gl_handle);
-    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-
-    const filter = GL_LINEAR; // GL_NEAREST
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return tex;
-}
-
-void bind(with Texture2D tex) {
-    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
-}
-
-// TODO: filter should be an enum
-void set_filter(with Texture2D tex, uint32 filter) {
-    bind(tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
-    glBindTexture(GL_TEXTURE_2D, 0);
+void enable_alpha_blending() {
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }

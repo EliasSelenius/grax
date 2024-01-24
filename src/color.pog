@@ -1,0 +1,44 @@
+
+
+struct Color {
+    uint8 r, g, b, a;
+}
+
+struct ColorRgb {
+    uint8 r, g, b;
+}
+
+Color rgba(uint32 i) {
+    Color c;
+    // c.r = (i >> 24) & 0xFF;
+    // c.g = (i >> 16) & 0xFF;
+    // c.b = (i >> 8 ) & 0xFF;
+    // c.a = (i >> 0 ) & 0xFF;
+
+    uint8* b = *i as uint8*;
+    c.r = b[3];
+    c.g = b[2];
+    c.b = b[1];
+    c.a = b[0];
+
+    return c;
+}
+
+Color color_from_vec(vec3 v) {
+    Color c;
+    c.r = (v.x * 255) as uint8;
+    c.g = (v.y * 255) as uint8;
+    c.b = (v.z * 255) as uint8;
+    c.a = 255;
+    return c;
+}
+
+const White  = {255, 255, 255, 255} as Color;
+const Gray   = {128, 128, 128, 255} as Color;
+const Black  = {0,   0,   0,   255} as Color;
+const Red    = {255, 0,   0,   255} as Color;
+const Green  = {0,   255, 0,   255} as Color;
+const Blue   = {0,   0,   255, 255} as Color;
+const Yellow = {255, 255, 0,   255} as Color;
+const Cyan   = {0,   255, 255, 255} as Color;
+const Purple = {255, 0,   255, 255} as Color;

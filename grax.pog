@@ -18,3 +18,6 @@ include "../grax/src/asset_io.pog";
 include "../grax/src/input.pog";
 include "../grax/src/mesh.pog";
 include "../grax/src/gizmo.pog";
+include "../grax/src/obj.pog";
+include "../grax/src/color.pog";
+include "../grax/src/texture.pog";

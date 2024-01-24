@@ -17,7 +17,8 @@ void dispatch_immediate() {
     if vert_count != 0 {
         update_buffers(*immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
         bind(text_atlas);
-        glUseProgram(immediate_shader.gl_handle);
+        use(*immediate_shader);
+        
         draw_elements(immediate_buffer);
     }
 

@@ -13,7 +13,7 @@ IO FragData {
 layout (location = 0) in vec3 a_Pos;
 layout (location = 1) in vec4 a_Color;
 
-const float pointSize = 0.3;
+const float pointSize = 0.1;
 
 // from: https://github.com/devoln/synthgen-particles-win/blob/master/src/shader.h
 float calcPointSize(vec4 viewPos, float size) {
@@ -23,23 +23,22 @@ float calcPointSize(vec4 viewPos, float size) {
 
 void main() {
 
-    // vec4 viewPos = camera.view * vec4(a_Pos, 1.0);
+    vec4 viewPos = camera.view * vec4(a_Pos, 1.0);
 
     v2f.color = a_Color;
-    // gl_PointSize = calcPointSize(viewPos, pointSize);
-    // gl_Position = camera.projection * viewPos;
-
-    gl_PointSize = 10;
-    gl_Position = vec4(a_Pos, 1.0);
+    gl_PointSize = calcPointSize(viewPos, pointSize);
+    gl_Position = camera.projection * viewPos;
 }
 
 #endif
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+uniform sampler2D img;
+
 out vec4 FragColor;
 
 void main() {
-    FragColor = v2f.color;
+    FragColor = v2f.color; // * texture(img, gl_PointCoord);
 }
 
 #endif

@@ -8,7 +8,7 @@ struct Transform {
 mat4 to_matrix(with Transform t) {
     mat4 res = quat2matrix(t.rotation);
 
-    // TODO: scale
+    // TODO: scale. I seem to recal I did this in stopgap
 
     res.row4.x = t.position.x;
     res.row4.y = t.position.y;
@@ -23,6 +23,29 @@ Transform transform_default() {
         scale    = {1,1,1},
         rotation = {0,0,0,1}
     };
+}
+
+void rotate(with Transform* tr, quat q) {
+    tr.rotation = mul(tr.rotation, q);
+    tr.rotation = normalize(tr.rotation);
+}
+
+void rotate(with Transform* tr, vec3 axis, float32 angle) {
+    rotate(tr, axisangle2quat(axis, angle));
+}
+
+void translate(with Transform* tr, vec3 t) {
+    tr.position.x += t.x;
+    tr.position.y += t.y;
+    tr.position.z += t.z;
+}
+
+void look_at(with Transform* tr, vec3 target, vec3 up) {
+    vec3 forward = normalize(sub(target, tr.position));
+    vec3 left    = normalize(cross(up, forward));
+         up      = normalize(cross(forward, left));
+
+    
 }
 
 struct Transform2D {
@@ -69,6 +92,9 @@ vec2 world2local(with Transform2D t, float32 x, float32 y) {
 
 
 
+
+// ------------Camera-------------------------------------------------------------------
+
 struct Camera {
     Transform transform;
     float32 fov;
@@ -91,10 +117,35 @@ Camera camera(float32 fov, float32 near, float32 far) {
 }
 
 void update_matrices(with Camera* cam) {
-    cam.projection = perspective(cam.fov, main_window_aspect, cam.near_plane, cam.far_plane);
+    cam.projection = perspective(cam.fov, 1.0 / main_window_aspect, cam.near_plane, cam.far_plane);
 
-    // TODO: view matrix
     cam.view = to_matrix(cam.transform);
+    let xaxis = neg(xyz(cam.view.row1));
+    let yaxis = xyz(cam.view.row2);
+    let zaxis = neg(xyz(cam.view.row3));
 
-    
+    cam.view = {
+        // the axises here are on the columns (insted of rows) because the transpose of an orthonormalized matrix is the same as its inverse
+        xaxis.x, yaxis.x, zaxis.x, 0,
+        xaxis.y, yaxis.y, zaxis.y, 0,
+        xaxis.z, yaxis.z, zaxis.z, 0,
+        -dot(xaxis, cam.transform.position),
+        -dot(yaxis, cam.transform.position),
+        -dot(zaxis, cam.transform.position), 1
+    };
+}
+
+void camera_fly_control(Camera* cam) {
+    let m = to_matrix(cam.transform); // TODO: this is wrong cuz we dont want the scale part in there
+
+    vec3 left = xyz(m.row1);
+    vec3 forward = xyz(m.row3);
+
+    if mouse(Right_Mouse) {
+        rotate(*cam.transform, left, (-dmouse_y / 100.0) as float32);
+        rotate(*cam.transform, {0, 1, 0} as vec3, (dmouse_x / 100.0) as float32);
+    }
+
+    cam.transform.position = add(cam.transform.position, mul(forward, wasd.y / 10.0));
+    cam.transform.position = add(cam.transform.position, mul(left, wasd.x / 10.0));
 }

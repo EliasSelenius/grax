@@ -1,0 +1,44 @@
+
+struct Framebuffer {
+    uint32 width, height;
+    uint32 gl_handle;
+}
+
+struct Texture2D {
+    uint32 width, height;
+    uint32 gl_handle;
+}
+
+Texture2D create_texture2D(Image image) {
+    Texture2D tex;
+    tex.width = image.width;
+    tex.height = image.height;
+    glGenTextures(1, *tex.gl_handle);
+    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+
+    const filter = GL_LINEAR; // GL_NEAREST
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
+
+void bind(with Texture2D tex) {
+    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
+}
+
+// TODO: filter should be an enum
+void set_filter(with Texture2D tex, uint32 filter) {
+    bind(tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
