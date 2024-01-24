@@ -73,6 +73,9 @@ Image load_bitmap(char* filename) {
             Color* colors = data;
             for i : 0 .. info.width * info.height {
                 image.pixels[i] = colors[i];
+                let red = image.pixels[i].r;
+                image.pixels[i].r = image.pixels[i].b;
+                image.pixels[i].b = red;
             }
         } break;
 
