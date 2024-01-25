@@ -13,12 +13,18 @@ layout (location = 0) in vec3 a_Pos;
 layout (location = 1) in vec3 a_Normal;
 layout (location = 2) in vec2 a_Uv;
 
+layout (std140) uniform Instances {
+    mat4 transform[16];
+} instances;
+
 void main() {
 
-    v2f.normal = a_Normal;
+    mat4 model = instances.transform[gl_InstanceID];
+
+    v2f.normal = (model * vec4(a_Normal, 0.0)).xyz;
     v2f.uv = a_Uv;
 
-    gl_Position = camera.projection * camera.view * vec4(a_Pos, 1.0);
+    gl_Position = camera.projection * camera.view * model * vec4(a_Pos, 1.0);
 }
 
 #endif
