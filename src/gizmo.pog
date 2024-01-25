@@ -2,6 +2,7 @@
 struct GizmoPoint {
     vec3 pos;
     Color color;
+    float32 size;
 }
 
 // TODO: make GizmoPoint[..]
@@ -28,6 +29,8 @@ void gizmo_setup() {
         glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof GizmoPoint, *gp.pos);
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, true, sizeof GizmoPoint, *gp.color);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 1, GL_FLOAT, false, sizeof GizmoPoint, *gp.size);
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -54,14 +57,36 @@ void gizmo_dispatch() {
 
 
 void gizmo_point(vec3 pos) { gizmo_point(pos, gizmo_current_color); }
-void gizmo_point(vec3 pos, Color color) {
-    GizmoPoint gp = { pos = pos, color = color };
+void gizmo_point(vec3 pos, float32 size) { gizmo_point(pos, gizmo_current_color, size); }
+void gizmo_point(vec3 pos, Color color) { gizmo_point(pos, color, 0.1); }
+void gizmo_point(vec3 pos, Color color, float32 size) {
+    GizmoPoint gp = { pos = pos, color = color, size = size };
     list_add(*gizmo_points_list, *gp);
 }
 
 void gizmo_transform(Transform* tr) {
     gizmo_point(tr.position, White); // TODO: implement
+
+
+
 }
 void gizmo_transform(Transform2D* tr) {
 
+}
+
+void gizmo_sphere(vec3 center, float32 radius) {
+    // NOTE: we are just using gizmo_golden_sphere() for now, we might want to draw this gizmo differently
+    uint32 n = (4*Pi*radius*radius) as uint32;
+    gizmo_golden_sphere(n, center, radius);
+}
+
+
+void gizmo_golden_sphere(uint32 n, vec3 center, float32 radius) {
+    float32 golden_ratio = (1.0 + sqrtf(5)) / 2.0;
+    for 0 .. n {
+        float32 phi = acosf(1 - 2 * (it + 0.5) / (n as float32));
+        float32 angle = Tau * it / golden_ratio;
+        vec3 pos = { cosf(angle) * sinf(phi), sinf(angle) * sinf(phi), cosf(phi) };
+        gizmo_point(add(mul(pos, radius), center), Cyan);
+    }
 }
