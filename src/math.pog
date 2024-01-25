@@ -94,6 +94,10 @@ struct ivec3 { int32 x, y, z; }
 struct vec4 { float32 x, y, z, w; }
 struct ivec4 { int32 x, y, z, w; }
 
+const vec3_unit_x = {1, 0, 0} as vec3;
+const vec3_unit_y = {0, 1, 0} as vec3;
+const vec3_unit_z = {0, 0, 1} as vec3;
+
 vec2 make_vec(float32 x, float32 y) { return {x, y}; }
 vec3 make_vec(float32 x, float32 y, float32 z) { return {x, y, z}; }
 vec4 make_vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w}; }

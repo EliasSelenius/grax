@@ -26,37 +26,6 @@ struct DrawBuffers {
     int32 elements_count;
 }
 
-
-void gen_normals(Mesh* mesh) {
-    // set normals to zero
-    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = {0, 0, 0};
-
-    // add every triangles contribution to every vertex normal
-    uint32 i = 0; // TODO: we really need to add traditional for loops
-    while i < mesh.indices_count {
-        uint32 i0 = mesh.indices[i];
-        uint32 i1 = mesh.indices[i + 1];
-        uint32 i2 = mesh.indices[i + 2];
-
-        vec3 v0 = mesh.vertices[i0].pos;
-        vec3 v1 = mesh.vertices[i1].pos;
-        vec3 v2 = mesh.vertices[i2].pos;
-
-        vec3 normal = cross(sub(v0, v2), sub(v1, v2));
-
-        // TODO: += operator overload would make this significantly neater
-        mesh.vertices[i0].normal = add(mesh.vertices[i0].normal, normal);
-        mesh.vertices[i1].normal = add(mesh.vertices[i1].normal, normal);
-        mesh.vertices[i2].normal = add(mesh.vertices[i2].normal, normal);
-
-        i += 3;
-    }
-
-    // normalize normals
-    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = normalize(mesh.vertices[it].normal);
-}
-
-
 void setup_vertex2D_attributes() {
     vertex2D* v = null;
 
@@ -153,3 +122,84 @@ void draw_elements(with DrawBuffers db, uint32 instanceCount) {
     glBindVertexArray(0);
 }
 
+
+
+
+
+
+void gen_normals(Mesh mesh) {
+    // set normals to zero
+    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = {0, 0, 0};
+
+    // add every triangles contribution to every vertex normal
+    uint32 i = 0; // TODO: we really need to add traditional for loops
+    while i < mesh.indices_count {
+        uint32 i0 = mesh.indices[i];
+        uint32 i1 = mesh.indices[i + 1];
+        uint32 i2 = mesh.indices[i + 2];
+
+        vec3 v0 = mesh.vertices[i0].pos;
+        vec3 v1 = mesh.vertices[i1].pos;
+        vec3 v2 = mesh.vertices[i2].pos;
+
+        vec3 normal = cross(sub(v0, v2), sub(v1, v2));
+
+        // TODO: += operator overload would make this significantly neater
+        mesh.vertices[i0].normal = add(mesh.vertices[i0].normal, normal);
+        mesh.vertices[i1].normal = add(mesh.vertices[i1].normal, normal);
+        mesh.vertices[i2].normal = add(mesh.vertices[i2].normal, normal);
+
+        i += 3;
+    }
+
+    // normalize normals
+    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = normalize(mesh.vertices[it].normal);
+}
+
+void flip_indices(Mesh mesh) { flip_indices(mesh, 0, mesh.indices_count); }
+void flip_indices(Mesh mesh, uint32 base, uint32 len) {
+    uint32 i = 0; // TODO: we really need to add traditional for loops
+    while i < len {
+        let t = mesh.indices[base + i]
+        mesh.indices[base + i] = mesh.indices[base + i + 2];
+        mesh.indices[base + i + 2] = t;
+        i += 3;
+    }
+}
+
+Mesh gen_plane(uint32 size) {
+    let vsize = size + 1;
+
+    float32 half_size = size as float32 / 2;
+
+    Mesh mesh = {};
+    mesh.vertices_count = vsize*vsize;
+    mesh.vertices = malloc(mesh.vertices_count * sizeof vertex3D);
+    mesh.indices_count = size*size * 2 * 3;
+    mesh.indices = malloc(mesh.indices_count * sizeof uint32);
+
+    uint32 i = 0;
+
+    for uint32 xi: 0 .. vsize {
+        for uint32 yi: 0 .. vsize {
+            uint32 vi = xi * vsize + yi;
+            mesh.vertices[vi] = {
+                pos = { xi - half_size, 0, yi - half_size },
+                normal = vec3_unit_y,
+                uv = { xi / (size-1), yi / (size-1) }
+            };
+
+            if xi < size and yi < size {
+                mesh.indices[i++] = vi;
+                mesh.indices[i++] = vi + 1;
+                mesh.indices[i++] = vi + vsize + 1;
+
+                mesh.indices[i++] = vi;
+                mesh.indices[i++] = vi + vsize + 1;
+                mesh.indices[i++] = vi + vsize;
+            }
+        }
+    }
+
+    return mesh;
+}
