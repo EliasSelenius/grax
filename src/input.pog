@@ -11,8 +11,8 @@ float64 dmouse_y = 0;
 vec2 wasd;
 
 // TODO: use bool
-int32 key(char c) { return glfwGetKey(main_window, c as int32); }
-int32 key(int32 c) { return glfwGetKey(main_window, c); }
+bool key(char c) { return glfwGetKey(main_window, c as int32) as bool; }
+bool key(int32 c) { return glfwGetKey(main_window, c) as bool; }
 
 // TODO: we need to keep track of the key state to implement this function
 // int32 key_released(char c) { return glfwGetKey(main_window, c as int32) == GLFW_RELEASE; }
@@ -21,8 +21,8 @@ int32 key(int32 c) { return glfwGetKey(main_window, c); }
 
 const Left_Mouse = 0;
 const Right_Mouse = 1;
-int32 mouse(int32 btn) {
-    return glfwGetMouseButton(main_window, btn);
+bool mouse(int32 btn) {
+    return glfwGetMouseButton(main_window, btn) as bool;
 }
 
 void input_update() {

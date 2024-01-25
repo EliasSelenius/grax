@@ -12,5 +12,6 @@ layout (std140) uniform Application {
 #define ViewportSize app.time_delta_width_height.zw
 #define Width app.time_delta_width_height.z
 #define Height app.time_delta_width_height.w
+#define Aspect (Height / Width)
 
 #endif

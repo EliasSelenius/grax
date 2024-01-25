@@ -18,7 +18,7 @@ void dispatch_immediate() {
         update_buffers(*immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
         bind(text_atlas);
         use(*immediate_shader);
-        
+        enable_alpha_blending();
         draw_elements(immediate_buffer);
     }
 

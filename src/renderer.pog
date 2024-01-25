@@ -106,7 +106,7 @@ void grax_init() {
 
     enable_alpha_blending();
     glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
     glClearColor(0.1, 0.1, 0.1, 1.0);
 
     camera_ubo = get_ubo("Camera");
@@ -120,7 +120,7 @@ void grax_init() {
 
     {
         // TODO: the "../grax/" here is a hack!
-        immediate_shader = load_shader("../grax/shaders/frag.glsl", "../grax/shaders/vert.glsl");
+        immediate_shader = load_shader("../grax/shaders/ui.glsl");
         default_object_shader = load_shader("../grax/shaders/default.glsl");
     }
 
@@ -136,11 +136,7 @@ void on_resize(GLFWwindow* window, int32 w, int32 h) {
     main_window_height = h as float32;
     main_window_aspect = main_window_height / main_window_width;
 
-    print("Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
-
-    // TODO: use UBO
-    let aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect");
-    glUniform1f(aspect_loc, main_window_aspect);
+    print("[INFO]: Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
 
     glViewport(0, 0, w, h);
 }
