@@ -1,6 +1,8 @@
 
 struct OBJ_Data {
-    string object_name;
+    string file_name;
+
+    OBJ_Object* objects;
 
     vec3* vertices;
     vec2* texture_coords;
@@ -13,8 +15,21 @@ struct OBJ_VertexIndices {
     uint32 pos, text_coord, normal;
 }
 
+struct OBJ_Object {
+    string name;
+    uint32 indices_start;
+    uint32 indices_length;
+    char group_type; // o g // TODO: this may include usemtl in the future
+}
+
 void free_obj(OBJ_Data obj) {
-    free(obj.object_name.chars);
+
+    for 0 .. list_length(obj.objects) {
+        free(obj.objects[it].name.chars);
+    }
+    list_delete(obj.objects);
+
+    free(obj.file_name.chars);
     list_delete(obj.vertices);
     list_delete(obj.texture_coords);
     list_delete(obj.normals);
@@ -25,7 +40,9 @@ OBJ_Data load_obj(char* filename) {
     char* source = fileread(filename);
 
     OBJ_Data obj;
+    obj.file_name = alloc_string_copy(make_string(filename));
 
+    obj.objects = list_create(sizeof OBJ_Object);
     obj.vertices = list_create(sizeof vec3);
     obj.texture_coords = list_create(sizeof vec2);
     obj.normals = list_create(sizeof vec3);
@@ -77,10 +94,18 @@ OBJ_Data load_obj(char* filename) {
         switch line.chars[0] {
 
             case '#': break;
+
+            case 'g':
             case 'o': {
+                OBJ_Object o = {};
+                o.group_type = line.chars[0];
+
                 line.chars += 2;
                 line.length -= 3;
-                obj.object_name = alloc_string_copy(line);
+
+                o.name = alloc_string_copy(line);
+                o.indices_start = list_length(obj.indices);
+                list_add(*obj.objects, *o);
             } break;
 
             case 'v': switch line.chars[1] {
@@ -111,11 +136,11 @@ OBJ_Data load_obj(char* filename) {
                 let i = parse_indices(*line.chars);
                 list_add(*obj.indices, *i);
 
-                line.chars += 1; // skip '/'
+                line.chars += 1;
                 i = parse_indices(*line.chars);
                 list_add(*obj.indices, *i);
 
-                line.chars += 1; // skip '/'
+                line.chars += 1;
                 i = parse_indices(*line.chars);
                 list_add(*obj.indices, *i);
             } break;
@@ -128,6 +153,19 @@ OBJ_Data load_obj(char* filename) {
 
     free(source);
 
+
+    for 0 .. list_length(obj.objects) - 1 {
+        obj.objects[it].indices_length = obj.objects[it + 1].indices_start - obj.objects[it].indices_start;
+    }
+
+    uint32 index = list_length(obj.objects) - 1;
+    obj.objects[index].indices_length = list_length(obj.indices) - obj.objects[index].indices_start;
+
+    print("[INFO]: Loaded obj \"", obj.file_name.chars, "\" with groups:\n");
+    for 0 .. list_length(obj.objects) {
+        print("    ", obj.objects[it].group_type, " ", obj.objects[it].name.chars, " [", obj.objects[it].indices_start, " .. ", obj.objects[it].indices_length, "]", "\n");
+    }
+
     return obj;
 }
 
@@ -135,19 +173,26 @@ OBJ_Data load_obj(char* filename) {
 Mesh obj_to_mesh(OBJ_Data obj) {
     Mesh mesh = {};
 
-    let ind_len = list_length(obj.indices);
-
-    uint32* inds = malloc(ind_len * sizeof uint32);
+    uint32 ind_len = list_length(obj.indices);
+    uint32 index_offset = 0;
+    // uint32 ind_len = obj.objects[1].indices_length;
+    // uint32 index_offset = obj.objects[1].indices_start;
 
     mesh.indices_count = ind_len;
     mesh.indices = malloc(ind_len * sizeof uint32);
     mesh.vertices = list_create(sizeof vertex3D);
 
+    uint32 vlen = list_length(obj.vertices);
+    uint32 tlen = list_length(obj.texture_coords);
+    uint32 nlen = list_length(obj.normals);
+
     for uint32 i : 0 .. ind_len {
-        let a = obj.indices[i];
+        let a = obj.indices[i + index_offset];
+
 
         for uint32 j : 0 .. i {
-            let b = obj.indices[j];
+            break; // disable
+            let b = obj.indices[j + index_offset];
             if a.pos == b.pos and a.text_coord == b.text_coord and a.normal == b.normal {
                 mesh.indices[i] = mesh.indices[j];
                 // print("Duplicate vertex\n");
@@ -155,8 +200,7 @@ Mesh obj_to_mesh(OBJ_Data obj) {
             }
         }
 
-        uint32 index = list_length(mesh.vertices);
-        mesh.indices[i] = index;
+        mesh.indices[i] = list_length(mesh.vertices);
 
         vertex3D v = {};
         v.pos    = obj.vertices[a.pos];
@@ -164,20 +208,12 @@ Mesh obj_to_mesh(OBJ_Data obj) {
         if a.text_coord != (-1 as uint32) v.uv = obj.texture_coords[a.text_coord];
         list_add(*mesh.vertices, *v);
 
-        continue_i: {}
+        continue_i: {} // TODO: c wont allow labels at end of scope, thats why we have a {} there to make it compile
     }
 
     mesh.vertices_count = list_length(mesh.vertices);
 
-    free(inds);
-
-    return mesh;
-}
-
-Mesh obj_to_smoothshaded_mesh(OBJ_Data obj) {
-    Mesh mesh = {};
-
-
+    print("[INFO]: obj file \"", obj.file_name.chars, "\" converted to mesh with ", mesh.vertices_count, " vertices.\n");
 
     return mesh;
 }
