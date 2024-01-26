@@ -19,7 +19,9 @@ void dispatch_immediate() {
         bind(text_atlas);
         use(*immediate_shader);
         enable_alpha_blending();
+        disable_depth_test();
         draw_elements(immediate_buffer);
+        enable_depth_test();
     }
 
     list_clear(immediate_vertices);
@@ -128,7 +130,7 @@ vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) {
     return pos;
 }
 
-vec2 draw_text(vec2 pos, float32 size, char* text) {
+vec2 draw_text(vec2 pos, float32 size, char* text, Color color) {
 
     float32 start = pos.x;
 
@@ -139,7 +141,7 @@ vec2 draw_text(vec2 pos, float32 size, char* text) {
                 pos.y -= size;
                 break;
             default:
-                draw_char(pos, size, @text, White);
+                draw_char(pos, size, @text, color);
             case ' ':
                 pos.x += size * 0.5;
                 break;

@@ -186,34 +186,49 @@ Mesh obj_to_mesh(OBJ_Data obj) {
     uint32 tlen = list_length(obj.texture_coords);
     uint32 nlen = list_length(obj.normals);
 
+    struct entry {
+        OBJ_VertexIndices key;
+        uint32 item;
+    }
+
+    uint64 index_lookup_size = ind_len * sizeof entry;
+    entry* index_lookup = malloc(index_lookup_size);
+    memset(index_lookup, 0, index_lookup_size);
+    uint32 collision_count = 0;
+
+    uint64 obj_index_hash(OBJ_VertexIndices i) { return i.pos as uint64 | (i.normal as uint64 << 32) ^ (i.text_coord as uint64 << 16); }
+    bool obj_index_equals(OBJ_VertexIndices a, OBJ_VertexIndices b) { return a.pos == b.pos and a.text_coord == b.text_coord and a.normal == b.normal; }
+
     for uint32 i : 0 .. ind_len {
         let a = obj.indices[i + index_offset];
 
-
-        for uint32 j : 0 .. i {
-            break; // disable
-            let b = obj.indices[j + index_offset];
-            if a.pos == b.pos and a.text_coord == b.text_coord and a.normal == b.normal {
-                mesh.indices[i] = mesh.indices[j];
-                // print("Duplicate vertex\n");
-                goto continue_i; // TODO: labeled continue
+        let hash = obj_index_hash(a) % ind_len;
+        let e = index_lookup[hash];
+        if e.item {
+            if obj_index_equals(a, e.key) {
+                mesh.indices[i] = e.item - 1;
+                continue;
             }
+
+            collision_count++;
         }
 
         mesh.indices[i] = list_length(mesh.vertices);
+        index_lookup[hash] = { a, mesh.indices[i] + 1 };
 
         vertex3D v = {};
         v.pos    = obj.vertices[a.pos];
         v.normal = obj.normals[a.normal];
         if a.text_coord != (-1 as uint32) v.uv = obj.texture_coords[a.text_coord];
         list_add(*mesh.vertices, *v);
-
-        continue_i: {} // TODO: c wont allow labels at end of scope, thats why we have a {} there to make it compile
     }
+
+    free(index_lookup);
 
     mesh.vertices_count = list_length(mesh.vertices);
 
     print("[INFO]: obj file \"", obj.file_name.chars, "\" converted to mesh with ", mesh.vertices_count, " vertices.\n");
+    print("    There were ", collision_count, " collisions\n");
 
     return mesh;
 }

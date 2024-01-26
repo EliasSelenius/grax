@@ -160,7 +160,7 @@ void flip_indices(Mesh mesh) { flip_indices(mesh, 0, mesh.indices_count); }
 void flip_indices(Mesh mesh, uint32 base, uint32 len) {
     uint32 i = 0; // TODO: we really need to add traditional for loops
     while i < len {
-        let t = mesh.indices[base + i]
+        let t = mesh.indices[base + i];
         mesh.indices[base + i] = mesh.indices[base + i + 2];
         mesh.indices[base + i + 2] = t;
         i += 3;

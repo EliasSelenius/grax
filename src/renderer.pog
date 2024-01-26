@@ -105,7 +105,7 @@ void grax_init() {
     glDebugMessageCallback(opengl_debug_callback, null);
 
     enable_alpha_blending();
-    glEnable(GL_DEPTH_TEST);
+    enable_depth_test();
     glEnable(GL_CULL_FACE);
     glClearColor(0.1, 0.1, 0.1, 1.0);
 
@@ -216,4 +216,12 @@ void enable_alpha_blending() {
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void enable_depth_test() {
+    glEnable(GL_DEPTH_TEST);
+}
+
+void disable_depth_test() {
+    glDisable(GL_DEPTH_TEST);
 }
