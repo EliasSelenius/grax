@@ -9,6 +9,15 @@ struct Texture2D {
     uint32 gl_handle;
 }
 
+Texture2D load_texture2D(char* name) {
+    let image = load_bitmap(name);
+    let tex = create_texture2D(image);
+    set_filter(tex, GL_NEAREST);
+
+    free(image.pixels);
+    return tex;
+}
+
 Texture2D create_texture2D(Image image) {
     Texture2D tex;
     tex.width = image.width;
@@ -28,6 +37,9 @@ Texture2D create_texture2D(Image image) {
     glGenerateMipmap(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    print("[INFO]: OpenGL texture ", tex.gl_handle, " created (", tex.width, "x", tex.height, ")\n");
+
     return tex;
 }
 

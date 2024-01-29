@@ -90,7 +90,26 @@ vec2 world2local(with Transform2D t, float32 x, float32 y) {
     return res;
 }
 
+float32 vec2_to_angle(vec2 v) {
+    let a = angle(vec2_unit_y, v);
+    if v.x < 0  a *= -1;
+    return a;
+}
 
+void look_at(with Transform2D* tr, vec2 target) {
+    vec2 diff = sub(target, tr.pos);
+    tr.rot = vec2_to_angle(diff);
+}
+
+vec2 rotate_vec(vec2 dir, float32 angle) {
+    float32 c = cosf(angle);
+    float32 s = sinf(angle);
+
+    vec2 res;
+    res.x = c*dir.x + s*dir.y;
+    res.y = -s*dir.x + c*dir.y;
+    return res;
+}
 
 
 // ------------Camera-------------------------------------------------------------------

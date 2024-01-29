@@ -33,6 +33,11 @@ Color color_from_vec(vec3 v) {
     return c;
 }
 
+vec3 color_to_vec3(Color c) { return { c.r as float32 / 255, c.g as float32 / 255, c.b as float32 / 255 }; }
+vec4 color_to_vec4(Color c) { return { c.r as float32 / 255, c.g as float32 / 255, c.b as float32 / 255, c.a as float32 / 255 }; }
+
+Color alpha(Color c, uint8 a) { return {c.r, c.g, c.b, a}; }
+
 const White  = {255, 255, 255, 255} as Color;
 const Gray   = {128, 128, 128, 255} as Color;
 const Black  = {0,   0,   0,   255} as Color;

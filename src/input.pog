@@ -10,7 +10,6 @@ float64 dmouse_y = 0;
 
 vec2 wasd;
 
-// TODO: use bool
 bool key(char c) { return glfwGetKey(main_window, c as int32) as bool; }
 bool key(int32 c) { return glfwGetKey(main_window, c) as bool; }
 
@@ -25,6 +24,14 @@ bool mouse(int32 btn) {
     return glfwGetMouseButton(main_window, btn) as bool;
 }
 
+bool mouse_pressed(int32 btn) {
+    static bool prev_state = false;
+    bool state = mouse(btn);
+    bool res = !prev_state and state;
+    prev_state = state;
+    return res;
+}
+
 void input_update() {
     pmouse_x = mouse_x;
     pmouse_y = mouse_y;
@@ -32,13 +39,12 @@ void input_update() {
     dmouse_x = mouse_x - pmouse_x;
     dmouse_y = mouse_y - pmouse_y;
 
-    // TODO: normalize wasd
     wasd.x = 0;
     wasd.y = 0;
     if key('W') wasd.y += 1;
     if key('S') wasd.y -= 1;
-    if key('A') wasd.x += 1;
-    if key('D') wasd.x -= 1;
+    if key('A') wasd.x -= 1;
+    if key('D') wasd.x += 1;
 }
 
 void enable_cursor() { glfwSetInputMode(main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }

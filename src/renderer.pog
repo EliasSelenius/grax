@@ -14,7 +14,9 @@
 */
 
 
-Shader default_object_shader;
+Shader default3d_shader;
+Shader default2d_shader;
+
 UBO* camera_ubo;
 UBO* application_ubo;
 
@@ -121,7 +123,8 @@ void grax_init() {
     {
         // TODO: the "../grax/" here is a hack!
         immediate_shader = load_shader("../grax/shaders/ui.glsl");
-        default_object_shader = load_shader("../grax/shaders/default.glsl");
+        default3d_shader = load_shader("../grax/shaders/default3d.glsl");
+        default2d_shader = load_shader("../grax/shaders/default2d.glsl");
     }
 
     // TODO: the "../grax/" here is a hack!

@@ -191,6 +191,7 @@ Mesh obj_to_mesh(OBJ_Data obj) {
         uint32 item;
     }
 
+    // TODO: we need to handle hash collisions
     uint64 index_lookup_size = ind_len * sizeof entry;
     entry* index_lookup = malloc(index_lookup_size);
     memset(index_lookup, 0, index_lookup_size);
