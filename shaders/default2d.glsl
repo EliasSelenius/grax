@@ -56,7 +56,7 @@ void main() {
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uniform sampler2D tex;
-uniform vec4 added_color;
+uniform vec4 color_factor;
 
 const vec3 background_color = vec3(0.1);
 
@@ -66,7 +66,7 @@ void main() {
 
 
     vec4 color = texture(tex, v2f.uv) * v2f.color;
-    FragColor = vec4(mix(color.rgb, background_color, entity_pos.z), color.a) + + added_color;
+    FragColor = vec4(mix(color.rgb, background_color, entity_pos.z), color.a) * color_factor;
 
     gl_FragDepth = gl_FragCoord.z;
     if (color.a < 0.01) gl_FragDepth = 1.0;

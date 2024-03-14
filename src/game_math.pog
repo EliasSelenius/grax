@@ -162,9 +162,9 @@ void camera_fly_control(Camera* cam) {
 
     if mouse(Right_Mouse) {
         rotate(*cam.transform, left, (-dmouse_y / 100.0) as float32);
-        rotate(*cam.transform, {0, 1, 0} as vec3, (dmouse_x / 100.0) as float32);
+        rotate(*cam.transform, vec3_unit_y, (dmouse_x / 100.0) as float32);
     }
 
     cam.transform.position = add(cam.transform.position, mul(forward, wasd.y / 10.0));
-    cam.transform.position = add(cam.transform.position, mul(left, wasd.x / 10.0));
+    cam.transform.position = add(cam.transform.position, mul(left, -wasd.x / 10.0));
 }

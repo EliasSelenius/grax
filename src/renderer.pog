@@ -42,6 +42,7 @@ int32 grax_loop() {
     dispatch_immediate();
 
     glfwSwapBuffers(main_window);
+    input_state_reset();
     glfwPollEvents();
 
     if glfwWindowShouldClose(main_window) {
@@ -49,6 +50,8 @@ int32 grax_loop() {
         glfwTerminate();
         return false;
     }
+
+    // begin next frame:
 
     input_update();
 
@@ -97,6 +100,7 @@ void grax_init() {
 
     // glfw callbacks
     glfwSetFramebufferSizeCallback(main_window, on_resize);
+    glfwSetScrollCallback(main_window, on_scroll);
 
     load_opengl(glfwGetProcAddress);
     print(glGetString(GL_VERSION) as char*, "\n");
@@ -114,26 +118,18 @@ void grax_init() {
     camera_ubo = get_ubo("Camera");
     application_ubo = get_ubo("Application");
 
-    {
-        immediate_vertices = list_create(sizeof vertex2D);
-        immediate_indices  = list_create(sizeof uint32);
-        immediate_buffer = create_draw_buffers();
-    }
+    init_immediate_renderer();
 
     {
         // TODO: the "../grax/" here is a hack!
-        immediate_shader = load_shader("../grax/shaders/ui.glsl");
         default3d_shader = load_shader("../grax/shaders/default3d.glsl");
         default2d_shader = load_shader("../grax/shaders/default2d.glsl");
     }
-
-    // TODO: the "../grax/" here is a hack!
-    let image = load_bitmap("../grax/CascadiaMono.bmp");
-    text_atlas = create_texture2D(image);
-    free(image.pixels); // TODO: consider different free api, like free_image()
 }
 
 void on_resize(GLFWwindow* window, int32 w, int32 h) {
+
+    if w == 0 or h == 0  return;
 
     main_window_width = w as float32;
     main_window_height = h as float32;

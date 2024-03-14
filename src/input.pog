@@ -8,6 +8,8 @@ float64 pmouse_y = 0;
 float64 dmouse_x = 0;
 float64 dmouse_y = 0;
 
+float64 mouse_scroll = 0;
+
 vec2 wasd;
 
 bool key(char c) { return glfwGetKey(main_window, c as int32) as bool; }
@@ -45,6 +47,14 @@ void input_update() {
     if key('S') wasd.y -= 1;
     if key('A') wasd.x -= 1;
     if key('D') wasd.x += 1;
+}
+
+void input_state_reset() {
+    mouse_scroll = 0;
+}
+
+void on_scroll(GLFWwindow* window, float64 x, float64 y) {
+    mouse_scroll = y;
 }
 
 void enable_cursor() { glfwSetInputMode(main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }

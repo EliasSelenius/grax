@@ -1,31 +1,48 @@
 
 
-Shader immediate_shader;
-DrawBuffers immediate_buffer;
+Trianglebatch immediate_text_batch;
 
-Texture2D text_atlas;
+struct Trianglebatch {
+    vertex2D* vertices; // list
+    uint32* indices; // list
 
-vertex2D* immediate_vertices; // list
-uint32* immediate_indices; // list
+    DrawBuffers draw_buffers;
+    Shader shader;
+    Texture2D texture;
+}
 
+void init_immediate_renderer() {
+    immediate_text_batch.vertices = list_create(sizeof vertex2D);
+    immediate_text_batch.indices  = list_create(sizeof uint32);
+    immediate_text_batch.draw_buffers = create_draw_buffers();
+
+    // TODO: the "../grax/" here is a hack!
+    immediate_text_batch.shader = load_shader("../grax/shaders/ui.glsl");
+
+    let image = load_bitmap("../grax/CascadiaMono.bmp");
+    // let image = load_bitmap("../grax/tinyfont.bmp");
+    immediate_text_batch.texture = create_texture2D(image);
+    // set_filter(text_atlas, GL_NEAREST);
+    free(image.pixels);
+}
 
 void dispatch_immediate() {
-    let vert_count = list_length(immediate_vertices);
-    let ind_count = list_length(immediate_indices);
+    let vert_count = list_length(immediate_text_batch.vertices);
+    let ind_count = list_length(immediate_text_batch.indices);
 
 
     if vert_count != 0 {
-        update_buffers(*immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
-        bind(text_atlas);
-        use(*immediate_shader);
+        update_buffers(*immediate_text_batch.draw_buffers, immediate_text_batch.vertices, vert_count, immediate_text_batch.indices, ind_count);
+        use(*immediate_text_batch.shader);
+        bind(immediate_text_batch.texture);
         enable_alpha_blending();
         disable_depth_test();
-        draw_elements(immediate_buffer);
+        draw_elements(immediate_text_batch.draw_buffers);
         enable_depth_test();
     }
 
-    list_clear(immediate_vertices);
-    list_clear(immediate_indices);
+    list_clear(immediate_text_batch.vertices);
+    list_clear(immediate_text_batch.indices);
 }
 
 void immediate_vertex(float32 x, float32 y, float32 u, float32 v) {
@@ -37,19 +54,19 @@ void immediate_vertex(float32 x, float32 y, float32 u, float32 v, Color color) {
     vert.pos = {x, y};
     vert.uv = {u, v};
     vert.color = color;
-    list_add(*immediate_vertices, *vert);
+    list_add(*immediate_text_batch.vertices, *vert);
 }
 
 
 void immediate_triangle(uint32 i1, uint32 i2, uint32 i3) {
 
-    let base = list_length(immediate_vertices);
+    let base = list_length(immediate_text_batch.vertices);
     i1 += base;
     i2 += base;
     i3 += base;
-    list_add(*immediate_indices, *i1);
-    list_add(*immediate_indices, *i2);
-    list_add(*immediate_indices, *i3);
+    list_add(*immediate_text_batch.indices, *i1);
+    list_add(*immediate_text_batch.indices, *i2);
+    list_add(*immediate_text_batch.indices, *i3);
 }
 
 void draw_rect(vec2 pos, vec2 size) {

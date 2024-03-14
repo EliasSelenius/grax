@@ -30,7 +30,13 @@ out vec4 FragColor;
 
 uniform sampler2D tex;
 
+
 void main() {
+    // float c = texture(tex, v2f.uv).r;
+    // float aaf = fwidth(c); // |dc/dx| + |dc/dy|
+    // float alpha = smoothstep(0.5 - aaf, 0.5 + aaf, c);
+    // FragColor = vec4(v2f.tint.rgb, alpha);
+
     FragColor = texture(tex, v2f.uv) * v2f.tint;
 }
 

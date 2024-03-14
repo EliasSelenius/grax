@@ -75,13 +75,21 @@ float32 gnoise(float32 x, float32 y) {
 int32 min(int32 a, int32 b) { return a < b ? a : b; }
 int32 max(int32 a, int32 b) { return a < b ? b : a; }
 
+uint32 min(uint32 a, uint32 b) { return a < b ? a : b; }
+uint32 max(uint32 a, uint32 b) { return a < b ? b : a; }
+
 int32 clamp(int32 t, int32 min, int32 max) { return t < min ? min : t > max ? max : t; }
 float32 clamp(float32 t, float32 min, float32 max) { return t < min ? min : t > max ? max : t; }
 
 float32 lerp(float32 t, float32 a, float32 b) { return a + (b - a) * t; }
+// map t from range [a, b] to [c, d]
+float32 map(float32 t, float32 a, float32 b, float32 c, float32 d) { return lerp((t - a) / (b - a), c, d); }
 
 int32 round2int(float32 x) { return (x + 0.5) as int32; }
 float32 fract(float32 x) { return x - floorf(x); }
+
+float32 abs(float32 x) { return x < 0 ? -x : x; }
+float64 abs(float64 x) { return x < 0 ? -x : x; }
 
 int32 is_nan(float32 x) { return x != x; }
 int32 is_nan(vec2 v) { return is_nan(v.x) or is_nan(v.y); }
@@ -116,6 +124,13 @@ const vec4_unit_w = {0, 0, 0, 1} as vec4;
 vec2 make_vec(float32 x, float32 y) { return {x, y}; }
 vec3 make_vec(float32 x, float32 y, float32 z) { return {x, y, z}; }
 vec4 make_vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w}; }
+
+vec3 make_vec(vec2 xy, float32 z) { return { xy.x, xy.y, z }; }
+vec3 make_vec(float32 x, vec2 yz) { return { x, yz.x, yz.y }; }
+
+vec4 make_vec(vec3 xyz, float32 w) { return { xyz.x, xyz.y, xyz.z, w }; }
+vec4 make_vec(float32 x, vec3 yzw) { return { x, yzw.x, yzw.y, yzw.z }; }
+
 
 vec2 sub(vec2 a, vec2 b) { return make_vec(a.x - b.x, a.y - b.y); }
 vec2 add(vec2 a, vec2 b) { return make_vec(a.x + b.x, a.y + b.y); }
