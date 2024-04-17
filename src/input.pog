@@ -1,4 +1,12 @@
 
+// TODO: this struct seems like a good idea
+struct InputState {
+    vec2 mouse_pos;
+    vec2 wasd;
+    vec2 unit_wasd;
+    float32 mouse_scroll;
+}
+
 float64 mouse_x = 0;
 float64 mouse_y = 0;
 

@@ -168,3 +168,22 @@ void camera_fly_control(Camera* cam) {
     cam.transform.position = add(cam.transform.position, mul(forward, wasd.y / 10.0));
     cam.transform.position = add(cam.transform.position, mul(left, -wasd.x / 10.0));
 }
+
+vec2 screen2ndc(float32 x, float32 y) {
+    return {
+         (x / (main_window_width -1) - 0.5) * 2.0,
+        -(y / (main_window_height-1) - 0.5) * 2.0
+    };
+}
+
+vec3 camera_ray(Camera cam, vec2 ndc) {
+    // NOTE: the first, second and third columns of the cameras view matrix is the side, up and forward vectors respectively. because the view matrix is the transpose of the cam model matrix
+    float32 h = cam.near_plane / tanf((Pi - cam.fov) / 2.0);
+    float32 w = h / main_window_aspect;
+
+    vec3 ray = {};
+    ray = add(ray, mul(xyz(col1(cam.view)), ndc.x * w));
+    ray = add(ray, mul(xyz(col2(cam.view)), ndc.y * h));
+    ray = add(ray, mul(xyz(col3(cam.view)), -cam.near_plane));
+    return normalize(ray);
+}

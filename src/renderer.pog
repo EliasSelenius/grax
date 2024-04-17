@@ -20,6 +20,8 @@ Shader default2d_shader;
 UBO* camera_ubo;
 UBO* application_ubo;
 
+Texture2D white_texture;
+
 GLFWwindow* main_window;
 float32 main_window_width = 1600;
 float32 main_window_height = 900;
@@ -124,6 +126,12 @@ void grax_init() {
         // TODO: the "../grax/" here is a hack!
         default3d_shader = load_shader("../grax/shaders/default3d.glsl");
         default2d_shader = load_shader("../grax/shaders/default2d.glsl");
+    }
+
+    { // init white texture
+        Color pixel = { 255, 255, 255, 255 };
+        Image image = { width = 1, height = 1, pixels = *pixel };
+        white_texture = create_texture2D(image);
     }
 }
 
