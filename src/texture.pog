@@ -2,6 +2,28 @@
 struct Framebuffer {
     uint32 width, height;
     uint32 gl_handle;
+
+    FramebufferAttachment[] attachments;
+}
+
+struct FramebufferAttachment {
+    uint32 gl_handle;
+    TextureFormat format;
+}
+
+enum TextureFormat {
+    rgb16f;  // 3 x float16
+    rgba16f; // 4 x float16
+    rgb8;    // 3 x byte
+    rgba8;   // 4 x byte
+}
+
+enum TextureFilter {
+    nearest; linear;
+}
+
+enum TextureWrapMode {
+    repeat; mirrored_repeat; clamp_to_edge;
 }
 
 struct Texture2D {
@@ -9,29 +31,158 @@ struct Texture2D {
     uint32 gl_handle;
 }
 
+
+// TODO: these functions could be removed when the compiler supports custom enum values
+
+GLenum get_opengl_filter(TextureFilter filter) {
+    switch filter {
+        case .nearest: return GL_NEAREST;
+        case .linear: return GL_LINEAR;
+    }
+    return 0;
+}
+
+GLenum get_opengl_wrap_mope(TextureWrapMode mode) {
+    switch mode {
+        case .repeat:          return GL_REPEAT;
+        case .mirrored_repeat: return GL_MIRRORED_REPEAT;
+        case .clamp_to_edge:   return GL_CLAMP_TO_EDGE;
+    }
+    return 0;
+}
+
+GLint get_opengl_internal_format(TextureFormat format) {
+    switch format {
+        case .rgb16f:  return GL_RGB16F;
+        case .rgba16f: return GL_RGBA16F;
+        case .rgb8:    return GL_RGB8;
+        case .rgba8:   return GL_RGBA8;
+    }
+    return 0;
+}
+
+Framebuffer create_framebuffer(uint32 w, uint32 h, TextureFormat[] color_attachments) {
+    Framebuffer fr = {};
+    fr.width = w;
+    fr.height = h;
+
+    uint32 attach_count = color_attachments.length;
+
+    fr.attachments.data = malloc(attach_count * sizeof FramebufferAttachment);
+    fr.attachments.length = attach_count;
+    GLenum* bufs = malloc(attach_count * sizeof GLenum); // TODO: ugly malloc here
+
+    glGenFramebuffers(1, *fr.gl_handle);
+    bind(fr);
+
+    for 0 .. attach_count {
+        bufs[it] = (GL_COLOR_ATTACHMENT0 + it) as GLenum;
+
+        uint32 texture = gen_opengl_texture2D(w, h, TextureFilter.nearest, TextureWrapMode.repeat, color_attachments[it]);
+        fr.attachments[it].format = color_attachments[it];
+        fr.attachments[it].gl_handle = texture;
+        glFramebufferTexture2D(GL_FRAMEBUFFER, bufs[it], GL_TEXTURE_2D, texture, 0);
+    }
+
+    glDrawBuffers(attach_count, bufs);
+    free(bufs);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if status != GL_FRAMEBUFFER_COMPLETE {
+        print("[ERROR]: Framebuffer status code: ", status as uint32, "\n");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    return fr;
+}
+
+void bind(with Framebuffer fr) { glBindFramebuffer(GL_FRAMEBUFFER, fr.gl_handle); }
+void bind_default_framebuffer() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
+
+void blit(with Framebuffer dst, Framebuffer src, ivec2 dst_p1, ivec2 dst_p2, ivec2 src_p1, ivec2 src_p2, GLbitfield mask, TextureFilter filter) {
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src.gl_handle);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst.gl_handle);
+    glBlitFramebuffer(
+        src_p1.x, src_p1.y, src_p2.x, src_p2.y,
+        dst_p1.x, dst_p1.y, dst_p2.x, dst_p2.y,
+        mask, get_opengl_filter(filter));
+}
+
+void blit(with Framebuffer dst, Framebuffer src, ivec2 p1, ivec2 p2, GLbitfield mask, TextureFilter filter) {
+    blit(dst, src, p1, p2, p1, p2, mask, filter);
+}
+
+void blit(with Framebuffer dst, Framebuffer src, GLbitfield mask, TextureFilter filter) {
+    ivec2 dst_size = { dst.width, dst.height };
+    ivec2 src_size = { src.width, src.height };
+    blit(dst, src, ivec2_zero, dst_size, ivec2_zero, src_size, mask, filter);
+}
+
+void resize(with Framebuffer fr, uint32 w, uint32 h) {
+
+    fr.width = w;
+    fr.height = h;
+
+    for 0 .. fr.attachments.length {
+        bind_texture2D(fr.attachments[it].gl_handle, 0);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            get_opengl_internal_format(fr.attachments[it].format),
+            w, h,
+            0,
+            // TODO: if pointer is null, must we have correct values for type and format?
+            GL_RGBA, GL_UNSIGNED_BYTE, null);
+    }
+
+    bind_texture2D(0, 0);
+}
+
+void delete(with Framebuffer fr) { }
+
+
 Texture2D load_texture2D(char* name) {
     let image = load_bitmap(name);
     let tex = create_texture2D(image);
-    set_filter(tex, GL_NEAREST);
+    set_filter(tex, TextureFilter.nearest);
 
     free(image.pixels);
     return tex;
 }
 
+uint32 gen_opengl_texture2D(uint32 width, uint32 height, TextureFilter filter, TextureWrapMode wrap, TextureFormat internal_format) {
+    uint32 gl_handle = 0;
+    glGenTextures(1, *gl_handle);
+    glBindTexture(GL_TEXTURE_2D, gl_handle);
+
+    set_wrap_mode(TextureWrapMode.repeat);
+    set_filter(TextureFilter.linear);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        get_opengl_internal_format(internal_format),
+        width, height,
+        0,
+        // TODO: if pointer is null, must we have correct values for type and format?
+        GL_RGBA, GL_UNSIGNED_BYTE, null);
+
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return gl_handle;
+}
+
 Texture2D create_texture2D(Image image) {
-    Texture2D tex;
+    Texture2D tex = {};
     tex.width = image.width;
     tex.height = image.height;
     glGenTextures(1, *tex.gl_handle);
     glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-
-    const filter = GL_LINEAR; // GL_NEAREST
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    set_wrap_mode(TextureWrapMode.repeat);
+    set_filter(TextureFilter.linear);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -43,14 +194,31 @@ Texture2D create_texture2D(Image image) {
     return tex;
 }
 
-void bind(with Texture2D tex) {
-    glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
+void bind(with Texture2D tex) { glBindTexture(GL_TEXTURE_2D, tex.gl_handle); }
+void bind(with Texture2D tex, uint32 index) { bind_texture2D(tex.gl_handle, index); }
+void bind_texture2D(uint32 gl_handle, uint32 index) {
+    glActiveTexture(GL_TEXTURE0 + index);
+    glBindTexture(GL_TEXTURE_2D, gl_handle);
 }
 
-// TODO: filter should be an enum
-void set_filter(with Texture2D tex, uint32 filter) {
+void set_wrap_mode(TextureWrapMode mode) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, get_opengl_wrap_mope(mode));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, get_opengl_wrap_mope(mode));
+}
+
+void set_wrap_mode(with Texture2D tex, TextureWrapMode mode) {
     bind(tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    set_wrap_mode(mode);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void set_filter(TextureFilter filter) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, get_opengl_filter(filter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, get_opengl_filter(filter));
+}
+
+void set_filter(with Texture2D tex, TextureFilter filter) {
+    bind(tex);
+    set_filter(filter);
     glBindTexture(GL_TEXTURE_2D, 0);
 }

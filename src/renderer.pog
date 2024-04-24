@@ -39,7 +39,7 @@ vec2 window_size() {
 }
 
 
-int32 grax_loop() {
+bool grax_loop() {
 
     dispatch_immediate();
 
@@ -80,7 +80,7 @@ int32 grax_loop() {
 void grax_init() {
 
     if !glfwInit() {
-        print("ERROR: failed to initilize glfw.\n");
+        print("[ERROR]: failed to initilize glfw.\n");
         return;
     }
 
@@ -94,7 +94,7 @@ void grax_init() {
     main_window_aspect = main_window_height / main_window_width;
     if !main_window {
         glfwTerminate();
-        print("ERROR: failed to initilize main_window.\n");
+        print("[ERROR]: failed to initilize main_window.\n");
         return;
     }
 
@@ -105,12 +105,14 @@ void grax_init() {
     glfwSetScrollCallback(main_window, on_scroll);
 
     load_opengl(glfwGetProcAddress);
-    print(glGetString(GL_VERSION) as char*, "\n");
+    print("[INFO]: OpenGL version: ", glGetString(GL_VERSION) as char*, "\n");
 
-
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(opengl_debug_callback, null);
+    if true {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(opengl_debug_callback, null);
+        print("[INFO]: OpenGL synchronous debug messages enabled.\n");
+    }
 
     enable_alpha_blending();
     enable_depth_test();
@@ -143,9 +145,12 @@ void on_resize(GLFWwindow* window, int32 w, int32 h) {
     main_window_height = h as float32;
     main_window_aspect = main_window_height / main_window_width;
 
-    print("[INFO]: Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
+    print("[INFO]: Window resize: ", w, "x", h, "\n");
 
     glViewport(0, 0, w, h);
+
+    resize(g_buffer, w as uint32, h as uint32);
+    resize(hdr_buffer, w as uint32, h as uint32);
 }
 
 void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, /*const*/ GLchar* message, /*const*/ void* userParam) {
@@ -215,9 +220,6 @@ void toggle_fullscreen(GLFWwindow* window) {
     }
 }
 
-void disable_blending() {
-    glDisable(GL_BLEND);
-}
 
 void enable_alpha_blending() {
     glEnable(GL_BLEND);
@@ -225,10 +227,23 @@ void enable_alpha_blending() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void enable_depth_test() {
-    glEnable(GL_DEPTH_TEST);
+void enable_additive_blending() {
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_ONE, GL_ONE);
 }
 
-void disable_depth_test() {
-    glDisable(GL_DEPTH_TEST);
-}
+void disable_blending() { glDisable(GL_BLEND); }
+
+void enable_depth_test() { glEnable(GL_DEPTH_TEST); }
+void disable_depth_test() { glDisable(GL_DEPTH_TEST); }
+
+
+void set_clear_color(Color color) { glClearColor(color.r / 255.0, color.g / 255.0, color.b / 255.0, color.a / 255.0); }
+void set_clear_depth(float64 depth) { glClearDepth(depth); }
+
+void clear_color() { glClear(GL_COLOR_BUFFER_BIT); }
+void clear_color(Color color) { set_clear_color(color); clear_color(); }
+
+void clear_depth() { glClear(GL_DEPTH_BUFFER_BIT); }
+void clear_depth(float64 depth) { set_clear_depth(depth); glClear(GL_DEPTH_BUFFER_BIT); }

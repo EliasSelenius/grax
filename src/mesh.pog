@@ -26,33 +26,53 @@ struct DrawBuffers {
     int32 elements_count;
 }
 
+enum VertexAttributeType {
+    vec2; vec3; vec4;
+    color;
+}
+
+struct VertexAttributeInfo {
+    GLenum _type;
+    int32 count;
+    uint32 bytesize;
+    bool normalized;
+}
+
+VertexAttributeInfo get_vertex_attribute_info(VertexAttributeType datatype) {
+    switch datatype {
+        case .vec2:  return { _type = GL_FLOAT,         count = 2, bytesize = 8,  normalized = false };
+        case .vec3:  return { _type = GL_FLOAT,         count = 3, bytesize = 12, normalized = false };
+        case .vec4:  return { _type = GL_FLOAT,         count = 4, bytesize = 16, normalized = false };
+        case .color: return { _type = GL_UNSIGNED_BYTE, count = 4, bytesize = 4,  normalized = true  };
+    }
+
+    return {};
+}
+
+uint32 set_vertex_attribute_pointer(uint32 index, VertexAttributeType datatype, int32 stride, uint32 offset) {
+    let info = get_vertex_attribute_info(datatype);
+
+    glEnableVertexAttribArray(index);
+    glVertexAttribPointer(index, info.count, info._type, info.normalized, stride, offset);
+
+    return info.bytesize;
+}
+
+void init_vertex_layout(int32 stride, VertexAttributeType[] attribs) {
+    uint32 offset = 0;
+    for uint32 index : 0 .. attribs.length {
+        offset += set_vertex_attribute_pointer(index, attribs[index], stride, offset);
+    }
+}
+
 void setup_vertex2D_attributes() {
-    vertex2D* v = null;
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof vertex2D, *v.pos);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof vertex2D, *v.uv);
-
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, true, sizeof vertex2D, *v.color);
-
+    VertexAttributeType[] attribs = { .vec2, .vec2, .color };
+    init_vertex_layout(sizeof vertex2D, attribs);
 }
 
 void setup_vertex3D_attributes() {
-    const size = sizeof vertex3D;
-    vertex3D* v = null;
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, size, *v.pos);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, false, size, *v.normal);
-
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, false, size, *v.uv);
-
+    VertexAttributeType[] attribs = { .vec3, .vec3, .vec2 };
+    init_vertex_layout(sizeof vertex3D, attribs);
 }
 
 DrawBuffers create_draw_buffers(Mesh mesh) {
@@ -186,7 +206,7 @@ Mesh gen_plane(uint32 size) {
             mesh.vertices[vi] = {
                 pos = { xi - half_size, 0, yi - half_size },
                 normal = vec3_unit_y,
-                uv = { xi / (size-1), yi / (size-1) }
+                uv = { xi as float32 / size, yi as float32 / size }
             };
 
             if xi < size and yi < size {

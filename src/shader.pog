@@ -103,12 +103,14 @@ Shader load_shader(char* filename) {
     StringBuilder frag = sb_create();
     StringBuilder vert = sb_create();
 
-    sb_append(*frag, "#version 330 core\n");
+    // NOTE: layout(binding) requires "#version 420" or later
+
+    sb_append(*frag, "#version 420 core\n");
     sb_append(*frag, "#define IO in\n");
     sb_append(*frag, "#define FragmentShader\n");
     sb_append(*frag, src.content);
 
-    sb_append(*vert, "#version 330 core\n");
+    sb_append(*vert, "#version 420 core\n");
     sb_append(*vert, "#define IO out\n");
     sb_append(*vert, "#define VertexShader\n");
     sb_append(*vert, src.content);
@@ -166,7 +168,7 @@ Shader create_shader(char* fragsrc, char* vertsrc) {
     }
 
 
-    Shader s;
+    Shader s = {};
     s.gl_handle = program;
 
     bind_ubos(*s);

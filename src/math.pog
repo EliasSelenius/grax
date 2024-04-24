@@ -121,6 +121,25 @@ const vec4_unit_y = {0, 1, 0, 0} as vec4;
 const vec4_unit_z = {0, 0, 1, 0} as vec4;
 const vec4_unit_w = {0, 0, 0, 1} as vec4;
 
+const ivec2_zero = {0, 0} as ivec2;
+const ivec2_one = {1, 1} as ivec2;
+const ivec2_unit_x = {1, 0} as ivec2;
+const ivec2_unit_y = {0, 1} as ivec2;
+
+const ivec3_zero = {0, 0, 0} as ivec3;
+const ivec3_one = {1, 1, 1} as ivec3;
+const ivec3_unit_x = {1, 0, 0} as ivec3;
+const ivec3_unit_y = {0, 1, 0} as ivec3;
+const ivec3_unit_z = {0, 0, 1} as ivec3;
+
+const ivec4_zero = {0, 0, 0, 0} as ivec4;
+const ivec4_one = {1, 1, 1, 1} as ivec4;
+const ivec4_unit_x = {1, 0, 0, 0} as ivec4;
+const ivec4_unit_y = {0, 1, 0, 0} as ivec4;
+const ivec4_unit_z = {0, 0, 1, 0} as ivec4;
+const ivec4_unit_w = {0, 0, 0, 1} as ivec4;
+
+
 vec2 make_vec(float32 x, float32 y) { return {x, y}; }
 vec3 make_vec(float32 x, float32 y, float32 z) { return {x, y, z}; }
 vec4 make_vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w}; }

@@ -48,6 +48,8 @@ void gizmo_dispatch() {
 
     use(*gizmo_points_shader);
 
+    // disable_depth_test();
+
     glBindVertexArray(gizmo_points_vao);
     glDrawArrays(GL_POINTS, 0, len);
     glBindVertexArray(0);
@@ -65,30 +67,35 @@ void gizmo_point(vec3 pos, Color color, float32 size) {
 }
 
 // TODO: implement
-void gizmo_transform(Transform* tr) {
+bool gizmo_transform(Transform* tr) {
 
     // TODO: this code dont know about 'cam'
     let ray = camera_ray(cam, screen2ndc(mouse_x as float32, mouse_y as float32));
-
     mat4 m = to_matrix(@tr);
-    vec3 xaxis = normalize(sub(add(tr.position, xyz(m.row1)), cam.transform.position));
-    vec3 yaxis = normalize(sub(add(tr.position, xyz(m.row2)), cam.transform.position));
-    vec3 zaxis = normalize(sub(add(tr.position, xyz(m.row3)), cam.transform.position));
-
-    float32 size = 0.2;
-    if dot(ray, xaxis) > 0.999  size *= 2;
-
-
-
-    void draw_arrow(vec3 center, vec3 dir, Color color, float32 size) {
-        for 1 .. 5 gizmo_point(add(center, mul(dir, it / 5.0)), color, 0.05);
-        gizmo_point(add(center, dir), color, size);
-    }
 
     gizmo_point(tr.position, White);
-    draw_arrow(tr.position, xyz(m.row1), Red, size);
-    draw_arrow(tr.position, xyz(m.row2), Green, 0.2);
-    draw_arrow(tr.position, xyz(m.row3), Blue, 0.2);
+    if gizmo_transform_axis(tr, ray, xyz(m.row1), Red) return true;
+    if gizmo_transform_axis(tr, ray, xyz(m.row2), Green) return true;
+    if gizmo_transform_axis(tr, ray, xyz(m.row3), Blue) return true;
+
+    return false;
+}
+
+bool gizmo_transform_axis(Transform* tr, vec3 ray, vec3 axis, Color color) {
+
+    float32 size = 0.1;
+    if dot(ray, normalize(sub(add(tr.position, axis), cam.transform.position))) > 0.999 {
+        size *= 2;
+        if mouse(Left_Mouse) {
+            tr.position = add(tr.position, axis);
+            return true;
+        }
+    }
+
+    for 1 .. 5 gizmo_point(add(tr.position, mul(axis, it / 5.0)), color, 0.05);
+    gizmo_point(add(tr.position, axis), color, size);
+
+    return false;
 }
 
 void gizmo_transform(Transform2D* tr) {
