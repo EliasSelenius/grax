@@ -3,6 +3,8 @@ struct Framebuffer {
     uint32 width, height;
     uint32 gl_handle;
 
+    uint32 depth_buffer_handle;
+
     FramebufferAttachment[] attachments;
 }
 
@@ -16,6 +18,7 @@ enum TextureFormat {
     rgba16f; // 4 x float16
     rgb8;    // 3 x byte
     rgba8;   // 4 x byte
+    depth_component;
 }
 
 enum TextureFilter {
@@ -57,23 +60,36 @@ GLint get_opengl_internal_format(TextureFormat format) {
         case .rgba16f: return GL_RGBA16F;
         case .rgb8:    return GL_RGB8;
         case .rgba8:   return GL_RGBA8;
+        case .depth_component: return GL_DEPTH_COMPONENT;
     }
     return 0;
 }
 
-Framebuffer create_framebuffer(uint32 w, uint32 h, TextureFormat[] color_attachments) {
+void init_render_buffer(uint32 render_buffer, TextureFormat format, uint32 w, h) {
+    glBindRenderbuffer(GL_RENDERBUFFER, render_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, get_opengl_internal_format(format), w as GLsizei, h as GLsizei);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+}
+
+Framebuffer create_framebuffer(uint32 w, h, TextureFormat[] color_attachments, bool has_depth_buffer) {
     Framebuffer fr = {};
     fr.width = w;
     fr.height = h;
 
     uint32 attach_count = color_attachments.length;
-
     fr.attachments.data = malloc(attach_count * sizeof FramebufferAttachment);
     fr.attachments.length = attach_count;
     GLenum* bufs = malloc(attach_count * sizeof GLenum); // TODO: ugly malloc here
 
     glGenFramebuffers(1, *fr.gl_handle);
     bind(fr);
+
+    if has_depth_buffer {
+        glGenRenderbuffers(1, *fr.depth_buffer_handle);
+        print("[INFO]: OpenGL generated renderbuffer: ", fr.depth_buffer_handle, "\n");
+        init_render_buffer(fr.depth_buffer_handle, TextureFormat.depth_component, w, h);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fr.depth_buffer_handle);
+    }
 
     for 0 .. attach_count {
         bufs[it] = (GL_COLOR_ATTACHMENT0 + it) as GLenum;
@@ -100,7 +116,7 @@ Framebuffer create_framebuffer(uint32 w, uint32 h, TextureFormat[] color_attachm
 void bind(with Framebuffer fr) { glBindFramebuffer(GL_FRAMEBUFFER, fr.gl_handle); }
 void bind_default_framebuffer() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 
-void blit(with Framebuffer dst, Framebuffer src, ivec2 dst_p1, ivec2 dst_p2, ivec2 src_p1, ivec2 src_p2, GLbitfield mask, TextureFilter filter) {
+void blit(with Framebuffer dst, Framebuffer src, ivec2 dst_p1, dst_p2, src_p1, src_p2, GLbitfield mask, TextureFilter filter) {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, src.gl_handle);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst.gl_handle);
     glBlitFramebuffer(
@@ -119,10 +135,14 @@ void blit(with Framebuffer dst, Framebuffer src, GLbitfield mask, TextureFilter 
     blit(dst, src, ivec2_zero, dst_size, ivec2_zero, src_size, mask, filter);
 }
 
-void resize(with Framebuffer fr, uint32 w, uint32 h) {
+void resize(with Framebuffer* fr, uint32 w, h) {
 
     fr.width = w;
     fr.height = h;
+
+    if fr.depth_buffer_handle {
+        init_render_buffer(fr.depth_buffer_handle, TextureFormat.depth_component, w, h);
+    }
 
     for 0 .. fr.attachments.length {
         bind_texture2D(fr.attachments[it].gl_handle, 0);
@@ -151,7 +171,7 @@ Texture2D load_texture2D(char* name) {
     return tex;
 }
 
-uint32 gen_opengl_texture2D(uint32 width, uint32 height, TextureFilter filter, TextureWrapMode wrap, TextureFormat internal_format) {
+uint32 gen_opengl_texture2D(uint32 width, height, TextureFilter filter, TextureWrapMode wrap, TextureFormat internal_format) {
     uint32 gl_handle = 0;
     glGenTextures(1, *gl_handle);
     glBindTexture(GL_TEXTURE_2D, gl_handle);
@@ -194,7 +214,7 @@ Texture2D create_texture2D(Image image) {
     return tex;
 }
 
-void bind(with Texture2D tex) { glBindTexture(GL_TEXTURE_2D, tex.gl_handle); }
+void bind(with Texture2D tex) { bind_texture2D(tex.gl_handle, 0); }
 void bind(with Texture2D tex, uint32 index) { bind_texture2D(tex.gl_handle, index); }
 void bind_texture2D(uint32 gl_handle, uint32 index) {
     glActiveTexture(GL_TEXTURE0 + index);
