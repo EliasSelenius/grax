@@ -17,10 +17,13 @@
 Shader default3d_shader;
 Shader default2d_shader;
 
+Shader ui_shader;
+
 UBO* camera_ubo;
 UBO* application_ubo;
 
 Texture2D white_texture;
+Texture2D CascadiaMono_texture;
 
 GLFWwindow* main_window;
 float32 main_window_width = 1600;
@@ -86,9 +89,9 @@ void grax_init() {
 
     // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     main_window = glfwCreateWindow(main_window_width as int32, main_window_height as int32, "Grax", null, null);
     main_window_aspect = main_window_height / main_window_width;
@@ -122,12 +125,19 @@ void grax_init() {
     camera_ubo = get_ubo("Camera");
     application_ubo = get_ubo("Application");
 
-    init_immediate_renderer();
 
-    {
+    { // load assets:
         // TODO: the "../grax/" here is a hack!
+
         default3d_shader = load_shader("../grax/shaders/default3d.glsl");
         default2d_shader = load_shader("../grax/shaders/default2d.glsl");
+
+        gizmo_points_shader = load_shader("../grax/shaders/gizmo_points3D.glsl");
+
+        ui_shader = load_shader("../grax/shaders/ui.glsl");
+        CascadiaMono_texture = load_texture2D("../grax/CascadiaMono.bmp");
+        set_filter(CascadiaMono_texture, TextureFilter.linear);
+        // = load_texture2D("../grax/tinyfont.bmp");
     }
 
     { // init white texture
@@ -135,7 +145,11 @@ void grax_init() {
         Image image = { width = 1, height = 1, pixels = *pixel };
         white_texture = create_texture2D(image);
     }
+
+    init_immediate_renderer();
 }
+
+void(uint32, uint32) on_resize_user = null;
 
 void on_resize(GLFWwindow* window, int32 w, int32 h) {
 
@@ -149,23 +163,67 @@ void on_resize(GLFWwindow* window, int32 w, int32 h) {
 
     glViewport(0, 0, w, h);
 
-    resize(g_buffer, w as uint32, h as uint32);
-    resize(hdr_buffer, w as uint32, h as uint32);
+    if on_resize_user  on_resize_user(w as uint32, h as uint32);
 }
 
 void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, /*const*/ GLchar* message, /*const*/ void* userParam) {
 
-    switch (_type) {
-        case GL_DEBUG_TYPE_ERROR: print("ERROR: "); break;
-        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: print("DEPRECATED BEHAVIOR: "); break;
-        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: print("UDEFINED BEHAVIOR: "); break;
-        case GL_DEBUG_TYPE_PORTABILITY: print("PORTABILITY: "); break;
-        case GL_DEBUG_TYPE_PERFORMANCE: print("PERFORMANCE: "); break;
-        case GL_DEBUG_TYPE_OTHER: return; // print("OTHER: "); break;
-        case GL_DEBUG_TYPE_MARKER: print("MARKER: "); break;
+    /* for reference:
+        glDebugMessageInsert() - to generate custom debug messages
+        glDebugMessageControl() - to filter out debug messages
+
+        to scope messages: https://www.khronos.org/opengl/wiki/Debug_Output#Scoping_messages
+        glPushDebugGroup()
+        glPopDebugGroup()
+
+        glObjectLabel() - to give each opengl object a string name that will be used by the debug messages
+
+        messages are uniquely identified by: source, type, and id
+    */
+
+    char* get_debug_type_string(GLenum t) {
+        switch t {
+            case GL_DEBUG_TYPE_ERROR:               return "ERROR";               // An error, typically from the API
+            case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR"; // Some behavior marked deprecated has been used
+            case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  return "UNDEFINED_BEHAVIOR";  // Something has invoked undefined behavior
+            case GL_DEBUG_TYPE_PORTABILITY:         return "PORTABILITY";         // Some functionality the user relies upon is not portable
+            case GL_DEBUG_TYPE_PERFORMANCE:         return "PERFORMANCE";         // Code has triggered possible performance issues
+            case GL_DEBUG_TYPE_MARKER:              return "MARKER";              // Command stream annotation
+            case GL_DEBUG_TYPE_OTHER:               return "OTHER";               // Some type that isn't one of these
+            case GL_DEBUG_TYPE_PUSH_GROUP:          return "PUSH_GROUP";
+            case GL_DEBUG_TYPE_POP_GROUP:           return "POP_GROUP";
+        }
+
+        return null;
     }
 
-    print(message, "\n");
+    char* get_debug_source(GLenum src) {
+        switch src {
+            case GL_DEBUG_SOURCE_API:             return "API";             // Calls to the OpenGL API
+            case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   return "WINDOW_SYSTEM";   // Calls to a window-system API
+            case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER_COMPILER"; // A compiler for a shading language
+            case GL_DEBUG_SOURCE_THIRD_PARTY:     return "THIRD_PARTY";     // An application associated with OpenGL
+            case GL_DEBUG_SOURCE_APPLICATION:     return "APPLICATION";     // Generated by the user of this application
+            case GL_DEBUG_SOURCE_OTHER:           return "OTHER";           // Some source that isn't one of these
+        }
+
+        return null;
+    }
+
+    char* get_debug_severity(GLenum sev) {
+        switch sev {
+            case GL_DEBUG_SEVERITY_HIGH:         return "HIGH";         // All OpenGL Errors, shader compilation/linking errors, or highly-dangerous undefined behavior
+            case GL_DEBUG_SEVERITY_MEDIUM:       return "MEDIUM";       // Major performance warnings, shader compilation/linking warnings, or the use of deprecated functionality
+            case GL_DEBUG_SEVERITY_LOW:          return "LOW";          // Redundant state change performance warning, or unimportant undefined behavior
+            case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION"; // Anything that isn't an error or performance issue.
+        }
+
+        return null;
+    }
+
+    if _type == GL_DEBUG_TYPE_OTHER  return; // opengl has a tendency to spam some info we dont care about
+
+    print("[opengl_debug_callback]: (msg_id: ", id, ") ", get_debug_source(source), " ", get_debug_type_string(_type), " (severity: ", get_debug_severity(severity), "): ", message, "\n");
 }
 
 GLFWmonitor* get_ideal_monitor(GLFWwindow* window) {
@@ -239,10 +297,13 @@ void enable_depth_test() { glEnable(GL_DEPTH_TEST); }
 void disable_depth_test() { glDisable(GL_DEPTH_TEST); }
 
 
+
+void set_clear_color(float32 r, g, b, a) { glClearColor(r, g, b, a); }
 void set_clear_color(Color color) { glClearColor(color.r / 255.0, color.g / 255.0, color.b / 255.0, color.a / 255.0); }
 void set_clear_depth(float64 depth) { glClearDepth(depth); }
 
 void clear_color() { glClear(GL_COLOR_BUFFER_BIT); }
+void clear_color(float32 r, g, b, a) { set_clear_color(r, g, b, a); clear_color(); }
 void clear_color(Color color) { set_clear_color(color); clear_color(); }
 
 void clear_depth() { glClear(GL_DEPTH_BUFFER_BIT); }

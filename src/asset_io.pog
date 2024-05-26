@@ -4,6 +4,9 @@ struct Image {
     Color* pixels;
 }
 
+Color get_pixel(with Image image, uint32 x, y) { return image.pixels[y * image.width + x]; }
+
+
 Image load_bitmap(char* filename) {
 
     struct Header {
@@ -42,17 +45,18 @@ Image load_bitmap(char* filename) {
 
     print("[INFO]: Loading bitmap file \"", filename, "\" (", head.file_bytesize, " bytes) (", info.bits_per_pixel, " bpp) (", info.width, "x", info.height, " pixels)\n");
 
-    Image image;
+    Image image = {};
     image.width = info.width as uint32;
     image.height = info.height as uint32;
-    image.pixels = malloc(image.width * image.height * sizeof Color);
+    uint32 num_pixels = image.width * image.height;
+    image.pixels = malloc(num_pixels * sizeof Color);
 
     switch info.bits_per_pixel {
         case 1: print("[ERROR]: .bmp file \"", filename, "\" with 1 bits per pixel not implemented yet.\n"); break;
         case 4: print("[ERROR]: .bmp file \"", filename, "\" with 4 bits per pixel not implemented yet.\n"); break;
         case 8: {
             uint8* bytes = data;
-            for i : 0 .. info.width * info.height {
+            for i : 0 .. num_pixels {
                 image.pixels[i] = color_table[bytes[i]];
             }
         } break;
@@ -61,7 +65,7 @@ Image load_bitmap(char* filename) {
 
         case 24: {
             ColorRgb* colors = data;
-            for i : 0 .. info.width * info.height {
+            for i : 0 .. num_pixels {
                 image.pixels[i].r = colors[i].b; // bitmap format is bgr, not rgb
                 image.pixels[i].g = colors[i].g;
                 image.pixels[i].b = colors[i].r;
@@ -71,11 +75,11 @@ Image load_bitmap(char* filename) {
 
         case 32: {
             Color* colors = data;
-            for i : 0 .. info.width * info.height {
-                image.pixels[i] = colors[i];
-                let red = image.pixels[i].r;
-                image.pixels[i].r = image.pixels[i].b;
-                image.pixels[i].b = red;
+            for i : 0 .. num_pixels {
+                image.pixels[i].r = colors[i].b;
+                image.pixels[i].g = colors[i].g;
+                image.pixels[i].b = colors[i].r;
+                image.pixels[i].a = colors[i].a;
             }
         } break;
 

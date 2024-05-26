@@ -71,12 +71,28 @@ float32 gnoise(float32 x, float32 y) {
     return lerp(uy, lerp(ux, d1, d2), lerp(ux, d3, d4));
 }
 
+int32 min(int32 a, b) { return a < b ? a : b; }
+ivec2 min(ivec2 a, b) { return { min(a.x, b.x), min(a.y, b.y) }; }
+ivec3 min(ivec3 a, b) { return { min(a.x, b.x), min(a.y, b.y), min(a.z, b.z) }; }
+ivec4 min(ivec4 a, b) { return { min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w) }; }
 
-int32 min(int32 a, int32 b) { return a < b ? a : b; }
-int32 max(int32 a, int32 b) { return a < b ? b : a; }
+int32 max(int32 a, b) { return a < b ? b : a; }
+ivec2 max(ivec2 a, b) { return { max(a.x, b.x), max(a.y, b.y) }; }
+ivec3 max(ivec3 a, b) { return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) }; }
+ivec4 max(ivec4 a, b) { return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w) }; }
 
-uint32 min(uint32 a, uint32 b) { return a < b ? a : b; }
-uint32 max(uint32 a, uint32 b) { return a < b ? b : a; }
+uint32 min(uint32 a, b) { return a < b ? a : b; }
+uint32 max(uint32 a, b) { return a < b ? b : a; }
+
+float32 min(float32 a, b) { return a < b ? a : b; }
+vec2 min(vec2 a, b) { return { min(a.x, b.x), min(a.y, b.y) }; }
+vec3 min(vec3 a, b) { return { min(a.x, b.x), min(a.y, b.y), min(a.z, b.z) }; }
+vec4 min(vec4 a, b) { return { min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w) }; }
+
+float32 max(float32 a, b) { return a < b ? b : a; }
+vec2 max(vec2 a, b) { return { max(a.x, b.x), max(a.y, b.y) }; }
+vec3 max(vec3 a, b) { return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) }; }
+vec4 max(vec4 a, b) { return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w) }; }
 
 int32 clamp(int32 t, int32 min, int32 max) { return t < min ? min : t > max ? max : t; }
 float32 clamp(float32 t, float32 min, float32 max) { return t < min ? min : t > max ? max : t; }
@@ -85,14 +101,26 @@ float32 lerp(float32 t, float32 a, float32 b) { return a + (b - a) * t; }
 // map t from range [a, b] to [c, d]
 float32 map(float32 t, float32 a, float32 b, float32 c, float32 d) { return lerp((t - a) / (b - a), c, d); }
 
-int32 round2int(float32 x) { return (x + 0.5) as int32; }
+/* from stackoverflow:
+    int(x)   = x - x%1
+    floor(x) = int(x)-(x<0 && x%1!=0)
+    ceil(x)  = int(x)+(x>0 && x%1!=0)
+    round(x) = floor(x)+(x>0&&x%1>=0.5)+(x<0&&(1+x%1)%1>=0.5)
+    note: round(x) is not implemented as floor(x+0.5) as this will fail at x=0.5-2^-54
+
+    note: logical operations are assumed to convert to integer values 1 for true and 0 for false
+*/
+
 float32 fract(float32 x) { return x - floorf(x); }
+float32 round(float32 x) { return floorf(x + 0.5); }
+float32 round2multiple(float32 x, n) { return floorf(x/n + 0.5) * n; }
+
 
 float32 abs(float32 x) { return x < 0 ? -x : x; }
 float64 abs(float64 x) { return x < 0 ? -x : x; }
 
-int32 is_nan(float32 x) { return x != x; }
-int32 is_nan(vec2 v) { return is_nan(v.x) or is_nan(v.y); }
+bool is_nan(float32 x) { return x != x; }
+bool is_nan(vec2 v) { return is_nan(v.x) or is_nan(v.y); }
 
 struct vec2 { float32 x, y; }
 struct ivec2 { int32 x, y; }
@@ -140,70 +168,125 @@ const ivec4_unit_z = {0, 0, 1, 0} as ivec4;
 const ivec4_unit_w = {0, 0, 0, 1} as ivec4;
 
 
-vec2 make_vec(float32 x, float32 y) { return {x, y}; }
-vec3 make_vec(float32 x, float32 y, float32 z) { return {x, y, z}; }
-vec4 make_vec(float32 x, float32 y, float32 z, float32 w) { return {x, y, z, w}; }
+vec2 make_vec(float32 x, y) { return {x, y}; }
+vec3 make_vec(float32 x, y, z) { return {x, y, z}; }
+vec4 make_vec(float32 x, y, z, w) { return {x, y, z, w}; }
+ivec2 make_ivec(int32 x, y) { return {x, y}; }
+ivec3 make_ivec(int32 x, y, z) { return {x, y, z}; }
+ivec4 make_ivec(int32 x, y, z, w) { return {x, y, z, w}; }
 
 vec3 make_vec(vec2 xy, float32 z) { return { xy.x, xy.y, z }; }
 vec3 make_vec(float32 x, vec2 yz) { return { x, yz.x, yz.y }; }
+ivec3 make_ivec(ivec2 xy, int32 z) { return { xy.x, xy.y, z }; }
+ivec3 make_ivec(int32 x, ivec2 yz) { return { x, yz.x, yz.y }; }
 
 vec4 make_vec(vec3 xyz, float32 w) { return { xyz.x, xyz.y, xyz.z, w }; }
 vec4 make_vec(float32 x, vec3 yzw) { return { x, yzw.x, yzw.y, yzw.z }; }
+ivec4 make_ivec(ivec3 xyz, int32 w) { return { xyz.x, xyz.y, xyz.z, w }; }
+ivec4 make_ivec(int32 x, ivec3 yzw) { return { x, yzw.x, yzw.y, yzw.z }; }
+
+vec2 make_vec(ivec2 v) { return { v.x as float32, v.y as float32 }; }
+vec3 make_vec(ivec3 v) { return { v.x as float32, v.y as float32, v.z as float32 }; }
+vec4 make_vec(ivec4 v) { return { v.x as float32, v.y as float32, v.z as float32, v.w as float32 }; }
+ivec2 make_ivec(vec2 v) { return { v.x as int32, v.y as int32 }; }
+ivec3 make_ivec(vec3 v) { return { v.x as int32, v.y as int32, v.z as int32 }; }
+ivec4 make_ivec(vec4 v) { return { v.x as int32, v.y as int32, v.z as int32, v.w as int32 }; }
 
 
-vec2 sub(vec2 a, vec2 b) { return make_vec(a.x - b.x, a.y - b.y); }
-vec2 add(vec2 a, vec2 b) { return make_vec(a.x + b.x, a.y + b.y); }
-vec2 mul(vec2 a, vec2 b) { return make_vec(a.x * b.x, a.y * b.y); }
-vec2 mul(vec2 a, float32 s) { return make_vec(a.x * s, a.y * s); }
-vec2 neg(vec2 a) { return make_vec(-a.x, -a.y); }
+bool equals(ivec2 a, b) { return a.x == b.x and a.y == b.y; }
+bool equals(ivec3 a, b) { return a.x == b.x and a.y == b.y and a.z == b.z; }
+bool equals(ivec4 a, b) { return a.x == b.x and a.y == b.y and a.z == b.z and a.w == b.w; }
 
-vec3 sub(vec3 a, vec3 b) { return make_vec(a.x - b.x, a.y - b.y, a.z - b.z); }
-vec3 add(vec3 a, vec3 b) { return make_vec(a.x + b.x, a.y + b.y, a.z + b.z); }
-vec3 mul(vec3 a, vec3 b) { return make_vec(a.x * b.x, a.y * b.y, a.z * b.z); }
-vec3 mul(vec3 a, float32 s) { return make_vec(a.x * s, a.y * s, a.z * s); }
-vec3 neg(vec3 a) { return make_vec(-a.x, -a.y, -a.z); }
+vec2 round(vec2 v) { return { round(v.x), round(v.y) }; }
+vec3 round(vec3 v) { return { round(v.x), round(v.y), round(v.z) }; }
+vec4 round(vec4 v) { return { round(v.x), round(v.y), round(v.z), round(v.w) }; }
 
-vec4 sub(vec4 a, vec4 b) { return make_vec(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w); }
-vec4 add(vec4 a, vec4 b) { return make_vec(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w); }
-vec4 mul(vec4 a, vec4 b) { return make_vec(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w); }
-vec4 mul(vec4 a, float32 s) { return make_vec(a.x * s, a.y * s, a.z * s, a.w * s); }
-vec4 neg(vec4 a) { return make_vec(-a.x, -a.y, -a.z, -a.w); }
+vec2 round2multiple(vec2 v, float32 n) { return { round2multiple(v.x, n), round2multiple(v.y, n) }; }
+vec3 round2multiple(vec3 v, float32 n) { return { round2multiple(v.x, n), round2multiple(v.y, n), round2multiple(v.z, n) }; }
+vec4 round2multiple(vec4 v, float32 n) { return { round2multiple(v.x, n), round2multiple(v.y, n), round2multiple(v.z, n), round2multiple(v.w, n) }; }
+
+
+vec2 sub(vec2 a, vec2 b) { return { a.x - b.x, a.y - b.y }; }
+vec3 sub(vec3 a, vec3 b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
+vec4 sub(vec4 a, vec4 b) { return { a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w }; }
+ivec2 sub(ivec2 a, ivec2 b) { return { a.x - b.x, a.y - b.y }; }
+ivec3 sub(ivec3 a, ivec3 b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
+ivec4 sub(ivec4 a, ivec4 b) { return { a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w }; }
+
+vec2 add(vec2 a, vec2 b) { return { a.x + b.x, a.y + b.y }; }
+vec3 add(vec3 a, vec3 b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
+vec4 add(vec4 a, vec4 b) { return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w }; }
+ivec2 add(ivec2 a, ivec2 b) { return { a.x + b.x, a.y + b.y }; }
+ivec3 add(ivec3 a, ivec3 b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
+ivec4 add(ivec4 a, ivec4 b) { return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w }; }
+
+vec2 mul(vec2 a, vec2 b) { return { a.x * b.x, a.y * b.y }; }
+vec3 mul(vec3 a, vec3 b) { return { a.x * b.x, a.y * b.y, a.z * b.z }; }
+vec4 mul(vec4 a, vec4 b) { return { a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w }; }
+ivec2 mul(ivec2 a, ivec2 b) { return { a.x * b.x, a.y * b.y }; }
+ivec3 mul(ivec3 a, ivec3 b) { return { a.x * b.x, a.y * b.y, a.z * b.z }; }
+ivec4 mul(ivec4 a, ivec4 b) { return { a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w }; }
+
+vec2 mul(vec2 a, float32 s) { return { a.x * s, a.y * s }; }
+vec3 mul(vec3 a, float32 s) { return { a.x * s, a.y * s, a.z * s }; }
+vec4 mul(vec4 a, float32 s) { return { a.x * s, a.y * s, a.z * s, a.w * s }; }
+ivec2 mul(ivec2 a, int32 s) { return { a.x * s, a.y * s }; }
+ivec3 mul(ivec3 a, int32 s) { return { a.x * s, a.y * s, a.z * s }; }
+ivec4 mul(ivec4 a, int32 s) { return { a.x * s, a.y * s, a.z * s, a.w * s }; }
+
+vec2 neg(vec2 a) { return { -a.x, -a.y }; }
+vec3 neg(vec3 a) { return { -a.x, -a.y, -a.z }; }
+vec4 neg(vec4 a) { return { -a.x, -a.y, -a.z, -a.w }; }
+ivec2 neg(ivec2 a) { return { -a.x, -a.y }; }
+ivec3 neg(ivec3 a) { return { -a.x, -a.y, -a.z }; }
+ivec4 neg(ivec4 a) { return { -a.x, -a.y, -a.z, -a.w }; }
+
 
 float32 angle(vec2 a, vec2 b) { return acosf(dot(a, b) / (length(a) * length(b))); }
 float32 angle(vec3 a, vec3 b) { return acosf(dot(a, b) / (length(a) * length(b))); }
 float32 angle(vec4 a, vec4 b) { return acosf(dot(a, b) / (length(a) * length(b))); }
 
 float32 dot(vec2 a, vec2 b) { return a.x * b.x + a.y * b.y; }
-float32 sqlength(vec2 a) { return dot(a, a); }
-float32 length(vec2 a) { return sqrtf(dot(a, a)); }
-vec2 normalize(vec2 a) { return mul(a, 1.0 / length(a)); }
-vec2 reflect(vec2 a, vec2 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
-vec2 lerp(float32 t, vec2 a, vec2 b) { return add(a, mul(sub(b, a), t)); }
-
 float32 dot(vec3 a, vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-float32 sqlength(vec3 a) { return dot(a, a); }
-float32 length(vec3 a) { return sqrtf(dot(a, a)); }
-vec3 normalize(vec3 a) { return mul(a, 1.0 / length(a)); }
-vec3 reflect(vec3 a, vec3 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
-vec3 lerp(float32 t, vec3 a, vec3 b) { return add(a, mul(sub(b, a), t)); }
-vec3 cross(vec3 a, vec3 b) {
-    return { a.y * b.z - a.z * b.y,
-             a.z * b.x - a.x * b.z,
-             a.x * b.y - a.y * b.x };
-}
-
 float32 dot(vec4 a, vec4 b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
-float32 sqlength(vec4 a) { return dot(a, a); }
-float32 length(vec4 a) { return sqrtf(dot(a, a)); }
-vec4 normalize(vec4 a) { return mul(a, 1.0 / length(a)); }
+
+vec2 reflect(vec2 a, vec2 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
+vec3 reflect(vec3 a, vec3 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 vec4 reflect(vec4 a, vec4 normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
+
+vec2 normalize(vec2 a) { return mul(a, 1.0 / length(a)); }
+vec3 normalize(vec3 a) { return mul(a, 1.0 / length(a)); }
+vec4 normalize(vec4 a) { return mul(a, 1.0 / length(a)); }
+
+vec2 lerp(float32 t, vec2 a, vec2 b) { return add(a, mul(sub(b, a), t)); }
+vec3 lerp(float32 t, vec3 a, vec3 b) { return add(a, mul(sub(b, a), t)); }
 vec4 lerp(float32 t, vec4 a, vec4 b) { return add(a, mul(sub(b, a), t)); }
 
+float32 sqlength(vec2 a) { return dot(a, a); }
+float32 sqlength(vec3 a) { return dot(a, a); }
+float32 sqlength(vec4 a) { return dot(a, a); }
+
+float32 length(vec2 a) { return sqrtf(dot(a, a)); }
+float32 length(vec3 a) { return sqrtf(dot(a, a)); }
+float32 length(vec4 a) { return sqrtf(dot(a, a)); }
+
+float32 dist(vec2 a, b) { return length(sub(a, b)); }
+float32 dist(vec3 a, b) { return length(sub(a, b)); }
+float32 dist(vec4 a, b) { return length(sub(a, b)); }
+
+float32 sqdist(vec2 a, b) { return sqlength(sub(a, b)); }
+float32 sqdist(vec3 a, b) { return sqlength(sub(a, b)); }
+float32 sqdist(vec4 a, b) { return sqlength(sub(a, b)); }
 
 vec2 xy(vec3 a) { return {a.x, a.y}; }
 vec2 xy(vec4 a) { return {a.x, a.y}; }
 vec3 xyz(vec4 a) { return {a.x, a.y, a.z}; }
 
+vec3 cross(vec3 a, vec3 b) {
+    return { a.y * b.z - a.z * b.y,
+             a.z * b.x - a.x * b.z,
+             a.x * b.y - a.y * b.x };
+}
 
 struct mat2 {
     vec2 row1, row2;
@@ -330,7 +413,7 @@ vec4 mul(vec4 v, mat4 m) {
     return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)), dot(v, col4(m)) };
 }
 
-mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth) {
+mat4 perspective(float32 fovy, aspect, near_depth, far_depth) {
     float32 maxY = near_depth * tanf(0.5 * fovy);
     float32 minY = -maxY;
     float32 minX = minY * aspect;
@@ -339,14 +422,7 @@ mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_d
     return perspective_off_center(minX, maxX, minY, maxY, near_depth, far_depth);
 }
 
-mat4 perspective_off_center(
-    float32 left,
-    float32 right,
-    float32 bottom,
-    float32 top,
-    float32 near_depth,
-    float32 far_depth
-) {
+mat4 perspective_off_center(float32 left, right, bottom, top, near_depth, far_depth) {
     float32 x = 2.0 * near_depth / (right - left);
     float32 y = 2.0 * near_depth / (top - bottom);
     float32 a = (right + left) / (right - left);
@@ -375,15 +451,14 @@ quat normalize(quat q) {
     return { q.x / l, q.y / l, q.z / l, q.w / l };
 }
 
-
-quat sub(quat a, quat b) { return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w}; }
-quat add(quat a, quat b) { return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w}; }
-quat mul(quat a, float32 s) { return {a.x * s, a.y * s, a.z * s, a.w * s}; }
-
 quat lerp(float32 t, quat a, quat b) { return add(a, mul(sub(b, a), t)); } // TODO: are these correct? lerp and nlerp
 quat nlerp(float32 t, quat a, quat b) {
     return normalize(lerp(t, a, b));
 }
+
+quat sub(quat a, quat b) { return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w}; }
+quat add(quat a, quat b) { return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w}; }
+quat mul(quat a, float32 s) { return {a.x * s, a.y * s, a.z * s, a.w * s}; }
 
 quat mul(quat l, quat r) {
     float32 a = l.w;

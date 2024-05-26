@@ -98,6 +98,7 @@ DrawBuffers create_draw_buffers(Mesh mesh) {
     return db;
 }
 
+// TODO: this general function should not be hardcoded to vertex2D attributes
 DrawBuffers create_draw_buffers() {
     DrawBuffers db;
     db.elements_count = 0;
@@ -118,6 +119,7 @@ DrawBuffers create_draw_buffers() {
     return db;
 }
 
+void update_buffers(with DrawBuffers* db, vertex2D[] vertices, uint32[] indices) { update_buffers(db, vertices.data, vertices.length, indices.data, indices.length); }
 void update_buffers(with DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
     db.elements_count = indices_count as int32;
     update_buffer(db.vbo, vertices_count * sizeof vertex2D, vertices);
@@ -187,7 +189,8 @@ void flip_indices(Mesh mesh, uint32 base, uint32 len) {
     }
 }
 
-Mesh gen_plane(uint32 size) {
+Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0); }
+Mesh gen_plane(uint32 size, float32 uv_scale) {
     let vsize = size + 1;
 
     float32 half_size = size as float32 / 2;
@@ -206,7 +209,7 @@ Mesh gen_plane(uint32 size) {
             mesh.vertices[vi] = {
                 pos = { xi - half_size, 0, yi - half_size },
                 normal = vec3_unit_y,
-                uv = { xi as float32 / size, yi as float32 / size }
+                uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale }
             };
 
             if xi < size and yi < size {

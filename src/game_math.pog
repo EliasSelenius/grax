@@ -34,10 +34,11 @@ void rotate(with Transform* tr, vec3 axis, float32 angle) {
     rotate(tr, axisangle2quat(axis, angle));
 }
 
-void translate(with Transform* tr, vec3 t) {
-    tr.position.x += t.x;
-    tr.position.y += t.y;
-    tr.position.z += t.z;
+void translate(with Transform* tr, vec3 t) { translate(tr, t.x, t.y, t.z); }
+void translate(with Transform* tr, float32 x, y, z) {
+    tr.position.x += x;
+    tr.position.y += y;
+    tr.position.z += z;
 }
 
 void look_at(with Transform* tr, vec3 target, vec3 up) {
@@ -122,7 +123,7 @@ struct Camera {
     mat4 view, projection;
 }
 
-Camera camera(float32 fov, float32 near, float32 far) {
+Camera make_camera(float32 fov, float32 near, float32 far) {
     Camera cam = {};
     cam.transform = transform_default();
     cam.fov = fov;
@@ -165,8 +166,13 @@ void camera_fly_control(Camera* cam) {
         rotate(*cam.transform, vec3_unit_y, (dmouse_x / 100.0) as float32);
     }
 
-    cam.transform.position = add(cam.transform.position, mul(forward, wasd.y / 10.0));
-    cam.transform.position = add(cam.transform.position, mul(left, -wasd.x / 10.0));
+    float32 speed = 0.1;
+    if key(GLFW_KEY_LEFT_SHIFT) {
+        speed = 1.0;
+    }
+
+    translate(*cam.transform, mul(forward, wasd.y * speed));
+    translate(*cam.transform, mul(left, -wasd.x * speed));
 }
 
 vec2 screen2ndc(float32 x, float32 y) {

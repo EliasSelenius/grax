@@ -36,8 +36,6 @@ void gizmo_setup() {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
-    gizmo_points_shader = load_shader("../grax/shaders/gizmo_points3D.glsl");
-
     glEnable(GL_PROGRAM_POINT_SIZE);
 }
 
@@ -67,21 +65,20 @@ void gizmo_point(vec3 pos, Color color, float32 size) {
 }
 
 // TODO: implement
-bool gizmo_transform(Transform* tr) {
+bool gizmo_transform(Transform* tr, Camera cam) {
 
-    // TODO: this code dont know about 'cam'
     let ray = camera_ray(cam, screen2ndc(mouse_x as float32, mouse_y as float32));
     mat4 m = to_matrix(@tr);
 
     gizmo_point(tr.position, White);
-    if gizmo_transform_axis(tr, ray, xyz(m.row1), Red) return true;
-    if gizmo_transform_axis(tr, ray, xyz(m.row2), Green) return true;
-    if gizmo_transform_axis(tr, ray, xyz(m.row3), Blue) return true;
+    if gizmo_transform_axis(tr, ray, xyz(m.row1), Red, cam) return true;
+    if gizmo_transform_axis(tr, ray, xyz(m.row2), Green, cam) return true;
+    if gizmo_transform_axis(tr, ray, xyz(m.row3), Blue, cam) return true;
 
     return false;
 }
 
-bool gizmo_transform_axis(Transform* tr, vec3 ray, vec3 axis, Color color) {
+bool gizmo_transform_axis(Transform* tr, vec3 ray, vec3 axis, Color color, Camera cam) {
 
     float32 size = 0.1;
     if dot(ray, normalize(sub(add(tr.position, axis), cam.transform.position))) > 0.999 {

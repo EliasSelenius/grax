@@ -9,7 +9,9 @@ struct UBO {
 }
 
 struct Shader {
+    string name;
     uint32 gl_handle;
+    StringBuilder debug_log;
 }
 
 void use(Shader* s) {
@@ -44,7 +46,7 @@ void bind_ubos(with Shader* s) {
     glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCKS, *num_ubos);
     glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, *max_name_len);
 
-    char* ubo_name = malloc(max_name_len as uint64);
+    char* ubo_name = malloc(max_name_len as uint64); // TODO: might want to do stack allocation for this
 
     for 0 .. num_ubos {
         int32 name_len;
@@ -60,9 +62,7 @@ void bind_ubos(with Shader* s) {
 void process_glsl_source(StringBuilder* sb, char* filename) {
     char* src = fileread(filename);
 
-    sb_append(sb, "#line 1 \"");
-    sb_append(sb, filename);
-    sb_append(sb, "\"\n");
+    sb_append(sb, "#line 1\n");
 
     char* buffer = src;
     uint32 line_num = 1;
@@ -78,9 +78,6 @@ void process_glsl_source(StringBuilder* sb, char* filename) {
 
             sb_append(sb, "\n#line ");
             sb_append(sb, to_string(line_num + 1));
-            sb_append(sb, " \"");
-            sb_append(sb, filename);
-            sb_append(sb, "\"");
             sb_append(sb, "\n");
         } else {
             sb_append(sb, line);
@@ -98,24 +95,25 @@ Shader load_shader(char* filename) {
 
     StringBuilder src = sb_create();
     process_glsl_source(*src, filename);
-    // print(src.content);
 
     StringBuilder frag = sb_create();
     StringBuilder vert = sb_create();
 
     // NOTE: layout(binding) requires "#version 420" or later
+    char* glsl_version = "#version 420 core\n";
 
-    sb_append(*frag, "#version 420 core\n");
+    sb_append(*frag, glsl_version);
     sb_append(*frag, "#define IO in\n");
     sb_append(*frag, "#define FragmentShader\n");
     sb_append(*frag, src.content);
 
-    sb_append(*vert, "#version 420 core\n");
+    sb_append(*vert, glsl_version);
     sb_append(*vert, "#define IO out\n");
     sb_append(*vert, "#define VertexShader\n");
     sb_append(*vert, src.content);
 
-    Shader s = create_shader(frag.content, vert.content);
+    // TODO: what is the ownership of filename?
+    Shader s = create_shader(make_string(filename), frag.content, vert.content);
 
     sb_free(frag);
     sb_free(vert);
@@ -127,7 +125,7 @@ Shader load_shader(char* frag_filename, char* vert_filename) {
     char* frag_src = fileread(frag_filename);
     char* vert_src = fileread(vert_filename);
 
-    let s = create_shader(frag_src, vert_src);
+    let s = create_shader(make_string(""), frag_src, vert_src);
 
     free(frag_src);
     free(vert_src);
@@ -135,45 +133,110 @@ Shader load_shader(char* frag_filename, char* vert_filename) {
     return s;
 }
 
-Shader create_shader(char* fragsrc, char* vertsrc) {
+Shader create_shader(string name, char* fragsrc, char* vertsrc) {
 
-    uint32 make_shader(uint32 program, GLenum _type, char* code) {
-        uint32 s = glCreateShader(_type);
-        glShaderSource(s, 1, *code, null); // null assumes null-terminated string
-        glAttachShader(program, s);
-        return s;
+    char* append_info_log(StringBuilder* sb, int32 len) {
+        sb_grow(sb, len);
+        char* info_log = sb.content + sb.length;
+        sb.length += len - 1; // GL_INFO_LOG_LENGTH includes zero terminator
+        return info_log;
     }
 
-    void cleanup_shader(uint32 program, uint32 shader) {
-        glDetachShader(program, shader);
+    uint32 make_shader(Shader* program, GLenum _type, char* code) {
+
+        char* get_shader_type_string(GLenum shader_type) {
+            switch shader_type {
+                case GL_COMPUTE_SHADER:         return "compute";
+                case GL_VERTEX_SHADER:          return "vertex";
+                case GL_TESS_CONTROL_SHADER:    return "tess_control";
+                case GL_TESS_EVALUATION_SHADER: return "tess_evaluation";
+                case GL_GEOMETRY_SHADER:        return "geometry";
+                case GL_FRAGMENT_SHADER:        return "fragment";
+            }
+
+            return null;
+        }
+
+        uint32 shader = glCreateShader(_type);
+        glShaderSource(shader, 1, *code, null); // null assumes null-terminated string
+        glCompileShader(shader); // NOTE: my stinky laptop needed this
+
+        GLint success = 0;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, *success);
+        if success == 0 {
+            let sb = *program.debug_log;
+
+            let shader_type = get_shader_type_string(_type);
+            sb_append(sb, shader_type);
+            sb_append(sb, " info log:\n");
+
+            GLint info_log_len = 0;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, *info_log_len);
+            char* info_log = append_info_log(sb, info_log_len);
+            glGetShaderInfoLog(shader, info_log_len, null, info_log);
+            sb_append(sb, "\n\n");
+
+            sb_append(sb, shader_type);
+            sb_append(sb, " source code:\n");
+            sb_append(sb, code);
+            sb_append(sb, "\n///////////////////////////END_OF_CODE///////////////////////////\n\n\n\n");
+
+            print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" ", shader_type, " shader failed to compile. info log was generated.\n");
+        }
+
+        glAttachShader(program.gl_handle, shader);
+        return shader;
+    }
+
+    void cleanup_shader(Shader program, uint32 shader) {
+        glDetachShader(program.gl_handle, shader);
         glDeleteShader(shader);
     }
 
-    uint32 program = glCreateProgram();
-    let f = make_shader(program, GL_FRAGMENT_SHADER, fragsrc);
-    let v = make_shader(program, GL_VERTEX_SHADER, vertsrc);
-    glLinkProgram(program);
+    Shader program = {};
+    // TODO: maybe remove possible extension from name. like .glsl
+    program.name = name; // TODO: we dont know the ownership of name
+    program.gl_handle = glCreateProgram();
+    program.debug_log = sb_create(); // TODO: is it really necessary to have debug_log be a field on Shader, just make it a local...
+    sb_append(*program.debug_log, "\n\n");
+
+    let f = make_shader(*program, GL_FRAGMENT_SHADER, fragsrc);
+    let v = make_shader(*program, GL_VERTEX_SHADER, vertsrc);
+
+    glLinkProgram(program.gl_handle);
+
     cleanup_shader(program, f);
     cleanup_shader(program, v);
 
 
     int32 status;
-    glGetProgramiv(program, GL_LINK_STATUS, *status);
+    glGetProgramiv(program.gl_handle, GL_LINK_STATUS, *status);
     if status == 0 {
-        GLsizei size = 1024;
-        char* buffer = malloc(size as uint64); // TODO: consider not doing a malloc here, when we get fixed arrays
-        glGetProgramInfoLog(program, size, *size, buffer);
-        print(buffer);
-        free(buffer);
+        let sb = *program.debug_log;
+        sb_append(sb, "ShaderProgram \"");
+        sb_append(sb, program.name);
+        sb_append(sb, "\" info log:\n");
+
+        int32 info_log_len;
+        glGetProgramiv(program.gl_handle, GL_INFO_LOG_LENGTH, *info_log_len);
+        char* log = append_info_log(sb, info_log_len);
+        glGetProgramInfoLog(program.gl_handle, info_log_len, null, log);
+
+        let log_file = concat("shader_debug_log_", trim(substr_until(substr_to_end(program.name, '/'), '.'), 1), ".txt");
+        filewrite(log_file, program.debug_log.content);
+        sb_free(program.debug_log);
+
+        print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" failed to link. info log was generated.\n");
+
+        glDeleteProgram(program.gl_handle);
+        program.gl_handle = 0;
+        return program;
     }
 
 
-    Shader s = {};
-    s.gl_handle = program;
+    bind_ubos(*program);
 
-    bind_ubos(*s);
-
-    return s;
+    return program;
 }
 
 // void set_uniform(with Shader s, char* name, float64 x) {}
