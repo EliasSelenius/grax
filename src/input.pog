@@ -20,18 +20,18 @@ float64 mouse_scroll = 0;
 
 vec2 wasd;
 
-bool key(char c) { return glfwGetKey(main_window, c as int32) as bool; }
-bool key(int32 c) { return glfwGetKey(main_window, c) as bool; }
+bool key(char c) { return glfwGetKey(app.main_window, c as int32) as bool; }
+bool key(int32 c) { return glfwGetKey(app.main_window, c) as bool; }
 
 // TODO: we need to keep track of the key state to implement this function
-// int32 key_released(char c) { return glfwGetKey(main_window, c as int32) == GLFW_RELEASE; }
-// int32 key_released(int32 c) { return glfwGetKey(main_window, c) == GLFW_RELEASE; }
+// int32 key_released(char c) { return glfwGetKey(app.main_window, c as int32) == GLFW_RELEASE; }
+// int32 key_released(int32 c) { return glfwGetKey(app.main_window, c) == GLFW_RELEASE; }
 
 
 const Left_Mouse = 0;
 const Right_Mouse = 1;
 bool mouse(int32 btn) {
-    return glfwGetMouseButton(main_window, btn) as bool;
+    return glfwGetMouseButton(app.main_window, btn) as bool;
 }
 
 bool mouse_pressed(int32 btn) {
@@ -45,7 +45,7 @@ bool mouse_pressed(int32 btn) {
 void input_update() {
     pmouse_x = mouse_x;
     pmouse_y = mouse_y;
-    glfwGetCursorPos(main_window, *mouse_x, *mouse_y);
+    glfwGetCursorPos(app.main_window, *mouse_x, *mouse_y);
     dmouse_x = mouse_x - pmouse_x;
     dmouse_y = mouse_y - pmouse_y;
 
@@ -65,5 +65,5 @@ void on_scroll(GLFWwindow* window, float64 x, float64 y) {
     mouse_scroll = y;
 }
 
-void enable_cursor() { glfwSetInputMode(main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
-void disable_cursor() { glfwSetInputMode(main_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); }
+void enable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+void disable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); }

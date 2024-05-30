@@ -137,7 +137,7 @@ Camera make_camera(float32 fov, float32 near, float32 far) {
 }
 
 void update_matrices(with Camera* cam) {
-    cam.projection = perspective(cam.fov, 1.0 / main_window_aspect, cam.near_plane, cam.far_plane);
+    cam.projection = perspective(cam.fov, app.width_over_height, cam.near_plane, cam.far_plane);
 
     cam.view = to_matrix(cam.transform);
     let xaxis = neg(xyz(cam.view.row1));
@@ -177,15 +177,15 @@ void camera_fly_control(Camera* cam) {
 
 vec2 screen2ndc(float32 x, float32 y) {
     return {
-         (x / (main_window_width -1) - 0.5) * 2.0,
-        -(y / (main_window_height-1) - 0.5) * 2.0
+         (x / (app.window_width -1) - 0.5) * 2.0,
+        -(y / (app.window_height-1) - 0.5) * 2.0
     };
 }
 
 vec3 camera_ray(Camera cam, vec2 ndc) {
     // NOTE: the first, second and third columns of the cameras view matrix is the side, up and forward vectors respectively. because the view matrix is the transpose of the cam model matrix
     float32 h = cam.near_plane / tanf((Pi - cam.fov) / 2.0);
-    float32 w = h / main_window_aspect;
+    float32 w = h * app.width_over_height;
 
     vec3 ray = {};
     ray = add(ray, mul(xyz(col1(cam.view)), ndc.x * w));

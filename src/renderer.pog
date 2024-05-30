@@ -1,18 +1,4 @@
 
-/*
-    Grax library will concern itself with
-        - OpenGL boilerplate
-        - immediate rendering
-            - draw basic 2D shapes
-            - draw text
-            - draw images/sprites
-        - loading of assets: textures and models
-
-
-    TODO:
-    - rect rendering
-*/
-
 
 Shader default3d_shader;
 Shader default2d_shader;
@@ -25,33 +11,62 @@ UBO* application_ubo;
 Texture2D white_texture;
 Texture2D CascadiaMono_texture;
 
-GLFWwindow* main_window;
-float32 main_window_width = 1600;
-float32 main_window_height = 900;
-float32 main_window_aspect; // height / width
 
-float64 time;
-float64 deltatime;
-float64 sim_speed = 1.0;
+
+Application app = {
+    window_width = 1600,
+    window_height = 900
+    // sim_delta = 1.0 / 60.0,
+    // sim_speed = 1.0
+};
+
+struct Application {
+    GLFWwindow* main_window;
+    uint32 window_width, window_height;
+    float32 width_over_height;
+    float32 height_over_width;
+    float32 window_margin;
+
+    uint32 refresh_rate;
+
+    // measured:
+    float64 total_run_time;
+    float64 frame_time;
+
+    // float64 sim_time;
+    // float32 sim_delta;
+    // float32 sim_speed;
+
+    void(uint32, uint32) on_resize_user;
+}
+
+void app_update_size(uint32 w, h) {
+    app.window_width = w;
+    app.window_height = h;
+
+    app.width_over_height = w as float32 / h as float32;
+    app.height_over_width = h as float32 / w as float32;
+
+    app.window_margin = app.width_over_height - 1.0;
+}
 
 vec2 window_size() {
     int32 w;
     int32 h;
-    glfwGetWindowSize(main_window, *w, *h);
+    glfwGetWindowSize(app.main_window, *w, *h);
     return {w, h} as vec2;
 }
-
 
 bool grax_loop() {
 
     dispatch_immediate();
 
-    glfwSwapBuffers(main_window);
+    glfwSwapBuffers(app.main_window);
     input_state_reset();
     glfwPollEvents();
 
-    if glfwWindowShouldClose(main_window) {
-        glfwDestroyWindow(main_window);
+    if glfwWindowShouldClose(app.main_window) {
+        glfwDestroyWindow(app.main_window);
         glfwTerminate();
         return false;
     }
@@ -60,23 +75,28 @@ bool grax_loop() {
 
     input_update();
 
-    deltatime = (1.0 / 60.0) * sim_speed;
-    time += deltatime;
+    float64 prev_time = app.total_run_time;
+    app.total_run_time = glfwGetTime();
+    app.frame_time = app.total_run_time - prev_time;
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    let ms = round(app.frame_time * 1000) as uint64;
+    draw_text(make_vec(-1 - app.window_margin, 0), 0.05, to_string(ms), Yellow);
+
+
 
     { // update application UBO
-        struct app {
+        struct AppData {
             float32 time, delta, width, height;
         }
-        app a;
-        a.time = time as float32;
-        a.delta = deltatime as float32;
-        a.width = main_window_width;
-        a.height = main_window_height;
-        update_buffer(application_ubo.buffer_id, sizeof app, *a);
+        AppData data = {};
+        data.time = app.total_run_time as float32;
+        data.delta = app.frame_time as float32;
+        data.width = app.window_width;
+        data.height = app.window_height;
+        update_buffer(application_ubo.buffer_id, sizeof AppData, *data);
     }
 
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     return true;
 }
 
@@ -93,19 +113,25 @@ void grax_init() {
     // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    main_window = glfwCreateWindow(main_window_width as int32, main_window_height as int32, "Grax", null, null);
-    main_window_aspect = main_window_height / main_window_width;
-    if !main_window {
+    app.main_window = glfwCreateWindow(app.window_width as int32, app.window_height as int32, "Grax", null, null);
+    app_update_size(app.window_width, app.window_height);
+
+    if !app.main_window {
         glfwTerminate();
-        print("[ERROR]: failed to initilize main_window.\n");
+        print("[ERROR]: failed to initilize app.main_window.\n");
         return;
     }
 
-    glfwMakeContextCurrent(main_window);
+    glfwMakeContextCurrent(app.main_window);
+    glfwSwapInterval(1);
+
 
     // glfw callbacks
-    glfwSetFramebufferSizeCallback(main_window, on_resize);
-    glfwSetScrollCallback(main_window, on_scroll);
+    GLFW_callbacks cb = {};
+    cb.callback_framebuffersize = on_resize;
+    cb.callback_scroll = on_scroll;
+    set_glfw_callbacks(app.main_window, cb);
+
 
     load_opengl(glfwGetProcAddress);
     print("[INFO]: OpenGL version: ", glGetString(GL_VERSION) as char*, "\n");
@@ -149,21 +175,17 @@ void grax_init() {
     init_immediate_renderer();
 }
 
-void(uint32, uint32) on_resize_user = null;
 
 void on_resize(GLFWwindow* window, int32 w, int32 h) {
-
     if w == 0 or h == 0  return;
 
-    main_window_width = w as float32;
-    main_window_height = h as float32;
-    main_window_aspect = main_window_height / main_window_width;
+    app_update_size(w as uint32, h as uint32);
 
     print("[INFO]: Window resize: ", w, "x", h, "\n");
 
     glViewport(0, 0, w, h);
 
-    if on_resize_user  on_resize_user(w as uint32, h as uint32);
+    if app.on_resize_user  app.on_resize_user(w as uint32, h as uint32);
 }
 
 void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, /*const*/ GLchar* message, /*const*/ void* userParam) {
@@ -272,12 +294,24 @@ void toggle_fullscreen(GLFWwindow* window) {
 
     } else {
         // set to fullscreen
-        GLFWmonitor* m = get_ideal_monitor(window);
-        GLFWvidmode* mode = glfwGetVideoMode(m);
-        glfwSetWindowMonitor(window, m, 0, 0, mode.width, mode.height, mode.refreshRate);
+        GLFWmonitor* ideal_monitor = get_ideal_monitor(window);
+        GLFWvidmode* mode = glfwGetVideoMode(ideal_monitor);
+        glfwSetWindowMonitor(window, ideal_monitor, 0, 0, mode.width, mode.height, mode.refreshRate);
     }
 }
 
+
+enum OpenGLBlendingMode {
+    disabled; src_alpha; additive;
+}
+
+void set_blend_mode(OpenGLBlendingMode mode) {
+    switch mode {
+        case .disabled:  disable_blending(); break;
+        case .src_alpha: enable_alpha_blending(); break;
+        case .additive:  enable_additive_blending(); break;
+    }
+}
 
 void enable_alpha_blending() {
     glEnable(GL_BLEND);
@@ -308,3 +342,58 @@ void clear_color(Color color) { set_clear_color(color); clear_color(); }
 
 void clear_depth() { glClear(GL_DEPTH_BUFFER_BIT); }
 void clear_depth(float64 depth) { set_clear_depth(depth); glClear(GL_DEPTH_BUFFER_BIT); }
+
+
+struct GLFW_callbacks {
+    GLFWerrorfun               callback_error;                // void(int32, /*const*/ char*);
+    GLFWwindowposfun           callback_windowpos;            // void(GLFWwindow*, int32, int32);
+    GLFWwindowsizefun          callback_windowsize;           // void(GLFWwindow*, int32, int32);
+    GLFWwindowclosefun         callback_windowclose;          // void(GLFWwindow*);
+    GLFWwindowrefreshfun       callback_windowrefresh;        // void(GLFWwindow*);
+    GLFWwindowfocusfun         callback_windowfocus;          // void(GLFWwindow*, int32);
+    GLFWwindowiconifyfun       callback_windowiconify;        // void(GLFWwindow*, int32);
+    GLFWwindowmaximizefun      callback_windowmaximize;       // void(GLFWwindow*, int32);
+    GLFWframebuffersizefun     callback_framebuffersize;      // void(GLFWwindow*, int32, int32);
+    GLFWwindowcontentscalefun  callback_windowcontentscale;   // void(GLFWwindow*, float32, float32);
+    GLFWmousebuttonfun         callback_mousebutton;          // void(GLFWwindow*, int32, int32, int32);
+    GLFWcursorposfun           callback_cursorpos;            // void(GLFWwindow*, float64, float64);
+    GLFWcursorenterfun         callback_cursorenter;          // void(GLFWwindow*, int32);
+    GLFWscrollfun              callback_scroll;               // void(GLFWwindow*, float64, float64);
+    GLFWkeyfun                 callback_key;                  // void(GLFWwindow*, int32, int32, int32, int32);
+    GLFWcharfun                callback_char;                 // void(GLFWwindow*, uint32);
+    GLFWcharmodsfun            callback_charmods;             // void(GLFWwindow*, uint32, int32);
+    GLFWdropfun                callback_drop;                 // void(GLFWwindow*, int32, /*const*/ char**);
+    GLFWmonitorfun             callback_monitor;              // void(GLFWmonitor*, int32);
+    GLFWjoystickfun            callback_joystick;             // void(int32, int32);
+}
+
+void set_glfw_callbacks(GLFWwindow* window, GLFW_callbacks cb) {
+    if cb.callback_error               glfwSetErrorCallback              (cb.callback_error);
+
+    // window
+    if cb.callback_windowpos           glfwSetWindowPosCallback          (window, cb.callback_windowpos);
+    if cb.callback_windowsize          glfwSetWindowSizeCallback         (window, cb.callback_windowsize);
+    if cb.callback_windowclose         glfwSetWindowCloseCallback        (window, cb.callback_windowclose);
+    if cb.callback_windowrefresh       glfwSetWindowRefreshCallback      (window, cb.callback_windowrefresh);
+    if cb.callback_windowfocus         glfwSetWindowFocusCallback        (window, cb.callback_windowfocus);
+    if cb.callback_windowiconify       glfwSetWindowIconifyCallback      (window, cb.callback_windowiconify);
+    if cb.callback_windowmaximize      glfwSetWindowMaximizeCallback     (window, cb.callback_windowmaximize);
+    if cb.callback_framebuffersize     glfwSetFramebufferSizeCallback    (window, cb.callback_framebuffersize);
+    if cb.callback_windowcontentscale  glfwSetWindowContentScaleCallback (window, cb.callback_windowcontentscale);
+
+    // mouse
+    if cb.callback_mousebutton         glfwSetMouseButtonCallback        (window, cb.callback_mousebutton);
+    if cb.callback_cursorpos           glfwSetCursorPosCallback          (window, cb.callback_cursorpos);
+    if cb.callback_cursorenter         glfwSetCursorEnterCallback        (window, cb.callback_cursorenter);
+    if cb.callback_scroll              glfwSetScrollCallback             (window, cb.callback_scroll);
+
+    // keyboard
+    if cb.callback_key                 glfwSetKeyCallback                (window, cb.callback_key);
+    if cb.callback_char                glfwSetCharCallback               (window, cb.callback_char);
+    if cb.callback_charmods            glfwSetCharModsCallback           (window, cb.callback_charmods);
+
+    if cb.callback_drop                glfwSetDropCallback               (window, cb.callback_drop);
+
+    if cb.callback_monitor             glfwSetMonitorCallback            (cb.callback_monitor);
+    if cb.callback_joystick            glfwSetJoystickCallback           (cb.callback_joystick);
+}
