@@ -75,12 +75,46 @@ bool grax_loop() {
 
     input_update();
 
-    float64 prev_time = app.total_run_time;
-    app.total_run_time = glfwGetTime();
-    app.frame_time = app.total_run_time - prev_time;
+    {
+        let prev_time = app.total_run_time;
+        app.total_run_time = glfwGetTime();
+        app.frame_time = app.total_run_time - prev_time;
 
-    let ms = round(app.frame_time * 1000) as uint64;
-    draw_text(make_vec(-1 - app.window_margin, 0), 0.05, to_string(ms), Yellow);
+
+        static uint32 frame_times_count = 60*10;
+        static float32* frame_times = calloc(1, frame_times_count * sizeof float32);
+        static uint32 frame_time_index = 0;
+
+        frame_times[frame_time_index++ % frame_times_count] = app.frame_time as float32;
+
+        float32 dt_min = 99999999999999999999.0;
+        float32 dt_max = 0;
+        float32 dt_avg = 0;
+
+        for 0 .. frame_times_count {
+            let dt = frame_times[it];
+            dt_min = min(dt_min, dt);
+            dt_max = max(dt_max, dt);
+            dt_avg += dt;
+        }
+
+        dt_avg /= frame_times_count;
+
+        void draw_time(uint32 row, float32 dt) {
+            let micro_sec = round(dt * 1000_000) as uint64;
+            const text_height = 0.05;
+            vec2 pos = make_vec(-1 - app.window_margin + text_height * 0.25, text_height * row);
+            draw_text(pos, text_height, to_string(micro_sec), Yellow);
+        }
+
+
+        draw_time(0, app.frame_time as float32);
+        draw_time(1, dt_min);
+        draw_time(2, dt_max);
+        draw_time(3, dt_avg);
+
+    }
+
 
 
 
@@ -248,6 +282,30 @@ void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severi
     print("[opengl_debug_callback]: (msg_id: ", id, ") ", get_debug_source(source), " ", get_debug_type_string(_type), " (severity: ", get_debug_severity(severity), "): ", message, "\n");
 }
 
+struct GLFW_MonitorInfo {
+    char* name;
+    ivec2 pos;
+    vec2 content_scale;
+    ivec2 physical_size;
+    GLFWvidmode* current_video_mode;
+    GLFWvidmode[] video_modes;
+}
+
+GLFW_MonitorInfo get_monitor_info(GLFWmonitor* monitor) {
+    GLFW_MonitorInfo info = {};
+
+    info.name = glfwGetMonitorName(monitor);
+
+    glfwGetMonitorPos(monitor, *info.pos.x, *info.pos.y);
+    glfwGetMonitorContentScale(monitor, *info.content_scale.x, *info.content_scale.y);
+    glfwGetMonitorPhysicalSize(monitor, *info.physical_size.x, *info.physical_size.y);
+
+    info.current_video_mode = glfwGetVideoMode(monitor);
+    info.video_modes.data = glfwGetVideoModes(monitor, *info.video_modes.length);
+
+    return info;
+}
+
 GLFWmonitor* get_ideal_monitor(GLFWwindow* window) {
 
     int32 x;
@@ -296,7 +354,10 @@ void toggle_fullscreen(GLFWwindow* window) {
         // set to fullscreen
         GLFWmonitor* ideal_monitor = get_ideal_monitor(window);
         GLFWvidmode* mode = glfwGetVideoMode(ideal_monitor);
+        print("vidmode: ", (@mode), "\n");
         glfwSetWindowMonitor(window, ideal_monitor, 0, 0, mode.width, mode.height, mode.refreshRate);
+
+        glfwSwapInterval(1); // for some reason seting the window monitor seems to disable the swap interval
     }
 }
 
