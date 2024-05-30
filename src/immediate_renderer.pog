@@ -10,11 +10,34 @@ enum AnchorPoint { center; top_left; top_right; bottom_left; bottom_right; }
         - rectangle borders
         - lines
         - textures
-
+    - layers
 */
 
-Trianglebatch immediate_text_batch;
-Trianglebatch immediate_rect_batch;
+RenderLayer immediate_layer;
+
+
+struct RenderLayer {
+    Trianglebatch geometry;
+    Trianglebatch text;
+    OpenGLBlendingMode blend_mode;
+
+    RenderLayer* next_layer;
+}
+
+RenderLayer create_layer() {
+    RenderLayer layer = {};
+    layer.text = create_trianglebatch();
+    layer.geometry = create_trianglebatch();
+
+    layer.text.shader = ui_shader;
+    layer.text.texture = CascadiaMono_texture;
+
+    layer.geometry.shader = ui_shader;
+    layer.geometry.texture = white_texture;
+
+    layer.blend_mode = .src_alpha;
+    return layer;
+}
 
 struct Trianglebatch {
     vertex2D* vertices; // list
@@ -43,9 +66,6 @@ void dispatch_trianglebatch(Trianglebatch* tb) {
         use(*tb.shader);
         bind(tb.texture);
 
-        enable_alpha_blending();
-        disable_depth_test();
-
         draw_elements(tb.draw_buffers);
     }
 
@@ -53,19 +73,23 @@ void dispatch_trianglebatch(Trianglebatch* tb) {
     list_clear(tb.indices);
 }
 
-void init_immediate_renderer() {
-    immediate_text_batch = create_trianglebatch();
-    immediate_rect_batch = create_trianglebatch();
+void dispatch_layer(RenderLayer* layer) {
+    disable_depth_test();
 
-    immediate_text_batch.shader = ui_shader;
-    immediate_rect_batch.shader = ui_shader;
-    immediate_text_batch.texture = CascadiaMono_texture;
-    immediate_rect_batch.texture = white_texture;
+    set_blend_mode(layer.blend_mode);
+    dispatch_trianglebatch(*layer.geometry);
+    enable_alpha_blending();
+    dispatch_trianglebatch(*layer.text);
+
+    if layer.next_layer  dispatch_layer(layer.next_layer);
+}
+
+void init_immediate_renderer() {
+    immediate_layer = create_layer();
 }
 
 void dispatch_immediate() {
-    dispatch_trianglebatch(*immediate_text_batch);
-    dispatch_trianglebatch(*immediate_rect_batch);
+    dispatch_layer(*immediate_layer);
 }
 
 void add_vertex(with Trianglebatch* tb, float32 x, y, u, v, Color color) {
@@ -87,8 +111,6 @@ void add_triangle(with Trianglebatch* tb, uint32 i1, i2, i3) {
 }
 
 void add_quad(with Trianglebatch* tb, vec2 pos, size, uv_offset, uv_scale, Color color) {
-    let sx = size.x * 0.5;
-    let sy = size.y * 0.5;
 
     add_triangle(tb, 0, 1, 2);
     add_triangle(tb, 1, 3, 2);
@@ -98,21 +120,70 @@ void add_quad(with Trianglebatch* tb, vec2 pos, size, uv_offset, uv_scale, Color
     float32 us = uv_offset.x + uv_scale.x;
     float32 vs = uv_offset.y + uv_scale.y;
 
-    add_vertex(tb,   pos.x + -sx, pos.y + -sy,    u,  v,     color);
-    add_vertex(tb,   pos.x +  sx, pos.y + -sy,    us, v,     color);
-    add_vertex(tb,   pos.x + -sx, pos.y +  sy,    u,  vs,    color);
-    add_vertex(tb,   pos.x +  sx, pos.y +  sy,    us, vs,    color);
+    AnchorPoint anchor = .center;
+
+    vec2 bl;
+    vec2 br;
+    vec2 tl;
+    vec2 tr;
+
+    switch anchor {
+        case .center: {
+            let sx = size.x * 0.5;
+            let sy = size.y * 0.5;
+
+            bl = { -sx, -sy };
+            br = {  sx, -sy };
+            tl = { -sx,  sy };
+            tr = {  sx,  sy };
+        } break;
+
+        case .top_left: {
+            bl = { 0, -size.y };
+            br = { size.x, -size.y };
+            tl = { 0, 0 };
+            tr = { size.x, 0 };
+        } break;
+
+        case .top_right: {
+            bl = { -size.x, -size.y };
+            br = { 0, -size.y };
+            tl = { -size.x, 0 };
+            tr = { 0, 0 };
+        } break;
+
+        case .bottom_left: {
+            bl = { 0, 0 };
+            br = { size.x, 0 };
+            tl = { 0,  size.y };
+            tr = size;
+        } break;
+
+        case .bottom_right: {
+            bl = { -size.x, 0 };
+            br = { 0, 0 };
+            tl = { -size.x, size.y };
+            tr = { 0, size.y };
+        } break;
+    }
+
+    add_vertex(tb,   pos.x+bl.x,  pos.y+bl.y,    u,  v,     color);
+    add_vertex(tb,   pos.x+br.x,  pos.y+br.y,    us, v,     color);
+    add_vertex(tb,   pos.x+tl.x,  pos.y+tl.y,    u,  vs,    color);
+    add_vertex(tb,   pos.x+tr.x,  pos.y+tr.y,    us, vs,    color);
+
 }
 
-void draw_rect(vec2 pos, size, Color color) {
-    add_quad(*immediate_rect_batch, pos, size, vec2_zero, vec2_one, color);
+
+
+
+
+
+void rect(with RenderLayer* layer, vec2 pos, size, Color color) {
+    add_quad(*layer.geometry, pos, size, vec2_zero, vec2_one, color);
 }
 
-void draw_image(Texture2D* image) {
-
-}
-
-void draw_char(vec2 pos, float32 size, char c, Color color) {
+void glyph(with RenderLayer* layer, vec2 pos, float32 size, char c, Color color) {
     uint32 index = c as uint8 - ' ';
     float32 col = index % 14;
     float32 row = index / 14 + 1;
@@ -120,12 +191,11 @@ void draw_char(vec2 pos, float32 size, char c, Color color) {
     vec2 uv       = { col / 14.0,   1 - row / 7.0 };
     vec2 uv_scale = { 1.0 / 14.0,   1.0 / 7.0     };
     vec2 vsize    = { size * 0.5,   size          };
-    add_quad(*immediate_text_batch, pos, vsize, uv, uv_scale, color);
+    add_quad(*layer.text, pos, vsize, uv, uv_scale, color);
 }
 
-vec2 draw_text(vec2 pos, float32 size, string text, Color color) {
+vec2 text(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
     float32 start = pos.x;
-
     for i : 0 .. text.length {
         char c = text.chars[i];
 
@@ -135,27 +205,14 @@ vec2 draw_text(vec2 pos, float32 size, string text, Color color) {
             continue;
         }
 
-        if c != ' ' draw_char(pos, size, c, color);
+        if c != ' ' glyph(layer, pos, size, c, color);
         pos.x += size * 0.5;
     }
 
     return pos;
 }
 
-vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) {
-    int32 i = text.length as int32 - 1;
-    while i >= 0 {
-        let c = text.chars[i--];
-
-        if c != ' ' draw_char(pos, size, c, color);
-        pos.x -= size * 0.5;
-    }
-
-    return pos;
-}
-
-vec2 draw_text(vec2 pos, float32 size, char* text, Color color) {
-
+vec2 text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Color color) {
     float32 start = pos.x;
 
     while @text {
@@ -165,7 +222,7 @@ vec2 draw_text(vec2 pos, float32 size, char* text, Color color) {
                 pos.y -= size;
                 break;
             default:
-                draw_char(pos, size, @text, color);
+                glyph(layer, pos, size, @text, color);
             case ' ':
                 pos.x += size * 0.5;
                 break;
@@ -176,3 +233,21 @@ vec2 draw_text(vec2 pos, float32 size, char* text, Color color) {
     return pos;
 }
 
+vec2 text_backwards(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
+    int32 i = text.length as int32 - 1;
+    while i >= 0 {
+        let c = text.chars[i--];
+
+        if c != ' ' glyph(layer, pos, size, c, color);
+        pos.x -= size * 0.5;
+    }
+
+    return pos;
+}
+
+
+void draw_rect(vec2 pos, size, Color color) { rect(*immediate_layer, pos, size, color); }
+void draw_glyph(vec2 pos, float32 size, char c, Color color) { glyph(*immediate_layer, pos, size, c, color); }
+vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return text(*immediate_layer, pos, size, txt, color); }
+vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return text(*immediate_layer, pos, size, txt, color); }
+vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return text_backwards(*immediate_layer, pos, size, text, color); }
