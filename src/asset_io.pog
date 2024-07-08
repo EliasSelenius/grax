@@ -4,8 +4,15 @@ struct Image {
     Color* pixels;
 }
 
-Color get_pixel(with Image image, uint32 x, y) { return image.pixels[y * image.width + x]; }
+struct Image_Boundingbox {
+    ivec2 min, max;
+}
 
+bool inside_boundingbox(Image_Boundingbox bb, int32 x, y) return x <= bb.max.x and x >= bb.min.x and y <= bb.max.y and y >= bb.min.y;
+ivec2 get_boundingbox_size(Image_Boundingbox bb) return add(sub(bb.max, bb.min), ivec2_one);
+
+
+Color get_pixel(with Image image, uint32 x, y) { return image.pixels[y * image.width + x]; }
 
 Image load_bitmap(char* filename) {
 
@@ -89,4 +96,143 @@ Image load_bitmap(char* filename) {
     free(file_contents);
 
     return image;
+}
+
+
+
+/* TODO: idea:
+    since we only care about the boundingbox, we could try a different flood fill
+    where we 'expand' the boundingbox and only recurse on the pixels that borders the boundingbox.
+    this may also remove the necessity of the 'map' buffer
+    might be faster, should benchmark...
+
+
+    start with 1x1 boundingbox at starting pixel
+    foreach of the 4 borders of the boundingbox
+        foreach pixel of border
+            if pixel is non-background
+                expand boundingbox in direction of pixel
+                break out of pixel loop
+*/
+
+Image_Boundingbox calc_boundingbox(Image image, uint32 x, y, bool eight_way) {
+    Image_Boundingbox bb = {};
+    bb.min = {x as int32, y as int32};
+    bb.max = {x as int32, y as int32};
+
+    loop:
+    if get_pixel(image, bb.max.x + 1, bb.max.y + 1).a != 0 {
+        bb.max = add(bb.max, ivec2_one);
+        goto loop;
+    }
+
+    while true {
+        let expanded = false;
+
+        for (bb.min.x .. bb.max.x + 1) {
+            // top
+            if get_pixel(image, it, bb.max.y + 1).a != 0 {
+                bb.max.y++;
+                it = bb.min.x;
+                expanded = true;
+            }
+
+            // bottom
+            if get_pixel(image, it, bb.min.y - 1).a != 0 {
+                bb.min.y--;
+                it = bb.min.x;
+                expanded = true;
+            }
+        }
+
+        for (bb.min.y .. bb.max.y + 1) {
+            // left
+            if get_pixel(image, bb.min.x - 1, it).a != 0 {
+                bb.min.x--;
+                it = bb.min.y;
+                expanded = true;
+            }
+
+            // right
+            if get_pixel(image, bb.max.x + 1, it).a != 0 {
+                bb.max.x++;
+                it = bb.min.y;
+                expanded = true;
+            }
+        }
+
+        if !expanded break;
+    }
+
+
+    return bb;
+}
+
+Image_Boundingbox flood_fill(Image image, uint32 x, y, bool eight_way) {
+    bool* map = calloc(1, image.width * image.height * sizeof bool);
+
+    Image_Boundingbox bb = {
+        min = {image.width, image.height},
+        max = {0, 0}
+    };
+
+    void rec(Image_Boundingbox* bb, bool* map, Image image, uint32 x, y, bool eight_way) {
+        if x >= image.width or y >= image.height  return;
+
+        if map[y * image.width + x]       return;
+        if get_pixel(image, x, y).a == 0  return;
+
+        map[y * image.width + x] = true;
+
+        bb.min = min(bb.min, make_ivec(x as int32, y as int32));
+        bb.max = max(bb.max, make_ivec(x as int32, y as int32));
+
+        rec(bb, map, image, x + 1, y, eight_way);
+        rec(bb, map, image, x - 1, y, eight_way);
+        rec(bb, map, image, x, y + 1, eight_way);
+        rec(bb, map, image, x, y - 1, eight_way);
+
+        if eight_way {
+            rec(bb, map, image, x + 1, y + 1, eight_way);
+            rec(bb, map, image, x - 1, y - 1, eight_way);
+            rec(bb, map, image, x - 1, y + 1, eight_way);
+            rec(bb, map, image, x + 1, y - 1, eight_way);
+        }
+    }
+
+    rec(*bb, map, image, x, y, eight_way);
+    free(map);
+    return bb;
+}
+
+Image_Boundingbox* get_all_regions(Image image) {
+    Image_Boundingbox* regions = list_create(sizeof Image_Boundingbox);
+
+    for (uint32 y : 0 .. image.height) {
+        for (uint32 x : 0 .. image.width) {
+            Color pixel = get_pixel(image, x, y);
+            if pixel.a == 0  continue;
+
+            for 0 .. list_length(regions) if inside_boundingbox(regions[it], x as int32, y as int32) {
+                x = (regions[it].max.x + 1) as uint32; // skip pixels we know are in the region
+                goto next;
+            }
+
+            // let bb = flood_fill(image, x, y, true);
+            let bb = calc_boundingbox(image, x, y, true);
+            list_add(*regions, *bb);
+            x = (bb.max.x + 1) as uint32; // skip pixels we know are in the region
+            next:
+        }
+    }
+
+    // for 0 .. list_length(regions) {
+    //     let bb = regions[it];
+
+    //     ivec2 size = sub(bb.max, bb.min);
+    //     size = add(size, ivec2_one);
+    //     print("pos = ", bb.min, "\nsize = ", size, "\n");
+    // }
+
+    return regions;
 }
