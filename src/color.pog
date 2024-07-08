@@ -24,8 +24,14 @@ Color rgba(uint32 i) {
     return c;
 }
 
-Color rgba(float32 r, float32 g, float32 b, float32 a) {
+Color rgba(float32 r, g, b, a) {
     return { (r*255) as uint8, (g*255) as uint8, (b*255) as uint8, (a*255) as uint8 };
+}
+
+Color rgb(float32 r, g, b) return { (r*255) as uint8, (g*255) as uint8, (b*255) as uint8, 255 };
+Color rgb(float32 value) {
+    float32 v = (value * 255) as float32;
+    return { v, v, v, 255 };
 }
 
 Color color_from_vec(vec3 v) {

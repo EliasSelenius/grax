@@ -1,0 +1,62 @@
+
+
+int32 global_seed = 0;
+
+// returns float in range [-1 .. 1]
+float32 random(int32 seed) {
+    seed = (seed << 13) ^ seed;
+    return (1.0 - ((seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0);
+}
+
+
+vec2 random_unit_vec2() {
+    float32 a = random(global_seed++) * Pi;
+    return { cosf(a), sinf(a) };
+}
+
+vec2 random_vec2(float32 max_len) return mul(random_unit_vec2(), max_len * random01());
+float32 random01() return (random(global_seed++) + 1.0) / 2.0;
+float32 random_range(int32 seed, float32 min, max) return lerp((random(seed) + 1.0) / 2.0, min, max);
+
+
+
+
+// // TODO: the 'quality' of randomnes is not tested here
+// float32 random(int32 seed_x, seed_y) {
+//     return random(seed_x + seed_y * 57);
+// }
+
+vec2 random_vec2(float32 x, y) {
+    vec2 v;
+    v.x = x * 127.1 + y * 311.7;
+    v.y = x * 268.5 + y * 183.3;
+
+    v.x = fract(sinf(v.x) * 43758.5453123) * 2.0 - 1.0;
+    v.y = fract(sinf(v.y) * 43758.5453123) * 2.0 - 1.0;
+
+    return v;
+}
+
+float32 gnoise(float32 x, y) {
+    float32 ix = floorf(x);
+    float32 iy = floorf(y);
+    float32 fx = fract(x);
+    float32 fy = fract(y);
+
+    float32 ux = fx * fx * (-fx * 2.0 + 3.0);
+    float32 uy = fy * fy * (-fy * 2.0 + 3.0);
+
+    vec2 r = random_vec2(ix, iy);
+    float32 d1 = r.x * fx + r.y * fy;
+
+    r = random_vec2(ix + 1.0, iy);
+    float32 d2 = r.x * (fx - 1.0) + r.y * fy;
+
+    r = random_vec2(ix, iy + 1.0);
+    float32 d3 = r.x * fx + r.y * (fy - 1.0);
+
+    r = random_vec2(ix + 1.0, iy + 1.0);
+    float32 d4 = r.x * (fx - 1.0) + r.y * (fy - 1.0);
+
+    return lerp(uy, lerp(ux, d1, d2), lerp(ux, d3, d4));
+}

@@ -25,6 +25,8 @@ Transform transform_default() {
     };
 }
 
+vec3 forward(with Transform tr) return xyz(quat2matrix(tr.rotation).row3);
+
 void rotate(with Transform* tr, quat q) {
     tr.rotation = mul(tr.rotation, q);
     tr.rotation = normalize(tr.rotation);
