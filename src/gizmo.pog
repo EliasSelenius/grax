@@ -46,7 +46,8 @@ void gizmo_dispatch() {
 
     use(*gizmo_points_shader);
 
-    // disable_depth_test();
+    disable_depth_test();
+    enable_alpha_blending();
 
     glBindVertexArray(gizmo_points_vao);
     glDrawArrays(GL_POINTS, 0, len);

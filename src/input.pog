@@ -7,6 +7,8 @@ struct InputState {
     float32 mouse_scroll;
 }
 
+// InputState Input;
+
 float64 mouse_x = 0;
 float64 mouse_y = 0;
 
@@ -22,6 +24,14 @@ vec2 wasd;
 
 bool key(char c) { return glfwGetKey(app.main_window, c as int32) as bool; }
 bool key(int32 c) { return glfwGetKey(app.main_window, c) as bool; }
+
+float32 input_axis(int32 a, b) {
+    float32 res = 0;
+    if key(a) res -= 1;
+    if key(b) res += 1;
+    return res;
+}
+
 
 // TODO: we need to keep track of the key state to implement this function
 // int32 key_released(char c) { return glfwGetKey(app.main_window, c as int32) == GLFW_RELEASE; }
@@ -59,10 +69,6 @@ void input_update() {
 
 void input_state_reset() {
     mouse_scroll = 0;
-}
-
-void on_scroll(GLFWwindow* window, float64 x, float64 y) {
-    mouse_scroll = y;
 }
 
 void enable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
