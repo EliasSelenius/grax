@@ -241,6 +241,11 @@ Shader create_shader(string name, char* fragsrc, char* vertsrc) {
     return program;
 }
 
+void delete_shader(Shader shader) {
+    glDeleteProgram(shader.gl_handle);
+    sb_free(shader.debug_log);
+}
+
 void set_uniform(char* name, float32 x)          glUniform1f (glGetUniformLocation(active_shader.gl_handle, name), x);
 void set_uniform(char* name, float32 x, y)       glUniform2f (glGetUniformLocation(active_shader.gl_handle, name), x, y);
 void set_uniform(char* name, float32 x, y, z)    glUniform3f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);

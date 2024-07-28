@@ -65,6 +65,23 @@ void init_vertex_layout(int32 stride, VertexAttributeType[] attribs) {
     }
 }
 
+DrawBuffers create_draw_buffers(int32 vertex_size, VertexAttributeType[] attribs) {
+    DrawBuffers db = {};
+    glGenVertexArrays(1, *db.vao);
+    glBindVertexArray(db.vao);
+
+    glGenBuffers(1, *db.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER , db.vbo);
+    glGenBuffers(1, *db.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
+
+    init_vertex_layout(vertex_size, attribs);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    return db;
+}
+
 void setup_vertex2D_attributes() {
     VertexAttributeType[] attribs = { .vec2, .vec2, .color };
     init_vertex_layout(sizeof vertex2D, attribs);
@@ -125,6 +142,14 @@ void update_buffers(with DrawBuffers* db, vertex2D* vertices, uint32 vertices_co
     update_buffer(db.vbo, vertices_count * sizeof vertex2D, vertices);
     update_buffer(db.ebo, indices_count * sizeof uint32, indices);
 }
+
+
+void update_vertices(with DrawBuffers* db, uint32 vbo_bytes, void* vertices) update_buffer(db.vbo, vbo_bytes, vertices);
+void update_indices(with DrawBuffers* db, uint32[] indices) {
+    db.elements_count = indices.length;
+    update_buffer(db.ebo, indices.length * sizeof uint32, indices.data);
+}
+
 
 void update_buffer(uint32 buffer, uint32 size, void* data) {
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
