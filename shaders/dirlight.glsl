@@ -18,6 +18,9 @@ layout(binding = 2) uniform sampler2D g_buffer_albedo;
 
 out vec3 FragColor;
 
+uniform vec3 sun_dir;
+uniform vec3 sun_radiance;
+
 void main() {
     vec3 pos    = texture(g_buffer_pos,    v2f.uv).rgb;
     vec3 normal = texture(g_buffer_normal, v2f.uv).rgb;
@@ -31,7 +34,7 @@ void main() {
     g.roughness = 0.5;
     g.metallic = 0.1;
 
-    FragColor = calc_dir_light(vec3(1, 1, 1), vec3(3, 3, 3), g);
+    FragColor = calc_dir_light(sun_dir, sun_radiance, g);
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
 
 }

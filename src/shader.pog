@@ -226,7 +226,6 @@ Shader create_shader(string name, char* fragsrc, char* vertsrc) {
 
         let log_file = concat("shader_debug_log_", trim(substr_until(substr_to_end(program.name, '/'), '.'), 1), ".txt");
         filewrite(log_file, program.debug_log.content);
-        sb_free(program.debug_log);
 
         print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" failed to link. info log was generated.\n");
 

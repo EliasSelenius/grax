@@ -125,6 +125,13 @@ const ivec4_unit_z = {0, 0, 1, 0} as ivec4;
 const ivec4_unit_w = {0, 0, 0, 1} as ivec4;
 
 
+vec2 make_vec2(float32 v) return { v, v };
+vec3 make_vec2(float32 v) return { v, v, v };
+vec4 make_vec2(float32 v) return { v, v, v, v };
+ivec2 make_ivec2(int32 v) return { v, v };
+ivec3 make_ivec2(int32 v) return { v, v, v };
+ivec4 make_ivec2(int32 v) return { v, v, v, v };
+
 vec2 make_vec(float32 x, y) { return {x, y}; }
 vec3 make_vec(float32 x, y, z) { return {x, y, z}; }
 vec4 make_vec(float32 x, y, z, w) { return {x, y, z, w}; }
@@ -190,6 +197,14 @@ vec4 mul(vec4 a, float32 s) as *  return { a.x * s, a.y * s, a.z * s, a.w * s };
 ivec2 mul(ivec2 a, int32 s) as *  return { a.x * s, a.y * s };
 ivec3 mul(ivec3 a, int32 s) as *  return { a.x * s, a.y * s, a.z * s };
 ivec4 mul(ivec4 a, int32 s) as *  return { a.x * s, a.y * s, a.z * s, a.w * s };
+
+vec2 div(vec2 a, float32 s) as /  return { a.x / s, a.y / s };
+vec3 div(vec3 a, float32 s) as /  return { a.x / s, a.y / s, a.z / s };
+vec4 div(vec4 a, float32 s) as /  return { a.x / s, a.y / s, a.z / s, a.w / s };
+ivec2 div(ivec2 a, int32 s) as /  return { a.x / s, a.y / s };
+ivec3 div(ivec3 a, int32 s) as /  return { a.x / s, a.y / s, a.z / s };
+ivec4 div(ivec4 a, int32 s) as /  return { a.x / s, a.y / s, a.z / s, a.w / s };
+
 
 vec2 neg(vec2 a) { return { -a.x, -a.y }; }
 vec3 neg(vec3 a) { return { -a.x, -a.y, -a.z }; }

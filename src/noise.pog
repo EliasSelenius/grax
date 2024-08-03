@@ -37,6 +37,7 @@ vec2 random_vec2(float32 x, y) {
     return v;
 }
 
+float32 gnoise(vec2 v) return gnoise(v.x, v.y);
 float32 gnoise(float32 x, y) {
     float32 ix = floorf(x);
     float32 iy = floorf(y);

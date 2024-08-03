@@ -92,47 +92,7 @@ bool grax_loop() {
 
     input_update();
 
-    {
-        let prev_time = app.total_run_time;
-        app.total_run_time = glfwGetTime();
-        app.frame_time = app.total_run_time - prev_time;
-
-
-        static uint32 frame_times_count = 60*10;
-        static float32* frame_times = calloc(1, frame_times_count * sizeof float32);
-        static uint32 frame_time_index = 0;
-
-        frame_times[frame_time_index++ % frame_times_count] = app.frame_time as float32;
-
-        float32 dt_min = 99999999999999999999.0;
-        float32 dt_max = 0;
-        float32 dt_avg = 0;
-
-        for 0 .. frame_times_count {
-            let dt = frame_times[it];
-            dt_min = min(dt_min, dt);
-            dt_max = max(dt_max, dt);
-            dt_avg += dt;
-        }
-
-        dt_avg /= frame_times_count;
-
-        void draw_time(uint32 row, float32 dt) {
-            let micro_sec = round(dt * 1000_000) as uint64;
-            const text_height = 0.05;
-            vec2 pos = make_vec(-1 - app.window_margin + text_height * 0.25, text_height * row);
-            draw_text(pos, text_height, to_string(micro_sec), Yellow);
-        }
-
-
-        draw_time(0, app.frame_time as float32);
-        draw_time(1, dt_min);
-        draw_time(2, dt_max);
-        draw_time(3, dt_avg);
-        draw_time(4, deltatime());
-
-    }
-
+    measure_frametime();
 
     { // update application UBO
         struct AppData {
@@ -278,6 +238,53 @@ void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severi
     if _type == GL_DEBUG_TYPE_OTHER  return; // opengl has a tendency to spam some info we dont care about
 
     print("[opengl_debug_callback]: (msg_id: ", id, ") ", get_debug_source(source), " ", get_debug_type_string(_type), " (severity: ", get_debug_severity(severity), "): ", message, "\n");
+}
+
+void measure_frametime() {
+    const sample_count = 60*3;
+    static float32* samples = calloc(1, sample_count * sizeof float32);
+    static uint32 sample_index = 0;
+
+    let prev_time = app.total_run_time;
+    app.total_run_time = glfwGetTime();
+    app.frame_time = app.total_run_time - prev_time;
+
+    samples[sample_index++ % sample_count] = app.frame_time as float32;
+
+    float32 dt_min = 99999999999999999999.0;
+    float32 dt_max = 0;
+    float32 dt_avg = 0;
+
+    for 0 .. sample_count {
+        let dt = samples[it];
+        dt_min = min(dt_min, dt);
+        dt_max = max(dt_max, dt);
+        dt_avg += dt;
+    }
+
+    dt_avg /= sample_count;
+
+    void draw_time(uint32 row, float32 dt) {
+        let micro_sec = round(dt * 1000_000) as uint64;
+        const text_height = 0.05;
+        vec2 pos = make_vec(-1 - app.window_margin + text_height * 0.25, text_height * row);
+        draw_text(pos, text_height, to_string(micro_sec), Yellow);
+    }
+
+    draw_time(0, app.frame_time as float32);
+    draw_time(1, dt_min);
+    draw_time(2, dt_max);
+    draw_time(3, dt_avg);
+    draw_time(4, deltatime());
+
+    float32 column_width = (1 + app.window_margin) / sample_count;
+
+    for 0 .. sample_count {
+        let dt = samples[it];
+        vec2 size = { column_width, dt / (3.0*dt_avg) };
+        vec2 pos = app.bottom_left + make_vec(column_width/2 + size.x * it, size.y/2.0);
+        draw_rect(pos, size, opacity(White, 0.3));
+    }
 }
 
 struct GLFW_MonitorInfo {
