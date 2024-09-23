@@ -36,15 +36,22 @@ void main() {
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uniform sampler2D albedo_texture;
+uniform vec3  albedo_color;
+uniform float metallic;
+uniform float roughness;
 
-layout (location = 0) out vec3 FragPos;
-layout (location = 1) out vec3 FragNormal;
+layout (location = 0) out vec4 FragPos_Metallic;
+layout (location = 1) out vec4 FragNormal_Roughness;
 layout (location = 2) out vec3 FragColor;
 
 void main() {
-    FragPos = v2f.pos;
-    FragNormal = normalize(v2f.normal);
-    FragColor = texture(albedo_texture, v2f.uv).rgb;
+    FragPos_Metallic.xyz = v2f.pos;
+    FragPos_Metallic.w   = metallic;
+
+    FragNormal_Roughness.xyz = normalize(v2f.normal);
+    FragNormal_Roughness.w   = roughness;
+
+    FragColor = texture(albedo_texture, v2f.uv).rgb * albedo_color;
 }
 
 #endif

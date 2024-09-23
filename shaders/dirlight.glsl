@@ -21,21 +21,35 @@ out vec3 FragColor;
 uniform vec3 sun_dir;
 uniform vec3 sun_radiance;
 
+#include "../grax/shaders/noise.glsl"
+#include "../grax/shaders/app.glsl"
+vec3 skybox_color(vec3 dir) {
+    return vec3(noise(dir), 0.0, noise(vec3(100) + dir * 10));
+    // return (dir);
+}
+
 void main() {
-    vec3 pos    = texture(g_buffer_pos,    v2f.uv).rgb;
-    vec3 normal = texture(g_buffer_normal, v2f.uv).rgb;
+    vec4 pos_metallic     = texture(g_buffer_pos,    v2f.uv);
+    vec4 normal_roughness = texture(g_buffer_normal, v2f.uv);
     vec3 albedo = texture(g_buffer_albedo, v2f.uv).rgb;
+
+    vec3 pos = pos_metallic.xyz;
+    vec3 normal = normal_roughness.xyz;
 
 
     Geometry g;
     g.pos = pos;
     g.normal = normal;
     g.albedo = albedo;
-    g.roughness = 0.5;
-    g.metallic = 0.1;
+    g.roughness = normal_roughness.w;
+    g.metallic  = pos_metallic.w;
 
-    FragColor = calc_dir_light(sun_dir, sun_radiance, g);
+    vec3 sky_dir = reflect(normalize(g.pos), normal);
+    vec3 sky = skybox_color(mat3(inverse(camera.view)) * sky_dir);
+
+    FragColor = calc_dir_light(sun_dir, sun_radiance, g) + max(sky, vec3(0.0));
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
+
 
 }
 

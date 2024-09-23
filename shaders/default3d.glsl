@@ -42,8 +42,8 @@ void main() {
     vec3 light_dir = normalize(vec3(1,1,1));
     float brightness = max(0.2, dot(normalize(v2f.normal), light_dir));
 
-    FragColor = albedo * brightness;
-
+    FragColor = albedo;
+    FragColor.rgb *= brightness;
 }
 
 #endif

@@ -39,6 +39,27 @@ vec3 calc_base_reflectivity(vec3 albedo, float metallic) {
     return mix(vec3(0.04), albedo, metallic);
 }
 
+/*
+Complete IBL with diffuse and specular contribution.
+Adapted from (https://learnopengl.com/PBR/IBL/Specular-IBL)
+Last chapter named "Completing the IBL reflectance"
+
+
+    vec3 F = FresnelSchlickRoughness(NoV, F0, roughness);
+
+    vec3 kD = (1.0 - F) * (1.0 - metallic);
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse    = irradiance * albedo * kD;
+
+    const float MAX_REFLECTION_LOD = 4.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, reflect(-V, N), roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 envBRDF          = texture(brdfLUT, vec2(NoV, roughness)).rg;
+    vec3 specular         = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+    vec3 ambient = (diffuse + specular) * ao;
+
+*/
+
 vec3 cook_torrance_BRDF(LightRay light, Geometry g) {
     vec3 N = g.normal;
     vec3 V = normalize(-g.pos);
