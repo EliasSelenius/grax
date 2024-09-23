@@ -95,6 +95,7 @@ bool grax_loop() {
     let prev_time = app.total_run_time;
     app.total_run_time = glfwGetTime();
     app.frame_time = app.total_run_time - prev_time;
+
     if false  measure_frametime();
 
     { // update application UBO
@@ -263,27 +264,27 @@ void measure_frametime() {
 
     dt_avg /= sample_count;
 
-    void draw_time(uint32 row, float32 dt) {
-        let micro_sec = round(dt * 1000_000) as uint64;
-        const text_height = 0.05;
-        vec2 pos = make_vec(-1 - app.window_margin + text_height * 0.25, text_height * row);
-        draw_text(pos, text_height, to_string(micro_sec), Yellow);
-    }
-
-    draw_time(0, app.frame_time as float32);
-    draw_time(1, dt_min);
-    draw_time(2, dt_max);
-    draw_time(3, dt_avg);
-    draw_time(4, deltatime());
-
-    float32 column_width = (1 + app.window_margin) / sample_count;
-
+    float32 column_width = 2.0 / sample_count;
     for 0 .. sample_count {
         let dt = samples[it];
         vec2 size = { column_width, dt / (3.0*dt_avg) };
-        vec2 pos = app.bottom_left + make_vec(column_width/2 + size.x * it, size.y/2.0);
+        vec2 pos = make_vec(column_width/2 + size.x * it - 1, size.y/2.0 - 1);
         draw_rect(pos, size, opacity(White, 0.3));
     }
+
+    void draw_line(float32 dt, dt_avg, Color color) {
+        let micro_sec = round(dt * 1000_000) as uint64;
+        vec2 size = { 2, 0.005 };
+        vec2 pos  = { 0, dt / (3.0*dt_avg) - 1 };
+        draw_rect(pos, size, color);
+        const text_height = 0.05;
+        draw_text(pos + make_vec(1 + text_height/2.0, 0), text_height, to_string(micro_sec), color);
+    }
+
+    draw_line(dt_max, dt_avg, Red);
+    draw_line(dt_min, dt_avg, Blue);
+    draw_line(dt_avg, dt_avg, Green);
+    // draw_line(app.frame_time as float32, dt_avg, Yellow);
 }
 
 struct GLFW_MonitorInfo {
