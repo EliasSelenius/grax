@@ -92,12 +92,13 @@ bool grax_loop() {
 
     input_update();
 
-    measure_frametime();
+    let prev_time = app.total_run_time;
+    app.total_run_time = glfwGetTime();
+    app.frame_time = app.total_run_time - prev_time;
+    if false  measure_frametime();
 
     { // update application UBO
-        struct AppData {
-            float32 time, delta, width, height;
-        }
+        struct AppData { float32 time, delta, width, height; }
         AppData data = {};
         data.time = app.total_run_time as float32;
         data.delta = app.frame_time as float32;
@@ -107,6 +108,7 @@ bool grax_loop() {
     }
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // glClear(GL_COLOR_BUFFER_BIT);
     return true;
 }
 
@@ -150,7 +152,8 @@ void grax_init() {
     enable_alpha_blending();
     enable_depth_test();
     glEnable(GL_CULL_FACE);
-    glClearColor(0.1, 0.1, 0.1, 1.0);
+    // glClearColor(0.1, 0.1, 0.1, 1.0);
+    glClearColor(0, 0, 0, 0);
 
     camera_ubo = get_ubo("Camera");
     application_ubo = get_ubo("Application");
@@ -244,10 +247,6 @@ void measure_frametime() {
     const sample_count = 60*3;
     static float32* samples = calloc(1, sample_count * sizeof float32);
     static uint32 sample_index = 0;
-
-    let prev_time = app.total_run_time;
-    app.total_run_time = glfwGetTime();
-    app.frame_time = app.total_run_time - prev_time;
 
     samples[sample_index++ % sample_count] = app.frame_time as float32;
 
