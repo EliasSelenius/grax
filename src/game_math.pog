@@ -10,6 +10,10 @@ mat4 to_matrix(with Transform t) {
 
     // TODO: scale. I seem to recal I did this in stopgap
 
+    res.row1 = res.row1 * t.scale.x;
+    res.row2 = res.row2 * t.scale.y;
+    res.row3 = res.row3 * t.scale.z;
+
     res.row4.x = t.position.x;
     res.row4.y = t.position.y;
     res.row4.z = t.position.z;
@@ -25,7 +29,10 @@ Transform transform_default() {
     };
 }
 
+vec3 left   (with Transform tr) return xyz(quat2matrix(tr.rotation).row1);
+vec3 up     (with Transform tr) return xyz(quat2matrix(tr.rotation).row2);
 vec3 forward(with Transform tr) return xyz(quat2matrix(tr.rotation).row3);
+
 
 void rotate(with Transform* tr, quat q) {
     tr.rotation = mul(tr.rotation, q);
@@ -48,7 +55,14 @@ void look_at(with Transform* tr, vec3 target, vec3 up) {
     vec3 left    = normalize(cross(up, forward));
          up      = normalize(cross(forward, left));
 
-    
+    mat4 m = {
+        make_vec(left,    0),
+        make_vec(up,      0),
+        make_vec(forward, 0),
+        0,    0,    0,    1
+    };
+
+    tr.rotation = matrix2quat(m);
 }
 
 struct Transform2D {
@@ -173,8 +187,8 @@ void camera_fly_control(Camera* cam) {
         speed = 1.0;
     }
 
-    translate(*cam.transform, mul(forward, wasd.y * speed));
-    translate(*cam.transform, mul(left, -wasd.x * speed));
+    translate(*cam.transform, mul(forward, Input.wasd.y * speed));
+    translate(*cam.transform, mul(left,   -Input.wasd.x * speed));
 }
 
 vec2 screen2ndc(float32 x, float32 y) {

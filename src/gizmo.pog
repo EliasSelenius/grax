@@ -65,7 +65,6 @@ void gizmo_point(vec3 pos, Color color, float32 size) {
     list_add(*gizmo_points_list, *gp);
 }
 
-// TODO: implement
 bool gizmo_transform(Transform* tr, Camera cam) {
 
     let ray = camera_ray(cam, screen2ndc(mouse_x as float32, mouse_y as float32));
