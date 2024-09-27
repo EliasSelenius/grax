@@ -22,3 +22,4 @@ include "../grax/src/obj.pog";
 include "../grax/src/color.pog";
 include "../grax/src/texture.pog";
 include "../grax/src/noise.pog";
+include "../grax/src/Rigidbody.pog";

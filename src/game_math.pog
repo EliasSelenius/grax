@@ -50,7 +50,8 @@ void translate(with Transform* tr, float32 x, y, z) {
     tr.position.z += z;
 }
 
-void look_at(with Transform* tr, vec3 target, vec3 up) {
+void look_at(with Transform* tr, vec3 target) look_at(tr, target, vec3_unit_y);
+void look_at(with Transform* tr, vec3 target, up) {
     vec3 forward = normalize(sub(target, tr.position));
     vec3 left    = normalize(cross(up, forward));
          up      = normalize(cross(forward, left));

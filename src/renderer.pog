@@ -15,9 +15,11 @@ Texture2D CascadiaMono_texture;
 
 Application app = {
     window_width = 1600,
-    window_height = 900
+    window_height = 900,
     // sim_delta = 1.0 / 60.0,
     // sim_speed = 1.0
+
+    profiler_graph = false
 };
 
 struct Application {
@@ -42,13 +44,17 @@ struct Application {
     // float32 sim_delta;
     // float32 sim_speed;
 
+    bool profiler_graph;
+
     void(AppEvent, AppEventData) on_event;
 }
 
 float32 deltatime() {
-    const target_frame_time = 1.0 / 60.0; // TODO: this assumes there is a 60Hz refresh rate, and that vsync is turned on
-    const threshold = 0.001;
-    return clamp(app.frame_time as float32, target_frame_time - threshold, target_frame_time + threshold);
+    // const target_frame_time = 1.0 / 60.0; // TODO: this assumes there is a 60Hz refresh rate, and that vsync is turned on
+    // const threshold = 0.001;
+    // return clamp(app.frame_time as float32, target_frame_time - threshold, target_frame_time + threshold);
+
+    return app.frame_time as float32;
 }
 
 void app_update_size(uint32 w, h) {
@@ -96,7 +102,7 @@ bool grax_loop() {
     app.total_run_time = glfwGetTime();
     app.frame_time = app.total_run_time - prev_time;
 
-    if false  measure_frametime();
+    if app.profiler_graph  measure_frametime();
 
     { // update application UBO
         struct AppData { float32 time, delta, width, height; }
@@ -359,7 +365,9 @@ void toggle_fullscreen(GLFWwindow* window) {
         // set to fullscreen
         GLFWmonitor* ideal_monitor = get_ideal_monitor(window);
         GLFWvidmode* mode = glfwGetVideoMode(ideal_monitor);
-        print("vidmode: ", (@mode), "\n");
+
+        print("[INFO]: Set video mode: ", mode.width, "x", mode.height, "@", mode.refreshRate, "\n");
+
         glfwSetWindowMonitor(window, ideal_monitor, 0, 0, mode.width, mode.height, mode.refreshRate);
 
         glfwSwapInterval(1); // for some reason seting the window monitor seems to disable the swap interval
@@ -457,13 +465,14 @@ void register_glfw_callbacks(GLFWwindow* window) {
     void glfw_cursorenter(GLFWwindow* window, int32 entered) {}
     void glfw_scroll(GLFWwindow* window, float64 xoffset, yoffset) {
         mouse_scroll = yoffset;
+        Input.mouse_scroll = yoffset as float32;
     }
 
     void glfw_key(GLFWwindow* window, int32 key, scancode, action, mods) {
         if (action == GLFW_PRESS and key == GLFW_KEY_F11 and mods == 0) toggle_fullscreen(app.main_window);
         AppEventData data = { key = key, scancode = scancode, mods = mods };
         switch action {
-            case GLFW_PRESS:   app.on_event(AppEvent.key_press, data); break;
+            case GLFW_PRESS:   app.on_event(AppEvent.key_press, data); if key == GLFW_KEY_F1  app.profiler_graph = !app.profiler_graph;  break;
             case GLFW_REPEAT:  app.on_event(AppEvent.key_repeat, data); break;
             case GLFW_RELEASE: app.on_event(AppEvent.key_release, data); break;
         }

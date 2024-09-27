@@ -1,0 +1,33 @@
+
+
+struct Rigidbody {
+    float32 mass;
+    vec3 velocity;
+    vec3 angular_velocity;
+}
+
+void add_force(with Rigidbody* rb, vec3 force) {
+    rb.velocity = rb.velocity + force * (1.0 / rb.mass);
+}
+
+void add_force(with Rigidbody* rb, vec3 force, offset) {
+    add_force(rb, force);
+    // TODO: cross(force, offset) is angular acceleration, not torque?
+    add_torque(rb, cross(force, offset));
+}
+
+void add_torque(with Rigidbody* rb, vec3 torque) {
+    // TODO: mass / inertia ?
+    rb.angular_velocity = rb.angular_velocity + torque;
+}
+
+void update_rigidbody_transform(with Transform* tr, with Rigidbody* rb, float32 dt) {
+    tr.position = tr.position + rb.velocity * dt;
+
+    let axis = rb.angular_velocity;
+    let angle = length(axis);
+    if angle != 0 {
+        axis = axis * (1.0 / angle); // normalizes
+        rotate(tr, axis, angle * dt);
+    }
+}

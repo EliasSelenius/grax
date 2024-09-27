@@ -1,5 +1,4 @@
 
-// TODO: this struct seems like a good idea
 struct InputState {
     vec2 mouse_pos;
     vec2 mouse_pos_prev;
@@ -60,6 +59,11 @@ void input_update() {
     dmouse_x = mouse_x - pmouse_x;
     dmouse_y = mouse_y - pmouse_y;
 
+    Input.mouse_pos_prev = Input.mouse_pos;
+    Input.mouse_pos = screen2ndc(mouse_x as float32, mouse_y as float32);
+    Input.mouse_pos.x *= app.width_over_height;
+    Input.mouse_pos_delta = Input.mouse_pos - Input.mouse_pos_prev;
+
     Input.wasd = {};
     if key('W') Input.wasd.y += 1;
     if key('S') Input.wasd.y -= 1;
@@ -70,9 +74,10 @@ void input_update() {
 
 void input_state_reset() {
     mouse_scroll = 0;
+    Input.mouse_scroll = 0;
 }
 
-void enable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+void enable_cursor()  { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
 void disable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); }
 
 // adapted from glfw

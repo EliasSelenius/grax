@@ -22,6 +22,7 @@ float32 expf(float32 x);
 
 
 const Pi = 3.14159265359;
+const Half_Pi = Pi / 2.0;
 const Tau = Pi * 2.0;
 
 const deg2rad = Pi / 180.0;
@@ -57,6 +58,16 @@ float32 clamp(float32 t, float32 min, float32 max) return t < min ? min : t > ma
 float32 lerp(float32 t, float32 a, float32 b) return a + (b - a) * t;
 // map t from range [a, b] to [c, d]
 float32 map(float32 t, float32 a, float32 b, float32 c, float32 d) return lerp((t - a) / (b - a), c, d);
+
+float32 exp_decay(float32 a, b, decay, dt) return b + (a-b) * expf(-decay*dt);
+vec2 exp_decay(vec2 a, b, float32 decay, dt) return b + (a-b) * expf(-decay*dt);
+vec3 exp_decay(vec3 a, b, float32 decay, dt) return b + (a-b) * expf(-decay*dt);
+vec4 exp_decay(vec4 a, b, float32 decay, dt) return b + (a-b) * expf(-decay*dt);
+
+
+
+bool almost_equals(float32 a, b, threshold) return abs(a - b) <= threshold;
+bool almost_equals(float32 a, b) return almost_equals(a, b, 0.0001);
 
 /* from stackoverflow:
     int(x)   = x - x%1
@@ -156,6 +167,9 @@ ivec3 make_ivec(vec3 v) { return { v.x as int32, v.y as int32, v.z as int32 }; }
 ivec4 make_ivec(vec4 v) { return { v.x as int32, v.y as int32, v.z as int32, v.w as int32 }; }
 
 
+bool equals(vec2 a, b) as ==   return a.x == b.x and a.y == b.y;
+bool equals(vec3 a, b) as ==   return a.x == b.x and a.y == b.y and a.z == b.z;
+bool equals(vec4 a, b) as ==   return a.x == b.x and a.y == b.y and a.z == b.z and a.w == b.w;
 bool equals(ivec2 a, b) as ==   return a.x == b.x and a.y == b.y;
 bool equals(ivec3 a, b) as ==   return a.x == b.x and a.y == b.y and a.z == b.z;
 bool equals(ivec4 a, b) as ==   return a.x == b.x and a.y == b.y and a.z == b.z and a.w == b.w;
@@ -197,6 +211,13 @@ ivec2 mul(ivec2 a, int32 s) as *  return { a.x * s, a.y * s };
 ivec3 mul(ivec3 a, int32 s) as *  return { a.x * s, a.y * s, a.z * s };
 ivec4 mul(ivec4 a, int32 s) as *  return { a.x * s, a.y * s, a.z * s, a.w * s };
 
+vec2 mul(float32 s, vec2 a) as *  return mul(a, s);
+vec3 mul(float32 s, vec3 a) as *  return mul(a, s);
+vec4 mul(float32 s, vec4 a) as *  return mul(a, s);
+ivec2 mul(int32 s, ivec2 a) as *  return mul(a, s);
+ivec3 mul(int32 s, ivec3 a) as *  return mul(a, s);
+ivec4 mul(int32 s, ivec4 a) as *  return mul(a, s);
+
 vec2 div(vec2 a, float32 s) as /  return { a.x / s, a.y / s };
 vec3 div(vec3 a, float32 s) as /  return { a.x / s, a.y / s, a.z / s };
 vec4 div(vec4 a, float32 s) as /  return { a.x / s, a.y / s, a.z / s, a.w / s };
@@ -225,9 +246,13 @@ vec2 reflect(vec2 a, normal) { return add(a, mul(normal, dot(a, normal) * -2.0))
 vec3 reflect(vec3 a, normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 vec4 reflect(vec4 a, normal) { return add(a, mul(normal, dot(a, normal) * -2.0)); }
 
-vec2 normalize(vec2 a) { return mul(a, 1.0 / length(a)); }
-vec3 normalize(vec3 a) { return mul(a, 1.0 / length(a)); }
-vec4 normalize(vec4 a) { return mul(a, 1.0 / length(a)); }
+vec2 normalize(vec2 a) return a / length(a);
+vec3 normalize(vec3 a) return a / length(a);
+vec4 normalize(vec4 a) return a / length(a);
+
+vec2 normalize_or(vec2 a, b) return equals(a, vec2_zero) ? b : a / length(a);
+vec3 normalize_or(vec3 a, b) return equals(a, vec3_zero) ? b : a / length(a);
+vec4 normalize_or(vec4 a, b) return equals(a, vec4_zero) ? b : a / length(a);
 
 vec2 lerp(float32 t, vec2 a, b) { return add(a, mul(sub(b, a), t)); }
 vec3 lerp(float32 t, vec3 a, b) { return add(a, mul(sub(b, a), t)); }
