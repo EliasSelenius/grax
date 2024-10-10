@@ -135,6 +135,12 @@ void blit(with Framebuffer dst, Framebuffer src, GLbitfield mask, TextureFilter 
     blit(dst, src, ivec2_zero, dst_size, ivec2_zero, src_size, mask, filter);
 }
 
+vec4 read_pixel(int32 x, y) {
+    vec4 res = {};
+    glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, *res);
+    return res;
+}
+
 void resize(with Framebuffer* fr, uint32 w, h) {
 
     fr.width = w;

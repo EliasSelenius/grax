@@ -472,9 +472,16 @@ void register_glfw_callbacks(GLFWwindow* window) {
         if (action == GLFW_PRESS and key == GLFW_KEY_F11 and mods == 0) toggle_fullscreen(app.main_window);
         AppEventData data = { key = key, scancode = scancode, mods = mods };
         switch action {
-            case GLFW_PRESS:   app.on_event(AppEvent.key_press, data); if key == GLFW_KEY_F1  app.profiler_graph = !app.profiler_graph;  break;
+            case GLFW_PRESS: {
+                if key == GLFW_KEY_F1  app.profiler_graph = !app.profiler_graph;
+                app.on_event(AppEvent.key_press, data);
+                Input.keyboard_changed[key] = true;
+            } break;
             case GLFW_REPEAT:  app.on_event(AppEvent.key_repeat, data); break;
-            case GLFW_RELEASE: app.on_event(AppEvent.key_release, data); break;
+            case GLFW_RELEASE: {
+                app.on_event(AppEvent.key_release, data);
+                Input.keyboard_changed[key] = true;
+            } break;
         }
     }
 

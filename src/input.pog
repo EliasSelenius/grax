@@ -7,9 +7,12 @@ struct InputState {
 
     vec2 wasd;
     vec2 unit_wasd;
+
+    // supposed to be Key.Count
+    bool[350] keyboard_changed;
 }
 
-InputState Input;
+InputState Input = {};
 
 float64 mouse_x = 0;
 float64 mouse_y = 0;
@@ -33,10 +36,18 @@ float32 input_axis(int32 a, b) {
 }
 
 
-// TODO: we need to keep track of the key state to implement this function
-// int32 key_released(char c) { return glfwGetKey(app.main_window, c as int32) == GLFW_RELEASE; }
-// int32 key_released(int32 c) { return glfwGetKey(app.main_window, c) == GLFW_RELEASE; }
+bool key_down(Key key) return glfwGetKey(app.main_window, key as int32) == GLFW_PRESS;
+bool key_pressed(Key key)  return  key_down(key) and Input.keyboard_changed[key];
+bool key_released(Key key) return !key_down(key) and Input.keyboard_changed[key];
 
+bool mouse_down_prev(MouseButton btn);
+bool mouse_down(MouseButton btn) return glfwGetMouseButton(app.main_window, btn as int32) == GLFW_PRESS;
+bool mouse_pressed(MouseButton btn)  return mouse_down(btn) and !mouse_down_prev(btn);
+bool mouse_released(MouseButton btn) return !mouse_down(btn) and mouse_down_prev(btn);
+
+enum MouseButton {
+    Left = 0; Right = 1;
+}
 
 const Left_Mouse = 0;
 const Right_Mouse = 1;
@@ -75,6 +86,11 @@ void input_update() {
 void input_state_reset() {
     mouse_scroll = 0;
     Input.mouse_scroll = 0;
+
+
+    for 0 .. 350 {
+        Input.keyboard_changed[it] = false;
+    }
 }
 
 void enable_cursor()  { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }

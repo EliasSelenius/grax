@@ -15,7 +15,8 @@ vec2 random_unit_vec2() {
 }
 
 vec2 random_vec2(float32 max_len) return mul(random_unit_vec2(), max_len * random01());
-float32 random01() return (random(global_seed++) + 1.0) / 2.0;
+float32 random01(int32 seed) return (random(seed) + 1.0) / 2.0;
+float32 random01() return random01(global_seed++);
 float32 random_range(int32 seed, float32 min, max) return lerp((random(seed) + 1.0) / 2.0, min, max);
 
 

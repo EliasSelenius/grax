@@ -1,4 +1,12 @@
 
+/*
+    Relevant articles by Glenn Fiedler:
+        integration:             https://gafferongames.com/post/integration_basics/
+        integrating orientation: https://gafferongames.com/post/physics_in_3d/
+        overview:                https://gafferongames.com/categories/game-physics/
+
+*/
+
 
 struct Rigidbody {
     float32 mass;
