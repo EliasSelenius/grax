@@ -56,10 +56,10 @@ bool mouse(int32 btn) {
 }
 
 bool mouse_pressed(int32 btn) {
-    static bool prev_state = false;
+    static bool[2] prev_state = {};
     bool state = mouse(btn);
-    bool res = !prev_state and state;
-    prev_state = state;
+    bool res = !prev_state[btn] and state;
+    prev_state[btn] = state;
     return res;
 }
 
