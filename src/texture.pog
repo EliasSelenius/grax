@@ -135,8 +135,10 @@ void blit(with Framebuffer dst, Framebuffer src, GLbitfield mask, TextureFilter 
     blit(dst, src, ivec2_zero, dst_size, ivec2_zero, src_size, mask, filter);
 }
 
-vec4 read_pixel(int32 x, y) {
+vec4 read_pixel(int32 x, y) return read_pixel(x, y, 0);
+vec4 read_pixel(int32 x, y, uint32 attachment_index) {
     vec4 res = {};
+    glReadBuffer(GL_COLOR_ATTACHMENT0 + attachment_index);
     glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, *res);
     return res;
 }

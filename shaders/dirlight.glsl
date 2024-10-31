@@ -18,8 +18,8 @@ layout(binding = 2) uniform sampler2D g_buffer_albedo;
 
 out vec3 FragColor;
 
-uniform vec3 sun_dir;
-uniform vec3 sun_radiance;
+uniform vec3 dirlight_direction;
+uniform vec3 dirlight_radiance;
 
 #include "../grax/shaders/noise.glsl"
 #include "../grax/shaders/app.glsl"
@@ -45,7 +45,7 @@ void main() {
     g.metallic  = pos_metallic.w;
 
 
-    FragColor = calc_dir_light(sun_dir, sun_radiance, g);
+    FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g);
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
 
 

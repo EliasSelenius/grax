@@ -99,7 +99,7 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
         UBO_Struct data = {};
         data.view         = cam.view;
         data.projection   = cam.projection;
-        data.sun_dir      = make_vec(dr.sun_dir, 0);
+        data.sun_dir      = make_vec(normalize(dr.sun_dir), 0);
         data.sun_radiance = make_vec(dr.sun_radiance, 0);
 
         update_buffer(dr.ubo_camera.buffer_id, sizeof UBO_Struct, *data);
@@ -140,11 +140,15 @@ void begin_light_pass(DeferredRenderer* dr) {
         draw_elements(dr.db_inverted_box);
     }
 
-    use(*dr.shader_dirlight);
     disable_depth_test();
     enable_additive_blending();
 
     for uint32 it : 0 .. dr.fbo_geometry.attachments.length  bind_texture2D(dr.fbo_geometry.attachments[it].gl_handle, it);
+
+    use(*dr.shader_dirlight);
+    set_uniform("dirlight_direction", normalize(dr.sun_dir));
+    set_uniform("dirlight_radiance",  dr.sun_radiance);
+
     draw_screen_quad(); // render light volumes
 
 }
