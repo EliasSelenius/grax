@@ -14,7 +14,13 @@ enum AnchorPoint { center; top_left; top_right; bottom_left; bottom_right; }
 */
 
 RenderLayer immediate_layer;
+AnchorPoint anchor = .center;
 
+// struct ImmediateRendererContex {
+//     AnchorPoint anchor;
+//     Color text_color;
+//     Color rect_color;
+// }
 
 struct RenderLayer {
     Trianglebatch geometry;
@@ -23,6 +29,10 @@ struct RenderLayer {
 
     RenderLayer* next_layer;
 }
+
+// TODO: this API is a good idea
+// void layer_push();
+// void layer_pop();
 
 RenderLayer create_layer() {
     RenderLayer layer = {};
@@ -119,8 +129,6 @@ void add_quad(with Trianglebatch* tb, vec2 pos, size, uv_offset, uv_scale, Color
     float32 v  = uv_offset.y;
     float32 us = uv_offset.x + uv_scale.x;
     float32 vs = uv_offset.y + uv_scale.y;
-
-    AnchorPoint anchor = .center;
 
     vec2 bl;
     vec2 br;

@@ -24,24 +24,18 @@ Color rgba(uint32 i) {
     return c;
 }
 
-Color rgba(float32 r, g, b, a) {
-    return { (r*255) as uint8, (g*255) as uint8, (b*255) as uint8, (a*255) as uint8 };
-}
-
+Color rgba(float32 r, g, b, a) return { (r*255) as uint8, (g*255) as uint8, (b*255) as uint8, (a*255) as uint8 };
 Color rgb(float32 r, g, b) return { (r*255) as uint8, (g*255) as uint8, (b*255) as uint8, 255 };
+
+Color rgba(vec4 v) return rgba(v.x, v.y, v.z, v.w);
+Color rgb(vec3 v) return rgb(v.x, v.y, v.z);
+
+
 Color rgb(float32 value) {
     float32 v = (value * 255) as float32;
     return { v, v, v, 255 };
 }
 
-Color color_from_vec(vec3 v) {
-    Color c;
-    c.r = (v.x * 255) as uint8;
-    c.g = (v.y * 255) as uint8;
-    c.b = (v.z * 255) as uint8;
-    c.a = 255;
-    return c;
-}
 
 vec3 color_to_vec3(Color c) { return { c.r as float32 / 255, c.g as float32 / 255, c.b as float32 / 255 }; }
 vec4 color_to_vec4(Color c) { return { c.r as float32 / 255, c.g as float32 / 255, c.b as float32 / 255, c.a as float32 / 255 }; }

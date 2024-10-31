@@ -40,17 +40,21 @@ void main() {
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uniform sampler2D tex;
+
+// TODO: color_factor and color_additive could just be computed in the vertex shader and assigned to vertex color
 uniform vec4 color_factor = vec4(1.0);
+uniform vec4 color_additive = vec4(0.0);
 
 const vec3 background_color = vec3(0.1);
 
 out vec4 FragColor;
 
 void main() {
-
-
     vec4 color = texture(tex, v2f.uv) * v2f.color;
-    FragColor = vec4(mix(color.rgb, background_color, entity_pos.z), color.a) * color_factor;
+    FragColor = vec4(mix(color.rgb, background_color, entity_pos.z), color.a);
+
+    FragColor *= color_factor;
+    FragColor += color_additive;
 
     gl_FragDepth = gl_FragCoord.z;
     if (color.a < 0.01) gl_FragDepth = 1.0;
