@@ -1,0 +1,160 @@
+
+
+struct DeferredRenderer {
+    Shader shader_geometry;
+    Shader shader_hdr2ldr;
+    Shader shader_dirlight;
+    Shader shader_skybox;
+
+    Framebuffer fbo_geometry;
+    Framebuffer fbo_hdr;
+
+    uint32 w, h;
+
+    UBO* ubo_model;
+    UBO* ubo_camera;
+
+    vec3 sun_dir, sun_radiance;
+
+    DrawBuffers db_inverted_box; // for skybox for example
+}
+
+DeferredRenderer deferred_renderer_init() {
+    DeferredRenderer dr = {};
+
+    dr.shader_geometry = load_shader("../grax/shaders/gpass.glsl");
+    dr.shader_hdr2ldr  = load_shader("../grax/shaders/hdr2ldr.glsl");
+    dr.shader_dirlight = load_shader("../grax/shaders/dirlight.glsl");
+    dr.shader_skybox   = load_shader("../grax/shaders/cubemap_skybox.glsl");
+
+    //                          pos/metallic  normal/roughness  albedo
+    TextureFormat[] g_attachments   = { .rgba16f, .rgba16f, .rgb8 };
+    TextureFormat[] hdr_attachments = { .rgb16f };
+
+    uint32 w = app.window_width;
+    uint32 h = app.window_height;
+    dr.fbo_geometry = create_framebuffer(w, h, g_attachments, true);
+    dr.fbo_hdr      = create_framebuffer(w, h, hdr_attachments, true);
+
+    dr.ubo_model  = get_ubo("Instances");
+    dr.ubo_camera = get_ubo("Camera");
+
+    uint32[] inv_box_indices = {
+        0, 1, 2, 2, 1, 3,
+        1, 5, 7, 1, 7, 3,
+        0, 5, 1, 0, 4, 5,
+        0, 2, 4, 2, 6, 4,
+        2, 3, 7, 7, 6, 2,
+        6, 5, 4, 7, 5, 6 };
+
+    vec3[] inv_box_vertices = {{ -1, -1, -1 }, { 1, -1, -1 },
+                               { -1,  1, -1 }, { 1,  1, -1 },
+                               { -1, -1,  1 }, { 1, -1,  1 },
+                               { -1,  1,  1 }, { 1,  1,  1 }};
+
+    dr.db_inverted_box = create_draw_buffers(sizeof vec3, {.vec3} as VertexAttributeType[]);
+    update_indices(*dr.db_inverted_box, inv_box_indices);
+    update_vertices(*dr.db_inverted_box, inv_box_vertices.length * sizeof vec3, inv_box_vertices.data);
+
+
+    glDepthFunc(GL_LEQUAL); // required for skybox
+    return dr;
+}
+
+void draw_screen_quad() {
+    static GLuint dummy_vao = 0;
+    if dummy_vao == 0   glGenVertexArrays(1, *dummy_vao);
+
+    glBindVertexArray(dummy_vao); // I don't know dude....
+    glDrawArrays(GL_TRIANGLES, 0, 6); // this call causes GL_INVALID_OPERATION without the dummy_vao
+
+    // TODO: perhaps the GL_INVALID_OPERATION is caused by there not being any vertex attribute layout info,
+    // combined with there not being any vao, GL decides the best thing to do is throw an error.
+}
+
+void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
+    uint32 w = app.window_width;
+    uint32 h = app.window_height;
+
+    if w != dr.w or h != dr.h {
+        dr.w = w;
+        dr.h = h;
+
+        resize(*dr.fbo_geometry, w, h);
+        resize(*dr.fbo_hdr, w, h);
+
+        print("[INFO]: Deferred renderer: framebuffer resize.\n");
+    }
+
+    {
+        update_matrices(*cam);
+
+        struct UBO_Struct {
+            mat4 view;
+            mat4 projection;
+            vec4 sun_dir;
+            vec4 sun_radiance;
+        }
+
+        UBO_Struct data = {};
+        data.view         = cam.view;
+        data.projection   = cam.projection;
+        data.sun_dir      = make_vec(dr.sun_dir, 0);
+        data.sun_radiance = make_vec(dr.sun_radiance, 0);
+
+        update_buffer(dr.ubo_camera.buffer_id, sizeof UBO_Struct, *data);
+    }
+
+    enable_depth_test();
+    disable_blending();
+
+    bind(dr.fbo_geometry);
+    clear_color(Black);
+    clear_depth();
+
+    use(*dr.shader_geometry);
+}
+
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Transform tr) draw_geometry(dr, db, to_matrix(tr));
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
+    update_buffer(dr.ubo_model.buffer_id, sizeof mat4, *model);
+    bind(white_texture, 0);
+
+    set_uniform("albedo_color", 0.1, 1.0, 0.1);
+    set_uniform("metallic",  1.0);
+    set_uniform("roughness", 0.1);
+
+    draw_elements(db);
+}
+
+
+void begin_light_pass(DeferredRenderer* dr) {
+
+    blit(dr.fbo_hdr, dr.fbo_geometry, GL_DEPTH_BUFFER_BIT, TextureFilter.nearest);
+
+    bind(dr.fbo_hdr);
+    clear_color(Black);
+
+    { // SKYBOX
+        use(*dr.shader_skybox);
+        draw_elements(dr.db_inverted_box);
+    }
+
+    use(*dr.shader_dirlight);
+    disable_depth_test();
+    enable_additive_blending();
+
+    for uint32 it : 0 .. dr.fbo_geometry.attachments.length  bind_texture2D(dr.fbo_geometry.attachments[it].gl_handle, it);
+    draw_screen_quad(); // render light volumes
+
+}
+
+void end_frame(DeferredRenderer* dr) {
+    bind_default_framebuffer();
+    use(*dr.shader_hdr2ldr);
+    disable_depth_test();
+    disable_blending();
+    bind_texture2D(dr.fbo_hdr.attachments[0].gl_handle, 0);
+    draw_screen_quad();
+}
+

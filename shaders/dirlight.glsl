@@ -44,13 +44,16 @@ void main() {
     g.roughness = normal_roughness.w;
     g.metallic  = pos_metallic.w;
 
-    vec3 sky_dir = reflect(normalize(g.pos), normal);
-    vec3 sky = skybox_color(mat3(inverse(camera.view)) * sky_dir);
 
-    FragColor = calc_dir_light(sun_dir, sun_radiance, g) + max(sky, vec3(0.0));
+    FragColor = calc_dir_light(sun_dir, sun_radiance, g);
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
 
 
+    if (false) { // sky
+        vec3 sky_dir = reflect(normalize(g.pos), normal);
+        vec3 sky = skybox_color(mat3(inverse(camera.view)) * sky_dir);
+        FragColor += max(sky, vec3(0.0));
+    }
 }
 
 #endif
