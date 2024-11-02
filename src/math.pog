@@ -287,6 +287,11 @@ vec3 cross(vec3 a, vec3 b) {
              a.x * b.y - a.y * b.x };
 }
 
+
+
+
+
+
 struct mat2 {
     vec2 row1, row2;
 }
@@ -328,6 +333,10 @@ mat3 mat3_identity() {
             0,1,0,
             0,0,1};
 }
+
+mat3 make_mat3(mat4 m) return { xyz(m.row1),
+                                xyz(m.row2),
+                                xyz(m.row3)};
 
 vec3 col1(mat3 m) { return { m.row1.x, m.row2.x, m.row3.x }; }
 vec3 col2(mat3 m) { return { m.row1.y, m.row2.y, m.row3.y }; }

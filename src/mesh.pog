@@ -212,6 +212,8 @@ void flip_indices(Mesh mesh, uint32 base, uint32 len) {
         mesh.indices[base + i + 2] = t;
         i += 3;
     }
+
+    // for uint32 i = 0, i < len, i += 3 {}
 }
 
 Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0); }
