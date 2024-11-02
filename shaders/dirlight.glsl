@@ -20,6 +20,7 @@ out vec3 FragColor;
 
 uniform vec3 dirlight_direction;
 uniform vec3 dirlight_radiance;
+uniform float dirlight_ambient_factor;
 
 #include "../grax/shaders/noise.glsl"
 #include "../grax/shaders/app.glsl"
@@ -45,8 +46,9 @@ void main() {
     g.metallic  = pos_metallic.w;
 
 
-    FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g);
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
+    FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g);
+    FragColor += albedo * dirlight_radiance * dirlight_ambient_factor;
 
 
     if (false) { // sky

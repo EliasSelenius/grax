@@ -17,6 +17,7 @@ struct DeferredRenderer {
     UBO* ubo_camera;
 
     vec3 sun_dir, sun_radiance;
+    float32 sun_ambient_factor;
 
     DrawBuffers db_inverted_box; // for skybox for example
 }
@@ -103,7 +104,7 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
         data.view         = dr.camera.view;
         data.projection   = dr.camera.projection;
         data.sun_dir      = make_vec(normalize(dr.sun_dir), 0);
-        data.sun_radiance = make_vec(dr.sun_radiance, 0);
+        data.sun_radiance = make_vec(dr.sun_radiance, dr.sun_ambient_factor);
 
         update_buffer(dr.ubo_camera.buffer_id, sizeof UBO_Data, *data);
     }
@@ -124,7 +125,7 @@ void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
     bind(white_texture, 0);
 
     set_uniform("albedo_color", 0.1, 1.0, 0.1);
-    set_uniform("metallic",  1.0);
+    set_uniform("metallic",  0.1);
     set_uniform("roughness", 0.1);
 
     draw_elements(db);
@@ -192,6 +193,7 @@ void begin_light_pass(DeferredRenderer* dr) {
     use(*dr.shader_dirlight);
     set_uniform("dirlight_direction", normalize(dr.sun_dir));
     set_uniform("dirlight_radiance",  dr.sun_radiance);
+    set_uniform("dirlight_ambient_factor", dr.sun_ambient_factor);
 
     draw_screen_quad(); // render light volumes
 
