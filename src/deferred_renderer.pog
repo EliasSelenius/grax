@@ -11,6 +11,8 @@ struct DeferredRenderer {
 
     uint32 w, h;
 
+    Camera camera;
+
     UBO* ubo_model;
     UBO* ubo_camera;
 
@@ -87,22 +89,23 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
     }
 
     {
-        update_matrices(*cam);
+        dr.camera = cam;
+        update_matrices(*dr.camera);
 
-        struct UBO_Struct {
+        struct UBO_Data {
             mat4 view;
             mat4 projection;
             vec4 sun_dir;
             vec4 sun_radiance;
         }
 
-        UBO_Struct data = {};
-        data.view         = cam.view;
-        data.projection   = cam.projection;
+        UBO_Data data = {};
+        data.view         = dr.camera.view;
+        data.projection   = dr.camera.projection;
         data.sun_dir      = make_vec(normalize(dr.sun_dir), 0);
         data.sun_radiance = make_vec(dr.sun_radiance, 0);
 
-        update_buffer(dr.ubo_camera.buffer_id, sizeof UBO_Struct, *data);
+        update_buffer(dr.ubo_camera.buffer_id, sizeof UBO_Data, *data);
     }
 
     enable_depth_test();
@@ -127,8 +130,49 @@ void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
     draw_elements(db);
 }
 
+struct GBuffer_FragData {
+    vec3 pos, normal, albedo;
+    float32 metallic, roughness;
+}
+
+GBuffer_FragData read_gbuffer(DeferredRenderer* dr) {
+    int32 x = mouse_x as int32;
+    int32 y = app.window_height as int32 - mouse_y as int32;
+
+    GBuffer_FragData data = {};
+
+    let pos_met = read_pixel(x, y, 0);
+    let nor_rou = read_pixel(x, y, 1);
+    let albedo  = read_pixel(x, y, 2);
+
+    let vm = make_mat3(dr.camera.view);
+    data.pos    = mul(vm, xyz(pos_met)) + dr.camera.transform.position;
+    data.normal = mul(vm, xyz(nor_rou));
+    data.albedo = xyz(albedo);
+    data.metallic = pos_met.w;
+    data.roughness = nor_rou.w;
+
+    return data;
+}
 
 void begin_light_pass(DeferredRenderer* dr) {
+
+    if false {
+        static vec3[..] points = list_create(sizeof vec3);
+
+        let frag = read_gbuffer(dr);
+
+        gizmo_point(frag.pos, Green);
+        uint32 count = 6;
+        for 1 .. count+1 {
+            float32 s = it / count as float32;
+            gizmo_point(frag.pos + frag.normal * s, Yellow, 0.1 * s);
+        }
+
+        if mouse(Left_Mouse)  list_add(*points, *frag.pos);
+        for 0 .. list_length(points)  gizmo_point(points[it], Cyan);
+    }
+
 
     blit(dr.fbo_hdr, dr.fbo_geometry, GL_DEPTH_BUFFER_BIT, TextureFilter.nearest);
 
