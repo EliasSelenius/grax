@@ -216,8 +216,8 @@ void flip_indices(Mesh mesh, uint32 base, uint32 len) {
     // for uint32 i = 0, i < len, i += 3 {}
 }
 
-Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0); }
-Mesh gen_plane(uint32 size, float32 uv_scale) {
+Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0, 1.0); }
+Mesh gen_plane(uint32 size, float32 uv_scale, scale) {
     let vsize = size + 1;
 
     float32 half_size = size as float32 / 2;
@@ -234,7 +234,7 @@ Mesh gen_plane(uint32 size, float32 uv_scale) {
         for uint32 yi: 0 .. vsize {
             uint32 vi = xi * vsize + yi;
             mesh.vertices[vi] = {
-                pos = { xi - half_size, 0, yi - half_size },
+                pos = { (xi - half_size) * scale, 0, (yi - half_size) * scale },
                 normal = vec3_unit_y,
                 uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale }
             };

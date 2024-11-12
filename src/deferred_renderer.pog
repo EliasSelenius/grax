@@ -156,10 +156,13 @@ GBuffer_FragData read_gbuffer(DeferredRenderer* dr) {
     return data;
 }
 
+
+    struct Point { vec3 pos, normal; }
+
 void begin_light_pass(DeferredRenderer* dr) {
 
     if false {
-        static vec3[..] points = list_create(sizeof vec3);
+        static Point[..] points = list_create(sizeof Point);
 
         let frag = read_gbuffer(dr);
 
@@ -171,7 +174,14 @@ void begin_light_pass(DeferredRenderer* dr) {
         }
 
         if mouse(Left_Mouse)  list_add(*points, *frag.pos);
-        for 0 .. list_length(points)  gizmo_point(points[it], Cyan);
+        for 0 .. list_length(points) {
+            let p = points[it];
+            gizmo_point(p.pos, Cyan);
+            for 1 .. count+1 {
+                float32 s = it / count as float32;
+                gizmo_point(p.pos + p.normal * s, Yellow, 0.1 * s);
+            }
+        }
     }
 
 

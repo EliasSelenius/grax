@@ -183,13 +183,46 @@ void camera_fly_control(Camera* cam) {
         rotate(*cam.transform, vec3_unit_y, (dmouse_x / 100.0) as float32);
     }
 
-    float32 speed = 0.1;
+    float32 speed = 1;
     if key(GLFW_KEY_LEFT_SHIFT) {
-        speed = 1.0;
+        speed *= 10;
     }
 
     translate(*cam.transform, mul(forward, Input.wasd.y * speed));
     translate(*cam.transform, mul(left,   -Input.wasd.x * speed));
+}
+
+void camera_orbit_control(Camera* cam, vec3 center) {
+    float32 dt = deltatime();
+
+    // x,y,z = yaw,pitch,zoom
+    static vec3 target = {0, 0, 100};
+    static vec3 current = {};
+
+    current = exp_decay(current, target, 10, dt);
+
+    target.z -= target.z * 0.15 * Input.mouse_scroll;
+    target.z = max(target.z, 0.0001);
+
+
+    float32 range = Half_Pi - 0.1;
+    enable_cursor();
+    if mouse(Right_Mouse) {
+        // disable_cursor();
+        target.x += Input.mouse_pos_delta.x;
+        target.y -= Input.mouse_pos_delta.y;
+        range = Half_Pi - 0.001;
+    }
+
+    target.y = clamp(target.y, -range, range);
+
+    float32 yaw   = current.x;
+    float32 pitch = current.y;
+    float32 zoom  = current.z;
+
+    let c = cosf(pitch);
+    cam.transform.position = { cosf(yaw) * c, sinf(pitch), sinf(yaw) * c } * zoom + center;
+    look_at(*cam.transform, center);
 }
 
 vec2 screen2ndc(float32 x, float32 y) {
