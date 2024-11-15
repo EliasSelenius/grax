@@ -62,7 +62,7 @@ Trianglebatch create_trianglebatch() {
     Trianglebatch tb = {};
     tb.vertices = list_create(sizeof vertex2D);
     tb.indices  = list_create(sizeof uint32);
-    tb.draw_buffers = create_draw_buffers();
+    tb.draw_buffers = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
     return tb;
 }
 

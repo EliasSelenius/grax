@@ -14,7 +14,18 @@ uint32 gizmo_points_vao;
 
 Shader gizmo_points_shader;
 
+GizmoPoint* gizmo_line_segments;
+uint32* gizmo_line_segments_indices;
+DrawBuffers db_line_segments;
+
 void gizmo_setup() {
+    VertexAttributeType[] gizmo_point_attribs = { .vec3, .color, .float32 };
+
+    db_line_segments = create_draw_buffers(sizeof GizmoPoint, gizmo_point_attribs);
+
+    gizmo_line_segments = list_create(sizeof GizmoPoint);
+    gizmo_line_segments_indices = list_create(sizeof uint32);
+
     gizmo_points_list = list_create(sizeof GizmoPoint);
 
     { // vao/vbo
@@ -24,13 +35,7 @@ void gizmo_setup() {
         glGenBuffers(1, *gizmo_points_vbo);
         glBindBuffer(GL_ARRAY_BUFFER, gizmo_points_vbo);
 
-        GizmoPoint* gp = null;
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof GizmoPoint, *gp.pos);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, true, sizeof GizmoPoint, *gp.color);
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 1, GL_FLOAT, false, sizeof GizmoPoint, *gp.size);
+        init_vertex_layout(sizeof GizmoPoint, gizmo_point_attribs);
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -54,8 +59,30 @@ void gizmo_dispatch() {
     glBindVertexArray(0);
 
     list_clear(gizmo_points_list);
+
+
+    update_indices(*db_line_segments, list_length(gizmo_line_segments_indices), gizmo_line_segments_indices);
+    update_vertices(*db_line_segments, list_length(gizmo_line_segments) * sizeof GizmoPoint, gizmo_line_segments);
+
+    draw_elements_lines(db_line_segments);
+    list_clear(gizmo_line_segments);
+    list_clear(gizmo_line_segments_indices);
 }
 
+void gizmo_line(vec3 a, b, Color color) {
+    GizmoPoint gp = { pos = a, color = color };
+    list_add(*gizmo_line_segments, *gp);
+    gp.pos = b;
+    list_add(*gizmo_line_segments, *gp);
+
+    uint32 i = list_length(gizmo_line_segments);
+
+    uint32 i0 = i - 1;
+    uint32 i1 = i - 2;
+
+    list_add(*gizmo_line_segments_indices, *i0);
+    list_add(*gizmo_line_segments_indices, *i1);
+}
 
 void gizmo_point(vec3 pos) { gizmo_point(pos, gizmo_current_color); }
 void gizmo_point(vec3 pos, float32 size) { gizmo_point(pos, gizmo_current_color, size); }
@@ -99,19 +126,80 @@ void gizmo_transform(Transform2D* tr) {
 
 }
 
-void gizmo_sphere(vec3 center, float32 radius) {
+void gizmo_sphere(vec3 center, float32 radius, Color color) {
     // NOTE: we are just using gizmo_golden_sphere() for now, we might want to draw this gizmo differently
     uint32 n = (4*Pi*radius*radius) as uint32;
-    gizmo_golden_sphere(n, center, radius);
+    gizmo_golden_sphere(n, center, radius, color);
 }
 
 
-void gizmo_golden_sphere(uint32 n, vec3 center, float32 radius) {
+void gizmo_golden_sphere(uint32 n, vec3 center, float32 radius, Color color) {
     float32 golden_ratio = (1.0 + sqrtf(5)) / 2.0;
     for 0 .. n {
         float32 phi = acosf(1 - 2 * (it + 0.5) / (n as float32));
         float32 angle = Tau * it / golden_ratio;
         vec3 pos = { cosf(angle) * sinf(phi), sinf(angle) * sinf(phi), cosf(phi) };
-        gizmo_point(add(mul(pos, radius), center));
+        gizmo_point(add(mul(pos, radius), center), color);
+    }
+}
+
+void gizmo_capsule(vec3 a, b, up, float32 r, Color color) {
+    gizmo_point(a, color);
+    gizmo_point(b, color);
+
+    vec3 ab = normalize(b - a);
+    vec3 side = normalize(cross(ab, up));
+         up   = normalize(cross(side, ab));
+
+    mat3 m = { side, up, ab };
+
+    {
+        vec3 p1 = mul(make_vec(1, 0, 0), m) * r;
+        vec3 p2 = mul(make_vec(-1, 0, 0), m) * r;
+        vec3 p3 = mul(make_vec(0, 1, 0), m) * r;
+        vec3 p4 = mul(make_vec(0, -1, 0), m) * r;
+
+        gizmo_line(p1+a, p1+b, color);
+        gizmo_line(p2+a, p2+b, color);
+        gizmo_line(p3+a, p3+b, color);
+        gizmo_line(p4+a, p4+b, color);
+    }
+
+
+    for 0 .. 16 {
+        float32 angle1 = (it   as float32 / 16) * Tau;
+        float32 angle2 = ((it+1) as float32 / 16) * Tau;
+
+        float32 c1 = cosf(angle1/2);
+        float32 s1 = sinf(angle1/2);
+        float32 c2 = cosf(angle2/2);
+        float32 s2 = sinf(angle2/2);
+
+        vec3 p1 = mul(make_vec(cosf(angle1), sinf(angle1), 0), m) * r + a;
+        vec3 p2 = mul(make_vec(cosf(angle2), sinf(angle2), 0), m) * r + a;
+        gizmo_line(p1, p2, color);
+
+        p1 = mul(make_vec(c1, 0, -s1), m) * r + a;
+        p2 = mul(make_vec(c2, 0, -s2), m) * r + a;
+        gizmo_line(p1, p2, color);
+
+        p1 = mul(make_vec(0, c1, -s1), m) * r + a;
+        p2 = mul(make_vec(0, c2, -s2), m) * r + a;
+        gizmo_line(p1, p2, color);
+
+
+
+
+        p1 = mul(make_vec(cosf(angle1), sinf(angle1), 0), m) * r + b;
+        p2 = mul(make_vec(cosf(angle2), sinf(angle2), 0), m) * r + b;
+        gizmo_line(p1, p2, color);
+
+        p1 = mul(make_vec(c1, 0, s1), m) * r + b;
+        p2 = mul(make_vec(c2, 0, s2), m) * r + b;
+        gizmo_line(p1, p2, color);
+
+        p1 = mul(make_vec(0, c1, s1), m) * r + b;
+        p2 = mul(make_vec(0, c2, s2), m) * r + b;
+        gizmo_line(p1, p2, color);
     }
 }
