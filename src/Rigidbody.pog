@@ -39,3 +39,62 @@ void update_rigidbody_transform(with Transform* tr, with Rigidbody* rb, float32 
         rotate(tr, axis, angle * dt);
     }
 }
+
+vec3 closest_point_on_linesegment(vec3 a, b, p) {
+    let ab = b - a;
+    let t = clamp(dot(ab, p - a) / dot(ab, ab), 0, 1);
+    return lerp(t, a, b);
+}
+
+
+struct Intersection {
+    vec3 contact_point;
+    vec3 normal;
+    float32 depth;
+}
+
+/*
+    capsules defined as:
+        first: line segment ab with radius ab_r
+        second: line segment cd with radius cd_r
+*/
+bool capsule_intersects(vec3 a, b, c, d, float32 ab_r, cd_r, Intersection* inr) {
+    float32 ac = sqdist(a, c);
+    float32 ad = sqdist(a, d);
+    float32 bc = sqdist(b, c);
+    float32 bd = sqdist(b, d);
+
+    Intersection circle_depth(vec3 a, b, c, d, end_point, float32 ab_r, cd_r) {
+        vec3 B = closest_point_on_linesegment(c, d, end_point);
+        vec3 A = closest_point_on_linesegment(a, b, B);
+
+        gizmo_sphere(A, ab_r, Red);
+        gizmo_sphere(B, cd_r, Red);
+        gizmo_line(A, B, Yellow);
+
+        Intersection inr = {};
+        inr.normal = normalize(A - B);
+        inr.depth = ab_r + cd_r - dist(A, B);
+
+        return inr;
+    }
+
+    let inr_a = circle_depth(a, b, c, d, a, ab_r, cd_r);
+    let inr_b = circle_depth(a, b, c, d, b, ab_r, cd_r);
+
+    @inr = inr_a.depth < inr_b.depth ? inr_b : inr_a;
+
+    return inr.depth > 0;
+
+    // vec3 E = bc<ac  or  bc<ad  or  bd<ac  or  bd<ad  ?  b : a;
+    // vec3 B = closest_point_on_linesegment(c, d, E);
+    // vec3 A = closest_point_on_linesegment(a, b, B);
+
+    // gizmo_sphere(E, ab_r - 0.1, Yellow);
+    // gizmo_sphere(A, ab_r, Red);
+    // gizmo_sphere(B, cd_r, Red);
+    // gizmo_line(A, B, Yellow);
+
+    // float32 depth = ab_r + cd_r - dist(A, B);
+    // return depth > 0;
+}
