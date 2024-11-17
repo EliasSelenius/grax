@@ -73,6 +73,7 @@ bool capsule_intersects(vec3 a, b, c, d, float32 ab_r, cd_r, Intersection* inr) 
         gizmo_line(A, B, Yellow);
 
         Intersection inr = {};
+        inr.contact_point = B + (A - B)*0.5;
         inr.normal = normalize(A - B);
         inr.depth = ab_r + cd_r - dist(A, B);
 
