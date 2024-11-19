@@ -21,6 +21,24 @@ mat4 to_matrix(with Transform t) {
     return res;
 }
 
+mat4 to_inverse_matrix(with Transform t) {
+    mat4 m = to_matrix(t);
+
+    vec3 xaxis = xyz(m.row1) * t.scale.x;
+    vec3 yaxis = xyz(m.row2) * t.scale.y;
+    vec3 zaxis = xyz(m.row3) * t.scale.z;
+
+    return {
+        // the axises here are on the columns (insted of rows) because the transpose of an orthonormalized matrix is the same as its inverse
+        xaxis.x, yaxis.x, zaxis.x, 0,
+        xaxis.y, yaxis.y, zaxis.y, 0,
+        xaxis.z, yaxis.z, zaxis.z, 0,
+        -dot(xaxis, t.position),
+        -dot(yaxis, t.position),
+        -dot(zaxis, t.position), 1
+    };
+}
+
 Transform transform_default() {
     return {
         position = {0,0,0},
@@ -232,14 +250,14 @@ vec2 screen2ndc(float32 x, float32 y) {
     };
 }
 
-vec3 camera_ray(Camera cam, vec2 ndc) {
+vec3 camera_ray(Camera cam, vec2 arcndc) {
     // NOTE: the first, second and third columns of the cameras view matrix is the side, up and forward vectors respectively. because the view matrix is the transpose of the cam model matrix
-    float32 h = cam.near_plane / tanf((Pi - cam.fov) / 2.0);
-    float32 w = h * app.width_over_height;
+    float32 half_near_plane_height = cam.near_plane / tanf(Half_Pi - cam.fov / 2.0);
+    float32 half_near_plane_width = half_near_plane_height;// * app.width_over_height;
 
     vec3 ray = {};
-    ray = add(ray, mul(xyz(col1(cam.view)), ndc.x * w));
-    ray = add(ray, mul(xyz(col2(cam.view)), ndc.y * h));
+    ray = add(ray, mul(xyz(col1(cam.view)), arcndc.x * half_near_plane_width));
+    ray = add(ray, mul(xyz(col2(cam.view)), arcndc.y * half_near_plane_height));
     ray = add(ray, mul(xyz(col3(cam.view)), -cam.near_plane));
     return normalize(ray);
 }

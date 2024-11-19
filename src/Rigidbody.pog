@@ -14,6 +14,14 @@ struct Rigidbody {
     vec3 angular_velocity;
 }
 
+vec3 get_tangential_velocity(vec3 ang_vel, p) {
+    return cross(p, ang_vel);
+}
+
+void add_velocity(with Rigidbody* rb, vec3 vel, offset) {
+
+}
+
 void add_force(with Rigidbody* rb, vec3 force) {
     rb.velocity = rb.velocity + force * (1.0 / rb.mass);
 }
@@ -40,11 +48,55 @@ void update_rigidbody_transform(with Transform* tr, with Rigidbody* rb, float32 
     }
 }
 
-vec3 closest_point_on_linesegment(vec3 a, b, p) {
-    let ab = b - a;
-    let t = clamp(dot(ab, p - a) / dot(ab, ab), 0, 1);
-    return lerp(t, a, b);
-}
+// enum CollisonShape {
+//     Sphere; Point; Capsule; Cube; Triangle;
+// }
+
+// struct Collider {
+//     CollisonShape shape;
+//     vec3 A, B, C;
+//     float32 r1, r2;
+// }
+
+// Intersection collider_intersection(Collider c1, c2) {
+//     switch c1.shape {
+//         case Sphere: switch c2.shape {
+//             case Sphere: break;
+//             case Point: break;
+//             case Capsule: break;
+//             case Cube: break;
+//             case Triangle: break;
+//         } break;
+//         case Point: switch c2.shape {
+//             case Point: break;
+//             case Capsule: break;
+//             case Cube: break;
+//             case Triangle: break;
+//             default: goto swap;
+//         } break;
+//         case Capsule: switch c2.shape {
+//             case Capsule: break;
+//             case Cube: break;
+//             case Triangle: break;
+//             default: goto swap;
+//         } break;
+//         case Cube: switch c2.shape {
+//             case Cube: break;
+//             case Triangle: break;
+//             default: goto swap;
+//         } break;
+//         case Triangle: switch c2.shape {
+//             case Triangle: break;
+//             default: goto swap;
+//         } break;
+//     }
+
+//     swap:
+//     let inr = collider_intersection(c2, c1);
+//     inr.normal = neg(inr.normal);
+//     return inr;
+// }
+
 
 
 struct Intersection {
@@ -53,27 +105,30 @@ struct Intersection {
     float32 depth;
 }
 
+vec3 closest_point_on_linesegment(vec3 a, b, p) {
+    let ab = b - a;
+    let t = clamp(dot(ab, p - a) / dot(ab, ab), 0, 1);
+    return lerp(t, a, b);
+}
+
 /*
     capsules defined as:
         first: line segment ab with radius ab_r
         second: line segment cd with radius cd_r
 */
-bool capsule_intersects(vec3 a, b, c, d, float32 ab_r, cd_r, Intersection* inr) {
-    float32 ac = sqdist(a, c);
-    float32 ad = sqdist(a, d);
-    float32 bc = sqdist(b, c);
-    float32 bd = sqdist(b, d);
-
+Intersection capsule_intersects(vec3 a, b, c, d, float32 ab_r, cd_r) {
     Intersection circle_depth(vec3 a, b, c, d, end_point, float32 ab_r, cd_r) {
         vec3 B = closest_point_on_linesegment(c, d, end_point);
         vec3 A = closest_point_on_linesegment(a, b, B);
 
-        gizmo_sphere(A, ab_r, Red);
-        gizmo_sphere(B, cd_r, Red);
-        gizmo_line(A, B, Yellow);
+        if false {
+            gizmo_sphere(A, ab_r, Red);
+            gizmo_sphere(B, cd_r, Red);
+            gizmo_line(A, B, Yellow);
+        }
 
         Intersection inr = {};
-        inr.contact_point = B + (A - B)*0.5;
+        inr.contact_point = B + (A - B)*0.5; // TODO: this is wrong for different radiuses
         inr.normal = normalize(A - B);
         inr.depth = ab_r + cd_r - dist(A, B);
 
@@ -83,19 +138,20 @@ bool capsule_intersects(vec3 a, b, c, d, float32 ab_r, cd_r, Intersection* inr) 
     let inr_a = circle_depth(a, b, c, d, a, ab_r, cd_r);
     let inr_b = circle_depth(a, b, c, d, b, ab_r, cd_r);
 
-    @inr = inr_a.depth < inr_b.depth ? inr_b : inr_a;
-
-    return inr.depth > 0;
-
-    // vec3 E = bc<ac  or  bc<ad  or  bd<ac  or  bd<ad  ?  b : a;
-    // vec3 B = closest_point_on_linesegment(c, d, E);
-    // vec3 A = closest_point_on_linesegment(a, b, B);
-
-    // gizmo_sphere(E, ab_r - 0.1, Yellow);
-    // gizmo_sphere(A, ab_r, Red);
-    // gizmo_sphere(B, cd_r, Red);
-    // gizmo_line(A, B, Yellow);
-
-    // float32 depth = ab_r + cd_r - dist(A, B);
-    // return depth > 0;
+    return inr_a.depth < inr_b.depth ? inr_b : inr_a;
 }
+
+// Intersection capsule_point_intersects(vec3 a, b, p, float32 radius) {
+//     vec3 A = closest_point_on_linesegment(a, b, p);
+
+//     Intersection inr = {};
+//     inr.contact_point =  B + (A - B)*0.5;
+//     inr.normal = normalize(p - A);
+//     inr.depth = radius - dist(A, p);
+
+//     return inr;
+// }
+
+// Intersection capsule_sphere_intersects(vec3 a, b, p, float32 ab_r, p_r) {
+
+// }
