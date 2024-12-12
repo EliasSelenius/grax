@@ -51,6 +51,8 @@ out vec4 FragColor;
 
 void main() {
     vec4 color = texture(tex, v2f.uv) * v2f.color;
+    color.rgb *= color.a; // for additve blending
+
     FragColor = vec4(mix(color.rgb, background_color, entity_pos.z), color.a);
 
     FragColor *= color_factor;

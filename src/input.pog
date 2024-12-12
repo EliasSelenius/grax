@@ -10,6 +10,8 @@ struct InputState {
 
     // supposed to be Key.Count
     bool[350] keyboard_changed;
+
+    // bool[MouseButton.Count] mouse_button_changed;
 }
 
 InputState Input = {};
@@ -46,7 +48,7 @@ bool mouse_pressed(MouseButton btn)  return mouse_down(btn) and !mouse_down_prev
 bool mouse_released(MouseButton btn) return !mouse_down(btn) and mouse_down_prev(btn);
 
 enum MouseButton {
-    Left = 0; Right = 1;
+    Left = 0; Right = 1; Count;
 }
 
 const Left_Mouse = 0;
@@ -80,7 +82,7 @@ void input_update() {
     if key('S') Input.wasd.y -= 1;
     if key('A') Input.wasd.x -= 1;
     if key('D') Input.wasd.x += 1;
-    Input.unit_wasd = normalize(Input.wasd);
+    Input.unit_wasd = normalize_or(Input.wasd, vec2_zero);
 }
 
 void input_state_reset() {
@@ -91,6 +93,8 @@ void input_state_reset() {
     for 0 .. 350 {
         Input.keyboard_changed[it] = false;
     }
+
+    // Input.mouse_button_changed = {};
 }
 
 void enable_cursor()  { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
