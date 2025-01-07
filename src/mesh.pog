@@ -1,18 +1,20 @@
 
 
-VertexAttributeType[] vertex3D_attribs = { .vec3, .vec3, .vec2 };
+Vertex_Attrib_Type[] vertex3D_attribs = { .vec3, .vec3, .vec2 };
 struct vertex3D {
     vec3 pos;
     vec3 normal;
     vec2 uv;
 }
 
-VertexAttributeType[] vertex2D_attribs = { .vec2, .vec2, .color };
+Vertex_Attrib_Type[] vertex2D_attribs = { .vec2, .vec2, .color };
 struct vertex2D {
     vec2 pos;
     vec2 uv;
     Color color;
 }
+
+
 
 struct Mesh {
     vertex3D* vertices;
@@ -28,19 +30,21 @@ struct DrawBuffers {
     int32 elements_count;
 }
 
-enum VertexAttributeType {
+
+
+enum Vertex_Attrib_Type {
     vec2; vec3; vec4;
     color; float32;
 }
 
-struct VertexAttributeInfo {
+struct Vertex_Attribute_Info {
     GLenum _type;
     int32 count;
     uint32 bytesize;
     bool normalized;
 }
 
-VertexAttributeInfo get_vertex_attribute_info(VertexAttributeType datatype) {
+Vertex_Attribute_Info get_vertex_attribute_info(Vertex_Attrib_Type datatype) {
     switch datatype {
         case .float32: return { _type = GL_FLOAT,         count = 1, bytesize = 4,  normalized = false };
         case .vec2:    return { _type = GL_FLOAT,         count = 2, bytesize = 8,  normalized = false };
@@ -52,19 +56,22 @@ VertexAttributeInfo get_vertex_attribute_info(VertexAttributeType datatype) {
     return {};
 }
 
-uint32 set_vertex_attribute_pointer(uint32 index, VertexAttributeType datatype, int32 stride, uint32 offset) {
+uint32 set_vertex_attribute_pointer(uint32 index, Vertex_Attrib_Type datatype, int32 stride, uint32 offset, divisor) {
     let info = get_vertex_attribute_info(datatype);
 
     glEnableVertexAttribArray(index);
     glVertexAttribPointer(index, info.count, info._type, info.normalized, stride, offset);
+    glVertexAttribDivisor(index, divisor);
 
     return info.bytesize;
 }
 
-void init_vertex_layout(int32 stride, VertexAttributeType[] attribs) {
+void init_vertex_layout(int32 stride, Vertex_Attrib_Type[] attribs)
+    return init_vertex_layout(0, 0, stride, attribs);
+void init_vertex_layout(uint32 base_index, divisor, int32 stride, Vertex_Attrib_Type[] attribs) {
     uint32 offset = 0;
     for uint32 index : 0 .. attribs.length {
-        offset += set_vertex_attribute_pointer(index, attribs[index], stride, offset);
+        offset += set_vertex_attribute_pointer(base_index + index, attribs[index], stride, offset, divisor);
     }
 }
 
@@ -75,9 +82,9 @@ DrawBuffers create_draw_buffers(Mesh mesh) {
                                 mesh.indices_count, mesh.indices);
 }
 
-DrawBuffers create_draw_buffers(int32 vertex_size, VertexAttributeType[] attribs) return create_draw_buffers(vertex_size, attribs, 0, null, 0, null);
+DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs) return create_draw_buffers(vertex_size, attribs, 0, null, 0, null);
 
-DrawBuffers create_draw_buffers(int32 vertex_size, VertexAttributeType[] attribs,
+DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs,
                                 uint32 vbo_bytes, void* vbo_data,
                                 uint32 elements_count, uint32* ebo_data) // TODO: glBufferData hint should be an argument here
 {

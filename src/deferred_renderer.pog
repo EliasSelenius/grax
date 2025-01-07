@@ -55,7 +55,7 @@ DeferredRenderer deferred_renderer_init() {
                                { -1, -1,  1 }, { 1, -1,  1 },
                                { -1,  1,  1 }, { 1,  1,  1 }};
 
-    dr.db_inverted_box = create_draw_buffers(sizeof vec3, {.vec3} as VertexAttributeType[]);
+    dr.db_inverted_box = create_draw_buffers(sizeof vec3, {.vec3} as Vertex_Attrib_Type[]);
     update_indices(*dr.db_inverted_box, inv_box_indices);
     update_vertices(*dr.db_inverted_box, inv_box_vertices.length * sizeof vec3, inv_box_vertices.data);
 

@@ -19,7 +19,7 @@ uint32* gizmo_line_segments_indices;
 DrawBuffers db_line_segments;
 
 void gizmo_setup() {
-    VertexAttributeType[] gizmo_point_attribs = { .vec3, .color, .float32 };
+    Vertex_Attrib_Type[] gizmo_point_attribs = { .vec3, .color, .float32 };
 
     db_line_segments = create_draw_buffers(sizeof GizmoPoint, gizmo_point_attribs);
 
