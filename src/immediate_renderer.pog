@@ -15,6 +15,7 @@ enum AnchorPoint { center; top_left; top_right; bottom_left; bottom_right; }
 
 RenderLayer immediate_layer;
 AnchorPoint anchor = .center;
+Transform2D ui_camera = {scale = 1};
 
 // struct ImmediateRendererContex {
 //     AnchorPoint anchor;
@@ -75,6 +76,7 @@ void dispatch_trianglebatch(Trianglebatch* tb) {
 
         use(*tb.shader);
         bind(tb.texture);
+        apply_camera(ui_camera);
 
         draw_elements(tb.draw_buffers);
     }
@@ -100,6 +102,7 @@ void init_immediate_renderer() {
 
 void dispatch_immediate() {
     dispatch_layer(*immediate_layer);
+    ui_camera = {scale = 1};
 }
 
 void add_vertex(with Trianglebatch* tb, float32 x, y, u, v, Color color) {
@@ -241,6 +244,7 @@ vec2 text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Color col
     return pos;
 }
 
+// TODO: this is named oddly, its just right justifying it.
 vec2 text_backwards(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
     int32 i = text.length as int32 - 1;
     while i >= 0 {

@@ -2,7 +2,7 @@
 struct InputState {
     vec2 mouse_pos;
     vec2 mouse_pos_prev;
-    vec2 mouse_pos_delta;
+    vec2 mouse_delta;
     float32 mouse_scroll;
 
     vec2 wasd;
@@ -75,7 +75,7 @@ void input_update() {
     Input.mouse_pos_prev = Input.mouse_pos;
     Input.mouse_pos = screen2ndc(mouse_x as float32, mouse_y as float32);
     Input.mouse_pos.x *= app.width_over_height;
-    Input.mouse_pos_delta = Input.mouse_pos - Input.mouse_pos_prev;
+    Input.mouse_delta = Input.mouse_pos - Input.mouse_pos_prev;
 
     Input.wasd = {};
     if key('W') Input.wasd.y += 1;

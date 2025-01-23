@@ -13,6 +13,8 @@ ivec2 get_boundingbox_size(Image_Boundingbox bb) return add(sub(bb.max, bb.min),
 
 
 Color get_pixel(with Image image, uint32 x, y) { return image.pixels[y * image.width + x]; }
+Color get_pixel(with Image image, int32 x, y)  { return image.pixels[y * image.width + x]; }
+
 
 Image load_bitmap(char* filename) {
 

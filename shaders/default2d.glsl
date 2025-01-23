@@ -65,9 +65,9 @@ out vec4 FragColor;
 void main() {
     vec4 tex_color = texture(tex, v2f.uv) * v2f.color;
     if (tex_color.a == 0.0) discard;
-    // tex_color.rgb *= tex_color.a; // for additve blending
 
     FragColor = vec4(mix(tex_color.rgb, background_color, v2f.pos.z), tex_color.a);
+    // FragColor = tex_color;
 
     FragColor *= v2f.color_factor;
     FragColor += v2f.color_additive;

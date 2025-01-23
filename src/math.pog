@@ -262,6 +262,10 @@ vec2 normalize_or(vec2 a, b) return equals(a, vec2_zero) ? b : a / length(a);
 vec3 normalize_or(vec3 a, b) return equals(a, vec3_zero) ? b : a / length(a);
 vec4 normalize_or(vec4 a, b) return equals(a, vec4_zero) ? b : a / length(a);
 
+vec2 noz(vec2 a) return normalize_or(a, vec2_zero);
+vec3 noz(vec3 a) return normalize_or(a, vec3_zero);
+vec4 noz(vec4 a) return normalize_or(a, vec4_zero);
+
 vec2 lerp(float32 t, vec2 a, b) { return add(a, mul(sub(b, a), t)); }
 vec3 lerp(float32 t, vec3 a, b) { return add(a, mul(sub(b, a), t)); }
 vec4 lerp(float32 t, vec4 a, b) { return add(a, mul(sub(b, a), t)); }

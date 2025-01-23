@@ -5,9 +5,14 @@ IO FragData {
     vec4 tint;
 } v2f;
 
+uniform vec2 cam_pos = vec2(0.0);
+uniform float cam_rot = 0;
+uniform float zoom = 1.0;
+
 #ifdef VertexShader /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "../grax/shaders/app.glsl"
+#include "../grax/shaders/common.glsl"
 
 layout (location = 0) in vec2 a_Pos;
 layout (location = 1) in vec2 a_Uv;
@@ -17,10 +22,11 @@ void main() {
     v2f.uv = a_Uv;
     v2f.tint = a_Tint;
 
-    vec2 pos = a_Pos;
-    pos.x *= Aspect;
+    vec3 v = vec3(a_Pos, 1);
+    v *= create_mat3_inv(cam_pos, cam_rot, vec2(zoom));
+    v.x *= Aspect;
 
-    gl_Position = vec4(pos, 0.0, 1.0);
+    gl_Position = vec4(v.xy, 0.0, 1.0);
 }
 
 #endif

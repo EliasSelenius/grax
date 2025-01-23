@@ -227,8 +227,8 @@ void camera_orbit_control(Camera* cam, vec3 center) {
     enable_cursor();
     if mouse(Right_Mouse) {
         // disable_cursor();
-        target.x += Input.mouse_pos_delta.x;
-        target.y -= Input.mouse_pos_delta.y;
+        target.x += Input.mouse_delta.x;
+        target.y -= Input.mouse_delta.y;
         range = Half_Pi - 0.001;
     }
 

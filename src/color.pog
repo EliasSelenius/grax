@@ -8,6 +8,8 @@ struct ColorRgb {
     uint8 r, g, b;
 }
 
+bool equals(Color a, b) as ==  return @(*a as uint32*) == @(*b as uint32*);
+
 Color rgba(uint32 i) {
     Color c;
     // c.r = (i >> 24) & 0xFF;
