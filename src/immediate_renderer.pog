@@ -67,6 +67,12 @@ Trianglebatch create_trianglebatch() {
     return tb;
 }
 
+void apply_camera(Transform2D t) {
+    set_uniform("zoom", t.scale);
+    set_uniform("cam_pos", t.pos.x, t.pos.y);
+    set_uniform("cam_rot", t.rot);
+}
+
 void dispatch_trianglebatch(Trianglebatch* tb) {
     let vert_count = list_length(tb.vertices);
     let ind_count = list_length(tb.indices);

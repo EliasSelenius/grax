@@ -98,6 +98,9 @@ void update_rigidbody_transform(with Transform* tr, with Rigidbody* rb, float32 
 // }
 
 
+bool point_inside_bb(vec2 p, bb_min, bb_max) {
+    return p.x < bb_max.x and p.y < bb_max.y and p.x > bb_min.x and p.y > bb_min.y;
+}
 
 struct Intersection {
     vec3 contact_point;

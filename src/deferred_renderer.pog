@@ -119,14 +119,31 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
     use(*dr.shader_geometry);
 }
 
-void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Transform tr) draw_geometry(dr, db, to_matrix(tr));
-void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
-    update_buffer(dr.ubo_model.buffer_id, sizeof mat4, *model);
-    bind(white_texture, 0);
+struct Material_PBR {
+    vec3    albedo;
+    float32 metallic;
+    float32 roughness;
+}
 
-    set_uniform("albedo_color", 0.1, 1.0, 0.1);
-    set_uniform("metallic",  0.1);
-    set_uniform("roughness", 0.1);
+// void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Transform tr) draw_geometry(dr, db, to_matrix(tr));
+// void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, Transform tr) draw_geometry(dr, db, mat, white_texture.gl_handle, to_matrix(tr));
+
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
+    Material_PBR mat = {
+        albedo = {1, 1, 1},
+        metallic = 0.1,
+        roughness = 0.1
+    };
+    draw_geometry(dr, db, mat, white_texture.gl_handle, model);
+}
+
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, uint32 tex, mat4 model) {
+    update_buffer(dr.ubo_model.buffer_id, sizeof mat4, *model);
+    bind_texture2D(tex, 0);
+
+    set_uniform("albedo_color", mat.albedo);
+    set_uniform("metallic",     mat.metallic);
+    set_uniform("roughness",    mat.roughness);
 
     draw_elements(db);
 }
