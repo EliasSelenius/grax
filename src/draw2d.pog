@@ -149,6 +149,8 @@ void draw_texture(
         let dc = *(@draw_calls_list)[it];
         if dc.tex == tex.gl_handle
         and dc.db.vao == db.vao {
+            // TODO: we might want to do something more elegant here
+            dc.db.elements_count = db.elements_count;
             draw_call = dc;
             goto append_instance;
         }
