@@ -1,0 +1,228 @@
+
+
+Vertex_Attrib_Type[] instance_attribs = { .vec3, .float32, .vec2, .vec2, .vec2, .vec4, .vec4 };
+struct InstanceData {
+    vec3 pos;
+    float32 rot;
+    vec2 scale;
+    vec2 uv_offset, uv_scale;
+    vec4 color_factor, color_additive;
+}
+
+struct Instanced_Draw_Call {
+    InstanceData[..] instances;
+    uint32 tex;
+    DrawBuffers db;
+}
+
+RendererData draw2d_renderer;
+struct RendererData {
+    Instanced_Draw_Call[..] draw_calls;
+    Instanced_Draw_Call[..] draw_calls_semi_transparent;
+    uint32 vbo_instances;
+
+    DrawBuffers quad_db;
+}
+
+void init_draw2d() {
+
+    draw2d_renderer.quad_db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+    {
+        float32 p = 0.5;
+        vertex2D[] verts = { {-p, -p, 0, 0, White},
+                             { p, -p, 1, 0, White},
+                             { p,  p, 1, 1, White},
+                             {-p,  p, 0, 1, White} };
+
+        uint32[] inds = { 0, 1, 2,
+                          0, 2, 3 };
+
+        update_buffers(*draw2d_renderer.quad_db, verts, inds);
+    }
+
+    { // init renderer
+        draw2d_renderer.draw_calls = list_create(sizeof Instanced_Draw_Call);
+        draw2d_renderer.draw_calls_semi_transparent = list_create(sizeof Instanced_Draw_Call);
+
+        glGenBuffers(1, *draw2d_renderer.vbo_instances);
+        bind_instance_buffer_to_vao(draw2d_renderer.quad_db.vao, draw2d_renderer.vbo_instances);
+    }
+}
+
+void bind_instance_buffer_to_vao(uint32 vao, vbo) {
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    init_vertex_layout(3, 1, sizeof InstanceData, instance_attribs);
+    glBindVertexArray(0);
+}
+
+
+
+struct Spritesheet {
+    Image_Boundingbox* regions; // list
+    Texture2D texture;
+}
+
+struct Sprite {
+    vec2 uv_offset;
+    vec2 uv_scale;
+    Texture2D tex;
+    bool is_semi_transparent;
+}
+
+Sprite get_sprite(with Spritesheet* sheet, uint32 index) {
+    Sprite s = {};
+    s.tex = sheet.texture;
+
+    let bb = sheet.regions[index];
+    ivec2 size = get_boundingbox_size(bb);
+    s.uv_scale.x = size.x / s.tex.width as float32;
+    s.uv_scale.y = size.y / s.tex.height as float32;
+    s.uv_offset.x = bb.min.x / s.tex.width as float32;
+    s.uv_offset.y = bb.min.y / s.tex.height as float32;
+
+    return s;
+}
+
+Sprite make_sprite(Texture2D tex) {
+    return { uv_offset = vec2_zero, uv_scale = vec2_one, tex = tex };
+}
+
+ivec2 get_sprite_pixel_size(Sprite s) {
+    return make_ivec(s.uv_scale * make_vec(s.tex.width, s.tex.height));
+}
+
+
+
+void draw_sprite(Transform2D tr, float32 depth, Sprite sprite) {
+    draw_sprite(tr, depth, sprite, vec4_one, vec4_zero);
+}
+
+void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive) {
+    draw_texture(db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive);
+}
+
+void draw_sprite(Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive) {
+    draw_texture(draw2d_renderer.quad_db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive);
+}
+
+void draw_texture(Transform2D tr, float32 depth, Texture2D tex, bool tex_is_semi_transparent, vec4 color_factor, color_additive) {
+    draw_texture(draw2d_renderer.quad_db, tr, depth, tex, tex_is_semi_transparent, vec2_zero, vec2_one, color_factor, color_additive);
+}
+
+// void draw_texture(Transform2D tr, float32 depth, Texture2D tex, Image_Boundingbox bb, vec4 color_factor, color_additive) {
+//     draw_texture(draw2d_renderer.quad_db, tr, depth, tex, bb, color_factor, color_additive);
+// }
+
+// void draw_texture(DrawBuffers db, Transform2D tr, float32 depth, Texture2D tex, Image_Boundingbox bb, vec4 color_factor, color_additive) {
+//     vec2 uv_offset = {};
+//     vec2 uv_scale = {};
+//     ivec2 size = get_boundingbox_size(bb);
+//     uv_scale.x = size.x / tex.width as float32;
+//     uv_scale.y = size.y / tex.height as float32;
+//     uv_offset.x = bb.min.x / tex.width as float32;
+//     uv_offset.y = bb.min.y / tex.height as float32;
+
+//     draw_texture(db, tr, depth, tex, uv_offset, uv_scale, color_factor, color_additive);
+// }
+
+void draw_texture(
+    DrawBuffers db,
+    Transform2D tr,
+    float32 depth,
+    Texture2D tex,
+    bool tex_is_semi_transparent,
+    vec2 uv_offset, uv_scale,
+    vec4 color_factor, color_additive)
+{
+    Instanced_Draw_Call* draw_call = null;
+    Instanced_Draw_Call[..]* draw_calls_list;
+    if tex_is_semi_transparent
+    or color_factor.w + color_additive.w < 1.0
+    {
+        draw_calls_list = *draw2d_renderer.draw_calls_semi_transparent;
+    } else {
+        draw_calls_list = *draw2d_renderer.draw_calls;
+    }
+
+    for 0 .. list_length(@draw_calls_list) {
+        let dc = *(@draw_calls_list)[it];
+        if dc.tex == tex.gl_handle
+        and dc.db.vao == db.vao {
+            draw_call = dc;
+            goto append_instance;
+        }
+    }
+
+    if draw_call == null {
+        Instanced_Draw_Call dc = {};
+        dc.instances = list_create(sizeof InstanceData);
+        dc.tex = tex.gl_handle;
+        dc.db = db;
+        draw_call = list_add(draw_calls_list, *dc);
+    }
+
+    append_instance: {
+        InstanceData ins = {};
+        ins.pos = make_vec(tr.pos, depth);
+        ins.rot = tr.rot;
+        ins.scale = uv_scale * make_vec(tex.width, tex.height) * tr.scale;
+
+        ins.uv_offset = uv_offset;
+        ins.uv_scale = uv_scale;
+
+        ins.color_factor = color_factor;
+        ins.color_additive = color_additive;
+
+
+        list_add(*draw_call.instances, *ins);
+    }
+}
+
+void set_instance_data(InstanceData data) {
+    update_buffer(draw2d_renderer.vbo_instances, sizeof InstanceData, *data);
+}
+
+void dispatch_sprites(Transform2D cam) {
+
+
+    use(*default2d_shader);
+    enable_depth_test();
+
+    glDepthMask(true);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    disable_blending();
+    // enable_alpha_blending();
+
+    apply_camera(cam);
+
+    void issue_draw_command(Instanced_Draw_Call* dc) {
+        uint32 instance_count = list_length(dc.instances);
+        update_buffer(draw2d_renderer.vbo_instances, instance_count * sizeof InstanceData, dc.instances);
+
+        bind_texture2D(dc.tex, 0);
+        draw_elements(dc.db, instance_count);
+        list_clear(dc.instances);
+    }
+
+    for 0 .. list_length(draw2d_renderer.draw_calls) {
+        let dc = *draw2d_renderer.draw_calls[it];
+        issue_draw_command(dc);
+    }
+
+
+    glDepthMask(false);
+    // enable_alpha_blending();
+    // enable_additive_blending();
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+
+    for 0 .. list_length(draw2d_renderer.draw_calls_semi_transparent) {
+        let dc = *draw2d_renderer.draw_calls_semi_transparent[it];
+        issue_draw_command(dc);
+    }
+
+}
+

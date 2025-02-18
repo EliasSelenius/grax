@@ -54,9 +54,9 @@ void main() {
 
 uniform sampler2D tex;
 
-// TODO: color_factor and color_additive could just be computed in the vertex shader and assigned to vertex color
-uniform vec4 color_factor = vec4(1.0);
-uniform vec4 color_additive = vec4(0.0);
+// // TODO: color_factor and color_additive could just be computed in the vertex shader and assigned to vertex color
+// uniform vec4 color_factor = vec4(1.0);
+// uniform vec4 color_additive = vec4(0.0);
 
 const vec3 background_color = vec3(0.1);
 
