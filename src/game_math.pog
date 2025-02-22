@@ -147,6 +147,14 @@ vec2 rotate_vec(vec2 dir, float32 angle) {
     return res;
 }
 
+vec2 rot90deg(vec2 v) return make_vec(-v.y, v.x); // rotate 90 degrees to the left. (multiplication with imaginary unit)
+
+
+
+float32 circle_dist(vec2 p0, float32 r0, vec2 p1, float32 r1) {
+    return dist(p0, p1) - r0 - r1;
+}
+
 
 // ------------Camera-------------------------------------------------------------------
 

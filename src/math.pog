@@ -318,8 +318,8 @@ vec2 col2(mat2 m) { return { m.row1.y, m.row2.y }; }
 mat2 transpose(mat2 m) { return { col1(m), col2(m) }; }
 float32 det(mat2 m) { return m.row1.x * m.row2.y - m.row1.y * m.row2.x; }
 
-mat2 mul(mat2 a, mat2 b) {
-    mat2 res;
+mat2 mul(mat2 a, mat2 b) as * {
+    mat2 res = {};
     res.row1.x = dot(a.row1, col1(b));
     res.row1.y = dot(a.row1, col2(b));
     res.row2.x = dot(a.row2, col1(b));
@@ -327,13 +327,9 @@ mat2 mul(mat2 a, mat2 b) {
     return res;
 }
 
-vec2 mul(mat2 m, vec2 v) {
-    return { dot(m.row1, v), dot(m.row2, v) };
-}
+vec2 mul(mat2 m, vec2 v) as * return { dot(m.row1, v), dot(m.row2, v) };
+vec2 mul(vec2 v, mat2 m) as * return { dot(v, col1(m)), dot(v, col2(m)) };
 
-vec2 mul(vec2 v, mat2 m) {
-    return { dot(v, col1(m)), dot(v, col2(m)) };
-}
 
 
 struct mat3 {
@@ -355,8 +351,8 @@ vec3 col2(mat3 m) { return { m.row1.y, m.row2.y, m.row3.y }; }
 vec3 col3(mat3 m) { return { m.row1.z, m.row2.z, m.row3.z }; }
 mat3 transpose(mat3 m) { return { col1(m), col2(m), col3(m) }; }
 
-mat3 mul(mat3 a, mat3 b) {
-    mat3 res;
+mat3 mul(mat3 a, mat3 b) as * {
+    mat3 res = {};
 
     res.row1.x = dot(a.row1, col1(b));
     res.row1.y = dot(a.row1, col2(b));
@@ -373,13 +369,8 @@ mat3 mul(mat3 a, mat3 b) {
     return res;
 }
 
-vec3 mul(mat3 m, vec3 v) {
-    return { dot(m.row1, v), dot(m.row2, v), dot(m.row3, v) };
-}
-
-vec3 mul(vec3 v, mat3 m) {
-    return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)) };
-}
+vec3 mul(mat3 m, vec3 v) as * return { dot(m.row1, v), dot(m.row2, v), dot(m.row3, v) };
+vec3 mul(vec3 v, mat3 m) as * return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)) };
 
 
 struct mat4 {
@@ -406,7 +397,7 @@ vec4 col3(mat4 m) { return { m.row1.z, m.row2.z, m.row3.z, m.row4.z }; }
 vec4 col4(mat4 m) { return { m.row1.w, m.row2.w, m.row3.w, m.row4.w }; }
 mat4 transpose(mat4 m) { return { col1(m), col2(m), col3(m), col4(m) }; }
 
-mat4 mul(mat4 a, mat4 b) {
+mat4 mul(mat4 a, mat4 b) as * {
     mat4 res;
 
     res.row1.x = dot(a.row1, col1(b));
@@ -432,13 +423,8 @@ mat4 mul(mat4 a, mat4 b) {
     return res;
 }
 
-vec4 mul(mat4 m, vec4 v) {
-    return { dot(m.row1, v), dot(m.row2, v), dot(m.row3, v), dot(m.row4, v) };
-}
-
-vec4 mul(vec4 v, mat4 m) {
-    return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)), dot(v, col4(m)) };
-}
+vec4 mul(mat4 m, vec4 v) as * return { dot(m.row1, v), dot(m.row2, v), dot(m.row3, v), dot(m.row4, v) };
+vec4 mul(vec4 v, mat4 m) as * return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)), dot(v, col4(m)) };
 
 mat4 perspective(float32 fovy, aspect, near_depth, far_depth) {
     float32 maxY = near_depth * tanf(0.5 * fovy);
