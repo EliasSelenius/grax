@@ -90,6 +90,19 @@ struct Transform2D {
     float32 scale;
 }
 
+// mat3 to_matrix(Transform2D tr) {
+//     float32 c = cosf(tr.rot);
+//     float32 s = sinf(tr.rot);
+//     mat3 m = {c, s, 0,
+//              -s, c, 0,
+//               0, 0, 1};
+
+//     m.row1 = m.row1 * tr.scale.x;
+//     m.row2 = m.row2 * tr.scale.y;
+//     m.row3 = make_vec(tr.pos, 1);
+//     return m;
+// }
+
 Transform2D lerp(float32 t, Transform2D a, Transform2D b) {
     Transform2D res = {};
     res.pos = lerp(t, a.pos, b.pos);
@@ -101,15 +114,14 @@ Transform2D lerp(float32 t, Transform2D a, Transform2D b) {
 vec2 right(with Transform2D t) { return make_vec(cosf(t.rot), sinf(t.rot)); }
 vec2 up(with Transform2D t) { return make_vec(-sinf(t.rot), cosf(t.rot)); }
 
-vec2 local2world(with Transform2D t, vec2 p) { return local2world(t, p.x, p.y); }
-vec2 local2world(with Transform2D t, float32 x, float32 y) {
-    float32 c = cosf(t.rot) * t.scale;
-    float32 s = sinf(t.rot) * t.scale;
-
-    vec2 res;
-    res.x = c*x + s*y + t.pos.x;
-    res.y = -s*x + c*y + t.pos.y;
-    return res;
+vec2 local2world(with Transform2D t, float32 x, y) { return local2world(t, make_vec(x, y)); }
+vec2 local2world(with Transform2D t, vec2 p) {
+    float32 c = cosf(t.rot);
+    float32 s = sinf(t.rot);
+    mat2 m = { c, s, -s, c };
+    m.row1 = m.row1 * t.scale; // .x;
+    m.row2 = m.row2 * t.scale; // .y;
+    return m * p + t.pos;
 }
 
 vec2 world2local(with Transform2D t, vec2 p) { return world2local(t, p.x, p.y); }
@@ -120,9 +132,11 @@ vec2 world2local(with Transform2D t, float32 x, float32 y) {
     float32 px = x - t.pos.x;
     float32 py = y - t.pos.y;
 
+    // mat2 m = { c, -s, s, c };
+
     vec2 res;
     res.x = c*px - s*py;
-    res.y = c*py + s*px;
+    res.y = s*px + c*py;
     return res;
 }
 

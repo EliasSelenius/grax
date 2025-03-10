@@ -10,12 +10,16 @@ float32 random(int32 seed) {
 
 float32 random() return random(global_seed++);
 
-vec2 random_unit_vec2() {
-    float32 a = random(global_seed++) * Pi;
+vec2 random_unit_vec2() return random_unit_vec2(global_seed++);
+vec2 random_unit_vec2(int32 seed) {
+    float32 a = random(seed) * Pi;
     return { cosf(a), sinf(a) };
 }
 
-vec2 random_vec2(float32 max_len) return mul(random_unit_vec2(), max_len * random01());
+
+vec2 random_vec2(int32 seed, float32 max_len) return random_unit_vec2(seed) * max_len * random01(seed+1);
+vec2 random_vec2(float32 max_len) return random_vec2(global_seed++, max_len);
+
 float32 random01(int32 seed) return (random(seed) + 1.0) / 2.0;
 float32 random01() return random01(global_seed++);
 

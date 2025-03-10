@@ -2,13 +2,13 @@
 struct OBJ_Data {
     string file_name;
 
-    OBJ_Object* objects;
+    OBJ_Object[..] objects;
 
-    vec3* vertices;
-    vec2* texture_coords;
-    vec3* normals;
+    vec3[..] vertices;
+    vec2[..] texture_coords;
+    vec3[..] normals;
 
-    OBJ_VertexIndices* indices;
+    OBJ_VertexIndices[..] indices;
 }
 
 struct OBJ_VertexIndices {
