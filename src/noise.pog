@@ -34,19 +34,21 @@ float32 random_range(float32 min, max) return random_range(global_seed++, min, m
 //     return random(seed_x + seed_y * 57);
 // }
 
-vec2 random_vec2(float32 x, y) {
-    vec2 v;
-    v.x = x * 127.1 + y * 311.7;
-    v.y = x * 268.5 + y * 183.3;
-
-    v.x = fract(sinf(v.x) * 43758.5453123) * 2.0 - 1.0;
-    v.y = fract(sinf(v.y) * 43758.5453123) * 2.0 - 1.0;
-
-    return v;
-}
 
 float32 gnoise(vec2 v) return gnoise(v.x, v.y);
 float32 gnoise(float32 x, y) {
+
+    vec2 random_vec2(float32 x, y) {
+        vec2 v;
+        v.x = x * 127.1 + y * 311.7;
+        v.y = x * 268.5 + y * 183.3;
+
+        v.x = fract(sinf(v.x) * 43758.5453123) * 2.0 - 1.0;
+        v.y = fract(sinf(v.y) * 43758.5453123) * 2.0 - 1.0;
+
+        return v;
+    }
+
     float32 ix = floorf(x);
     float32 iy = floorf(y);
     float32 fx = fract(x);

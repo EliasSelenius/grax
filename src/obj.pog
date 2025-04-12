@@ -169,18 +169,21 @@ OBJ_Data load_obj(char* filename) {
     return obj;
 }
 
+vertex3D make_vert(OBJ_Data obj, OBJ_VertexIndices ind) {
+    vertex3D v = {};
+    v.pos    = obj.vertices[ind.pos];
+    v.normal = obj.normals[ind.normal];
+    if ind.text_coord != (-1 as uint32) v.uv = obj.texture_coords[ind.text_coord];
+    return v;
+}
 
 Mesh obj_to_mesh(OBJ_Data obj) {
-    Mesh mesh = {};
+    Mesh mesh = mesh_create();
 
     uint32 ind_len = list_length(obj.indices);
     uint32 index_offset = 0;
     // uint32 ind_len = obj.objects[1].indices_length;
     // uint32 index_offset = obj.objects[1].indices_start;
-
-    mesh.indices_count = ind_len;
-    mesh.indices = malloc(ind_len * sizeof uint32);
-    mesh.vertices = list_create(sizeof vertex3D);
 
     uint32 vlen = list_length(obj.vertices);
     uint32 tlen = list_length(obj.texture_coords);
@@ -198,7 +201,7 @@ Mesh obj_to_mesh(OBJ_Data obj) {
     uint32 collision_count = 0;
 
     uint64 obj_index_hash(OBJ_VertexIndices i) { return i.pos as uint64 | (i.normal as uint64 << 32) ^ (i.text_coord as uint64 << 16); }
-    bool obj_index_equals(OBJ_VertexIndices a, OBJ_VertexIndices b) { return a.pos == b.pos and a.text_coord == b.text_coord and a.normal == b.normal; }
+    bool obj_index_equals(OBJ_VertexIndices a, b) { return a.pos == b.pos and a.text_coord == b.text_coord and a.normal == b.normal; }
 
     for uint32 i : 0 .. ind_len {
         let a = obj.indices[i + index_offset];
@@ -207,53 +210,37 @@ Mesh obj_to_mesh(OBJ_Data obj) {
         let e = index_lookup[hash];
         if e.item {
             if obj_index_equals(a, e.key) {
-                mesh.indices[i] = e.item - 1;
+                add_ind(*mesh, e.item - 1);
                 continue;
             }
 
             collision_count++;
         }
 
-        mesh.indices[i] = list_length(mesh.vertices);
-        index_lookup[hash] = { a, mesh.indices[i] + 1 };
+        uint32 ind = list_length(mesh.vertices);
+        add_ind(*mesh, ind);
+        index_lookup[hash] = { a, ind + 1 };
 
-        vertex3D v = {};
-        v.pos    = obj.vertices[a.pos];
-        v.normal = obj.normals[a.normal];
-        if a.text_coord != (-1 as uint32) v.uv = obj.texture_coords[a.text_coord];
-        list_add(*mesh.vertices, *v);
+        vertex3D v = make_vert(obj, a);
+        add_vert(*mesh, v);
     }
 
     free(index_lookup);
 
-    mesh.vertices_count = list_length(mesh.vertices);
-
-    print("[INFO]: obj file \"", obj.file_name.chars, "\" converted to mesh with ", mesh.vertices_count, " vertices.\n");
+    uint32 v_count = list_length(mesh.vertices);
+    print("[INFO]: obj file \"", obj.file_name.chars, "\" converted to mesh with ", v_count, " vertices.\n");
     print("    There were ", collision_count, " collisions\n");
 
     return mesh;
 }
 
 Mesh obj_to_flatshaded_mesh(OBJ_Data obj) {
-    Mesh mesh = {};
+    Mesh mesh = mesh_create();
+    uint32 ind_len = list_length(obj.indices);
 
-    mesh.indices_count = list_length(obj.indices);
-    mesh.indices = malloc(mesh.indices_count * sizeof uint32);
-
-    mesh.vertices_count = mesh.indices_count;
-    mesh.vertices = malloc(mesh.vertices_count * sizeof vertex3D);
-
-    for uint32 it: 0 .. mesh.indices_count {
-        mesh.indices[it] = it;
-
-        OBJ_VertexIndices objind = obj.indices[it];
-
-        vertex3D v = {};
-        v.pos    = obj.vertices[objind.pos];
-        v.normal = obj.normals[objind.normal];
-        if objind.text_coord != (-1 as uint32) v.uv = obj.texture_coords[objind.text_coord];
-
-        mesh.vertices[it] = v;
+    for uint32 it: 0 .. ind_len {
+        add_ind(*mesh, it);
+        add_vert(*mesh, make_vert(obj, obj.indices[it]));
     }
 
     return mesh;

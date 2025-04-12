@@ -33,13 +33,23 @@ uniform samplerCube cubemap;
 
 out vec4 FragColor;
 
+float oct_noise(vec3 dir) {
+    float value = 0;
+    for (int i = 1; i <= 8; i++) {
+        float f = pow(2, i);
+        value += noise(dir * f);
+    }
+
+    return value;
+}
+
 vec3 skybox_color(vec3 dir) {
     // return vec3(
     //     noise(vec3(0)    + dir * sin(Time*0.005) * 30),
     //     noise(vec3(100)  + dir * sin(Time*0.005 + 100) * 30),
     //     noise(vec3(1000) + dir * sin(Time*0.005 + 1000) * 30));
 
-    return vec3(noise(dir), 0.0, noise(vec3(100) + dir * 10));
+    return vec3(oct_noise(dir), 0.0, oct_noise(vec3(100) + dir * 10));
 
     // return (dir);
 }

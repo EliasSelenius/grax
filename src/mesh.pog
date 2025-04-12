@@ -17,12 +17,53 @@ struct vertex2D {
 
 
 struct Mesh {
-    vertex3D* vertices;
-    uint32* indices;
-    uint32 vertices_count;
-    uint32 indices_count;
+    vertex3D[..] vertices;
+    uint32[..] indices;
 
     vec3 bb_min, bb_max;
+}
+
+Mesh mesh_create() {
+    Mesh m = {};
+    m.vertices = list_create(sizeof vertex3D);
+    m.indices  = list_create(sizeof uint32);
+    return m;
+}
+
+void mesh_free(Mesh m) {
+    list_delete(m.vertices);
+    list_delete(m.indices);
+}
+
+void add_vert(Mesh* m, vertex3D v) list_add(*m.vertices, *v);
+void add_vert(Mesh* m, vec3 p) {
+    vertex3D v = {};
+    v.pos = p;
+    add_vert(m, v);
+}
+
+void add_ind(Mesh* m, uint32 i) list_add(*m.indices, *i);
+
+void add_tri(Mesh* m, uint32 i0, i1, i2) {
+    list_add(*m.indices, *i0);
+    list_add(*m.indices, *i1);
+    list_add(*m.indices, *i2);
+}
+
+void add_tri(Mesh* m, vertex3D v0, v1, v2) {
+    uint32 c = list_length(m.indices);
+    add_tri(m, c+0, c+1, c+2);
+    add_vert(m, v0);
+    add_vert(m, v1);
+    add_vert(m, v2);
+}
+
+void add_tri(Mesh* m, vec3 v0, v1, v2) {
+    uint32 c = list_length(m.indices);
+    add_tri(m, c+0, c+1, c+2);
+    add_vert(m, v0);
+    add_vert(m, v1);
+    add_vert(m, v2);
 }
 
 struct DrawBuffers {
@@ -78,8 +119,8 @@ void init_vertex_layout(uint32 base_index, divisor, int32 stride, Vertex_Attrib_
 
 DrawBuffers create_draw_buffers(Mesh mesh) {
     return create_draw_buffers(sizeof vertex3D, vertex3D_attribs,
-                                mesh.vertices_count * sizeof vertex3D, mesh.vertices,
-                                mesh.indices_count, mesh.indices);
+                                list_length(mesh.vertices) * sizeof vertex3D, mesh.vertices as void*,
+                                list_length(mesh.indices), mesh.indices as uint32*);
 }
 
 DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs) return create_draw_buffers(vertex_size, attribs, 0, null, 0, null);
@@ -151,13 +192,24 @@ void update_buffer(uint32 buffer, uint32 size, void* data) {
 }
 
 
+DrawBuffers load_drawable(char* name) {
+    OBJ_Data obj = load_obj(name);
+    // Mesh mesh = obj_to_flatshaded_mesh(obj);
+    Mesh mesh = obj_to_mesh(obj);
+    free_obj(obj);
+    gen_normals(mesh);
+    DrawBuffers db = create_draw_buffers(mesh);
+    mesh_free(mesh);
+    return db;
+}
 
 
 void calc_bounds(Mesh* mesh) {
     vec3 bb_min = mesh.vertices[0].pos;
     vec3 bb_max = mesh.vertices[0].pos;
 
-    for 1 .. mesh.vertices_count {
+    uint32 count = list_length(mesh.vertices);
+    for 1 .. count {
         let v = mesh.vertices[it];
         bb_min = min(bb_min, v.pos);
         bb_max = max(bb_max, v.pos);
@@ -169,11 +221,11 @@ void calc_bounds(Mesh* mesh) {
 
 void gen_normals(Mesh mesh) {
     // set normals to zero
-    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = {0, 0, 0};
+    for 0 .. list_length(mesh.vertices)  mesh.vertices[it].normal = {0, 0, 0};
 
     // add every triangles contribution to every vertex normal
     uint32 i = 0; // TODO: we really need to add traditional for loops
-    while i < mesh.indices_count {
+    while i < list_length(mesh.indices) {
         uint32 i0 = mesh.indices[i];
         uint32 i1 = mesh.indices[i + 1];
         uint32 i2 = mesh.indices[i + 2];
@@ -193,10 +245,10 @@ void gen_normals(Mesh mesh) {
     }
 
     // normalize normals
-    for 0 .. mesh.vertices_count  mesh.vertices[it].normal = normalize(mesh.vertices[it].normal);
+    for 0 .. list_length(mesh.vertices)  mesh.vertices[it].normal = normalize(mesh.vertices[it].normal);
 }
 
-void flip_indices(Mesh mesh) { flip_indices(mesh, 0, mesh.indices_count); }
+void flip_indices(Mesh mesh) { flip_indices(mesh, 0, list_length(mesh.indices)); }
 void flip_indices(Mesh mesh, uint32 base, uint32 len) {
     uint32 i = 0; // TODO: we really need to add traditional for loops
     while i < len {
@@ -215,31 +267,21 @@ Mesh gen_plane(uint32 size, float32 uv_scale, scale) {
 
     float32 half_size = size as float32 / 2;
 
-    Mesh mesh = {};
-    mesh.vertices_count = vsize*vsize;
-    mesh.vertices = malloc(mesh.vertices_count * sizeof vertex3D);
-    mesh.indices_count = size*size * 2 * 3;
-    mesh.indices = malloc(mesh.indices_count * sizeof uint32);
-
-    uint32 i = 0;
+    Mesh mesh = mesh_create();
 
     for uint32 xi: 0 .. vsize {
         for uint32 yi: 0 .. vsize {
-            uint32 vi = xi * vsize + yi;
-            mesh.vertices[vi] = {
+            vertex3D v = {
                 pos = { (xi - half_size) * scale, 0, (yi - half_size) * scale },
                 normal = vec3_unit_y,
                 uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale }
             };
+            add_vert(*mesh, v);
 
             if xi < size and yi < size {
-                mesh.indices[i++] = vi;
-                mesh.indices[i++] = vi + 1;
-                mesh.indices[i++] = vi + vsize + 1;
-
-                mesh.indices[i++] = vi;
-                mesh.indices[i++] = vi + vsize + 1;
-                mesh.indices[i++] = vi + vsize;
+                uint32 vi = xi * vsize + yi;
+                add_tri(*mesh, vi, vi + 1, vi + vsize + 1);
+                add_tri(*mesh, vi, vi + vsize + 1, vi + vsize);
             }
         }
     }

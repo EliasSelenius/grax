@@ -1,54 +1,75 @@
 
+struct Batch_Of_Points {
+    uint32 vao;
+    uint32 vbo;
+
+    GizmoPoint[..] points;
+}
+
+Batch_Of_Points create_batch_of_points() {
+    Batch_Of_Points bop = {};
+
+    bop.points = list_create(sizeof GizmoPoint);
+
+    glGenVertexArrays(1, *bop.vao);
+    glBindVertexArray(bop.vao);
+
+    glGenBuffers(1, *bop.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, bop.vbo);
+
+    init_vertex_layout(sizeof GizmoPoint, gizmo_point_attribs);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    return bop;
+}
+
+void dispatch(Batch_Of_Points* bop) {
+    uint32 len = list_length(bop.points);
+    update_buffer(bop.vbo, len * sizeof GizmoPoint, bop.points);
+
+    glBindVertexArray(bop.vao);
+    glDrawArrays(GL_POINTS, 0, len);
+    glBindVertexArray(0);
+
+    list_clear(bop.points);
+}
+
+void add_point(Batch_Of_Points* batch, GizmoPoint p) {
+    list_add(*batch.points, *p);
+}
+
+Vertex_Attrib_Type[] gizmo_point_attribs = { .vec3, .color, .float32 };
 struct GizmoPoint {
     vec3 pos;
     Color color;
     float32 size;
 }
 
-// TODO: make GizmoPoint[..]
-GizmoPoint* gizmo_points_list;
 Color gizmo_current_color = White;
-
-uint32 gizmo_points_vbo;
-uint32 gizmo_points_vao;
 
 Shader gizmo_points_shader;
 
-GizmoPoint* gizmo_line_segments;
-uint32* gizmo_line_segments_indices;
+Batch_Of_Points gizmo_points_batch;
+
+GizmoPoint[..] gizmo_line_segments;
+uint32[..] gizmo_line_segments_indices;
 DrawBuffers db_line_segments;
 
 void gizmo_setup() {
-    Vertex_Attrib_Type[] gizmo_point_attribs = { .vec3, .color, .float32 };
 
     db_line_segments = create_draw_buffers(sizeof GizmoPoint, gizmo_point_attribs);
 
     gizmo_line_segments = list_create(sizeof GizmoPoint);
     gizmo_line_segments_indices = list_create(sizeof uint32);
 
-    gizmo_points_list = list_create(sizeof GizmoPoint);
-
-    { // vao/vbo
-        glGenVertexArrays(1, *gizmo_points_vao);
-        glBindVertexArray(gizmo_points_vao);
-
-        glGenBuffers(1, *gizmo_points_vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, gizmo_points_vbo);
-
-        init_vertex_layout(sizeof GizmoPoint, gizmo_point_attribs);
-
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
+    gizmo_points_batch = create_batch_of_points();
 
     glEnable(GL_PROGRAM_POINT_SIZE);
 }
 
 void gizmo_dispatch() {
-    uint32 len = list_length(gizmo_points_list);
-
-    update_buffer(gizmo_points_vbo, len * sizeof GizmoPoint, gizmo_points_list);
-
     use(*gizmo_points_shader);
 
     disable_depth_test();
@@ -57,15 +78,10 @@ void gizmo_dispatch() {
     enable_alpha_blending();
     // disable_blending();
 
-
-    glBindVertexArray(gizmo_points_vao);
-    glDrawArrays(GL_POINTS, 0, len);
-    glBindVertexArray(0);
-
-    list_clear(gizmo_points_list);
+    dispatch(*gizmo_points_batch);
 
 
-    update_indices(*db_line_segments, list_length(gizmo_line_segments_indices), gizmo_line_segments_indices);
+    update_indices(*db_line_segments, list_length(gizmo_line_segments_indices) as uint32, gizmo_line_segments_indices as uint32*);
     update_vertices(*db_line_segments, list_length(gizmo_line_segments) * sizeof GizmoPoint, gizmo_line_segments);
 
     draw_elements_lines(db_line_segments);
@@ -93,12 +109,12 @@ void gizmo_point(vec3 pos, float32 size) { gizmo_point(pos, gizmo_current_color,
 void gizmo_point(vec3 pos, Color color) { gizmo_point(pos, color, 0.1); }
 void gizmo_point(vec3 pos, Color color, float32 size) {
     GizmoPoint gp = { pos = pos, color = color, size = size };
-    list_add(*gizmo_points_list, *gp);
+    add_point(*gizmo_points_batch, gp);
 }
 
 bool gizmo_transform(Transform* tr, Camera cam) {
 
-    let ray = camera_ray(cam, screen2ndc(mouse_x as float32, mouse_y as float32));
+    let ray = camera_ray(cam, Input.mouse_pos);
     mat4 m = to_matrix(@tr);
 
     gizmo_point(tr.position, White);

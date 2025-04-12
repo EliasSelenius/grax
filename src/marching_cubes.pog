@@ -7,39 +7,88 @@ struct MarCubesChunk {
     DrawBuffers db;
 }
 
+// i = x + y*s + z*s*s
+
+uint32 get_index(uint32 s, ivec3 i) return get_index(s, i.x, i.y, i.z);
+uint32 get_index(uint32 s, int32 x, y, z) return x + y*s + z*s*s;
+ivec3 get_xyz(uint32 s, int32 i) {
+    ivec3 ret = {};
+    ret.x = i % s;
+    ret.y = (i / s) % s;
+    ret.z = i / (s*s);
+    return ret;
+}
+
 MarCubesChunk init_mar_cubes_chunk(uint32 size) {
     MarCubesChunk chunk = {};
     chunk.size = size;
-    chunk.data = malloc(size*size*size * sizeof float32);
-    uint32 s = size;
-    for z:0..s for y:0..s for x:0..s {
-        float32 v = (gnoise(make_vec(x, y, z)/10.0)+1)/2;
-        chunk.data[x + y*s + z*s*s] = v;
-    }
+    chunk.data = calloc(size*size*size * sizeof float32, 1);
+    chunk.mesh = mesh_create();
     return chunk;
 }
 
 void debug_draw_grid(MarCubesChunk* chunk) {
     uint32 s = chunk.size;
     for z:0..s for y:0..s for x:0..s {
-        float32 value = chunk.data[x + y*s + z*s*s];
-        if value > 0.5 gizmo_point(make_vec(x, y, z), rgb(value), 0.1 + value/10);
+        float32 value = chunk.data[get_index(s, x, y, z)];
+        if value != 0.0 gizmo_point(make_vec(x, y, z), rgb(value), 0.1 + value/10);
     }
 }
 
 void add_tris(MarCubesChunk* chunk, int16[16] inds) {
-    for uint32 i = 0, i < 16, i += 3 {
+    // for uint32 i = 0, i < 16, i += 3 {
         
-    }
+    // }
 }
 
 void march_cubes(MarCubesChunk* chunk) {
 
     uint32 s = chunk.size - 1;
     for z:0..s for y:0..s for x:0..s {
+        uint32[8] inds = {};
+        inds[0] = get_index(chunk.size, x,   y,   z);
+        inds[1] = get_index(chunk.size, x+1, y,   z);
+        inds[2] = get_index(chunk.size, x+1, y,   z+1);
+        inds[3] = get_index(chunk.size, x,   y,   z+1);
+        inds[4] = get_index(chunk.size, x,   y+1, z);
+        inds[5] = get_index(chunk.size, x+1, y+1, z);
+        inds[6] = get_index(chunk.size, x+1, y+1, z+1);
+        inds[7] = get_index(chunk.size, x,   y+1, z+1);
 
+        uint8 cube_index = 0;
+        for 0 .. 8  if chunk.data[inds[it]] != 0.0  cube_index |= 1 << it;
+
+        vec3[] positions = {
+            {0.5, 0, 0},
+            {1,   0, 0.5},
+            {0.5, 0, 1},
+            {0,   0, 0.5},
+            {0.5, 1, 0},
+            {1,   1, 0.5},
+            {0.5, 1, 1},
+            {0,   1, 0.5},
+            {0, 0.5, 0},
+            {1, 0.5, 0},
+            {1, 0.5, 1},
+            {0, 0.5, 1}
+        };
+
+        vec3 center = make_vec(x, y, z);
+        uint32 i = 0;
+        while true {
+            int16 ind0 = triTable[cube_index][i+0];
+            int16 ind1 = triTable[cube_index][i+1];
+            int16 ind2 = triTable[cube_index][i+2];
+            i += 3;
+            if ind0 == -1 break;
+            vec3 v0 = center + positions[ind0];
+            vec3 v1 = center + positions[ind1];
+            vec3 v2 = center + positions[ind2];
+            add_tri(*chunk.mesh, v0, v1, v2);
+        }
     }
 
+    gen_normals(chunk.mesh);
 }
 
 

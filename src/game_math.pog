@@ -265,21 +265,30 @@ void camera_orbit_control(Camera* cam, vec3 center) {
     look_at(*cam.transform, center);
 }
 
-vec2 screen2ndc(float32 x, float32 y) {
+vec2 screen2ndc(float32 x, y) {
     return {
          (x / (app.window_width -1) - 0.5) * 2.0,
         -(y / (app.window_height-1) - 0.5) * 2.0
     };
 }
 
+// arcndc = Aspect Ratio Corrected Normalized Device Coordinates
+vec2 screen2arcndc(float32 x, y) {
+    return screen2ndc(x, y) * {app.width_over_height, 1};
+}
+
 vec3 camera_ray(Camera cam, vec2 arcndc) {
-    // NOTE: the first, second and third columns of the cameras view matrix is the side, up and forward vectors respectively. because the view matrix is the transpose of the cam model matrix
     float32 half_near_plane_height = cam.near_plane / tanf(Half_Pi - cam.fov / 2.0);
     float32 half_near_plane_width = half_near_plane_height;// * app.width_over_height;
 
+    // NOTE: the first, second and third columns of the cameras view matrix is the side, up and forward vectors respectively. because the view matrix is the transpose of the cam model matrix
+    let left    = xyz(col1(cam.view));
+    let up      = xyz(col2(cam.view));
+    let forward = xyz(col3(cam.view));
+
     vec3 ray = {};
-    ray = add(ray, mul(xyz(col1(cam.view)), arcndc.x * half_near_plane_width));
-    ray = add(ray, mul(xyz(col2(cam.view)), arcndc.y * half_near_plane_height));
-    ray = add(ray, mul(xyz(col3(cam.view)), -cam.near_plane));
+    ray = ray + left * arcndc.x * half_near_plane_width;
+    ray = ray + up   * arcndc.y * half_near_plane_height;
+    ray = ray + forward * -cam.near_plane;
     return normalize(ray);
 }
