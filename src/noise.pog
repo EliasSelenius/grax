@@ -16,6 +16,12 @@ vec2 random_unit_vec2(int32 seed) {
     return { cosf(a), sinf(a) };
 }
 
+vec3 random_unit_vec3() return random_unit_vec3(global_seed++);
+vec3 random_unit_vec3(int32 seed) {
+    float32 a = random(seed) * Pi;
+    float32 b = random(seed+1) * Pi;
+    return { cosf(a) * cosf(b), sinf(b), sinf(a) * cosf(b) };
+}
 
 vec2 random_vec2(int32 seed, float32 max_len) return random_unit_vec2(seed) * max_len * random01(seed+1);
 vec2 random_vec2(float32 max_len) return random_vec2(global_seed++, max_len);

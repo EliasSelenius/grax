@@ -68,6 +68,8 @@ void main() {
     FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g);
     FragColor += albedo * dirlight_radiance * dirlight_ambient_factor;
 
+    float b = 0.0005;
+    FragColor = mix(FragColor, vec3(0.5, 0.6, 0.7), 1 - exp(-length(pos)*b));
 
     if (false) { // sky
         vec3 sky_dir = reflect(normalize(g.pos), normal);
