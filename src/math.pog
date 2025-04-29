@@ -52,12 +52,18 @@ vec2 max(vec2 a, b) return { max(a.x, b.x), max(a.y, b.y) };
 vec3 max(vec3 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) };
 vec4 max(vec4 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w) };
 
-int32 clamp(int32 t, int32 min, int32 max) return t < min ? min : t > max ? max : t;
-float32 clamp(float32 t, float32 min, float32 max) return t < min ? min : t > max ? max : t;
+int32 clamp(int32 t, min, max) return t < min ? min : t > max ? max : t;
+float32 clamp(float32 t, min, max) return t < min ? min : t > max ? max : t;
 
-float32 lerp(float32 t, float32 a, float32 b) return a + (b - a) * t;
+float32 lerp(float32 t, a, b) return a + (b - a) * t;
+
+float32 smoothstep(float32 edge0, edge1, x) {
+    let t = clamp((x-edge0) / (edge1-edge0), 0, 1);
+    return t * t * (3.0 - 2.0 * t);
+}
+
 // map t from range [a, b] to [c, d]
-float32 map(float32 t, float32 a, float32 b, float32 c, float32 d) return lerp((t - a) / (b - a), c, d);
+float32 map(float32 t, a, b, c, d) return lerp((t - a) / (b - a), c, d);
 
 float32 exp_decay(float32 a, b, decay, dt) return b + (a-b) * expf(-decay*dt);
 vec2 exp_decay(vec2 a, b, float32 decay, dt) return b + (a-b) * expf(-decay*dt);
