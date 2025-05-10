@@ -93,32 +93,38 @@ void process_glsl_source(StringBuilder* sb, char* filename) {
     free(src);
 }
 
-Shader load_shader(char* filename) {
+Shader load_shader(char* filename) return load_shader(filename, false, false);
+Shader load_shader(char* filename, bool tess, geom) {
 
     StringBuilder src = sb_create();
     process_glsl_source(*src, filename);
 
-    StringBuilder frag = sb_create();
-    StringBuilder vert = sb_create();
+    char* get_shader_source(bool incl, char* def_IO, shader_type, src) {
+        if !incl return null;
+        let sb = temp_builder();
+        // NOTE: layout(binding) requires "#version 420" or later
+        char* glsl_version = "#version 420 core\n";
+        sb_append(sb, glsl_version);
+        sb_append(sb, "#define IO ");
+        if def_IO sb_append(sb, def_IO);
+        sb_append(sb, "\n");
+        sb_append(sb, "#define ");
+        sb_append(sb, shader_type);
+        sb_append(sb, "\n");
+        sb_append(sb, src);
 
-    // NOTE: layout(binding) requires "#version 420" or later
-    char* glsl_version = "#version 420 core\n";
+        return sb.content;
+    }
 
-    sb_append(*frag, glsl_version);
-    sb_append(*frag, "#define IO in\n");
-    sb_append(*frag, "#define FragmentShader\n");
-    sb_append(*frag, src.content);
-
-    sb_append(*vert, glsl_version);
-    sb_append(*vert, "#define IO out\n");
-    sb_append(*vert, "#define VertexShader\n");
-    sb_append(*vert, src.content);
+    let vs = get_shader_source(true, "out", "VertexShader", src.content);
+    let tc = get_shader_source(tess, null,  "TessControl", src.content);
+    let te = get_shader_source(tess, null,  "TessEval", src.content);
+    let gs = get_shader_source(geom, null,  "GeometryShader", src.content);
+    let fs = get_shader_source(true, "in",  "FragmentShader", src.content);
 
     // TODO: what is the ownership of filename?
-    Shader s = create_shader(make_string(filename), frag.content, vert.content);
+    Shader s = create_shader(make_string(filename), vs, tc, te, gs, fs);
 
-    sb_free(frag);
-    sb_free(vert);
     sb_free(src);
     return s;
 }
@@ -135,7 +141,8 @@ Shader load_shader(char* frag_filename, char* vert_filename) {
     return s;
 }
 
-Shader create_shader(string name, char* fragsrc, char* vertsrc) {
+Shader create_shader(string name, char* fragsrc, vertsrc) return create_shader(name, vertsrc, null, null, null, fragsrc);
+Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) {
 
     char* append_info_log(StringBuilder* sb, int32 len) {
         sb_grow(sb, len as uint32);
@@ -202,13 +209,33 @@ Shader create_shader(string name, char* fragsrc, char* vertsrc) {
     program.debug_log = sb_create(); // TODO: is it really necessary to have debug_log be a field on Shader, just make it a local...
     sb_append(*program.debug_log, "\n\n");
 
-    let f = make_shader(*program, GL_FRAGMENT_SHADER, fragsrc);
-    let v = make_shader(*program, GL_VERTEX_SHADER, vertsrc);
+    let fs = make_shader(*program, GL_FRAGMENT_SHADER, fs_src);
+    let vs = make_shader(*program, GL_VERTEX_SHADER, vs_src);
+
+    uint32 tc;
+    uint32 te;
+    uint32 gs;
+
+    if tc_src and te_src {
+        tc = make_shader(*program, GL_TESS_CONTROL_SHADER, tc_src);
+        te = make_shader(*program, GL_TESS_EVALUATION_SHADER, te_src);
+    }
+
+    if gs_src {
+        gs = make_shader(*program, GL_GEOMETRY_SHADER, gs_src);
+    }
 
     glLinkProgram(program.gl_handle);
 
-    cleanup_shader(program, f);
-    cleanup_shader(program, v);
+    cleanup_shader(program, fs);
+    cleanup_shader(program, vs);
+    if tc_src and te_src {
+        cleanup_shader(program, tc);
+        cleanup_shader(program, te);
+    }
+    if gs_src {
+        cleanup_shader(program, gs);
+    }
 
 
     int32 status;
@@ -237,6 +264,7 @@ Shader create_shader(string name, char* fragsrc, char* vertsrc) {
 
     bind_ubos(*program);
 
+    print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" was successfully created.\n");
     return program;
 }
 
