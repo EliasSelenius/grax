@@ -63,13 +63,32 @@ void main() {
     g.roughness = normal_roughness.w;
     g.metallic  = pos_metallic.w;
 
+    vec3 ambient = albedo * dirlight_radiance * dirlight_ambient_factor;
 
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
-    FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g);
-    FragColor += albedo * dirlight_radiance * dirlight_ambient_factor;
+    FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g) + ambient;
 
-    float b = 0.0005;
-    FragColor = mix(FragColor, vec3(0.5, 0.6, 0.7), 1 - exp(-length(pos)*b));
+
+    vec3 wpos = (inverse(camera.view) * vec4(pos, 1.0)).xyz;
+    if (wpos.y < 0) { // water
+        float b = 0.005;
+        FragColor = mix(FragColor, vec3(0.1, 0.4, 0.7), 1 - exp(-length(pos)*b));
+    } else { // atmosphere
+
+        float sun_amount = maxdot(normalize(pos), normalize(mat3(camera.view) * dirlight_direction));
+        vec3 fog_color = mix(vec3(0.5, 0.6, 0.7), // blue
+                             vec3(1.0, 0.9, 0.7), // yellow
+                             pow(sun_amount, 8.0));
+
+        float b = 0.0005;
+        FragColor = mix(FragColor, fog_color, 1 - exp(-length(pos)*b));
+
+
+        // float b = 0.0005;
+        // FragColor = mix(FragColor, vec3(0.5, 0.6, 0.7), 1 - exp(-length(pos)*b));
+    }
+
+
 
     if (false) { // sky
         vec3 sky_dir = reflect(normalize(g.pos), normal);
