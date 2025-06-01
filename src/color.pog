@@ -54,3 +54,4 @@ const Blue   = {0,   0,   255, 255} as Color;
 const Yellow = {255, 255, 0,   255} as Color;
 const Cyan   = {0,   255, 255, 255} as Color;
 const Purple = {255, 0,   255, 255} as Color;
+const Orange = {255, 128, 0,   255} as Color;

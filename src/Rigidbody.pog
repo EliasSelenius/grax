@@ -144,16 +144,16 @@ Intersection capsule_intersects(vec3 a, b, c, d, float32 ab_r, cd_r) {
     return inr_a.depth < inr_b.depth ? inr_b : inr_a;
 }
 
-// Intersection capsule_point_intersects(vec3 a, b, p, float32 radius) {
-//     vec3 A = closest_point_on_linesegment(a, b, p);
+Intersection capsule_point_intersects(vec3 a, b, p, float32 radius) {
+    vec3 A = closest_point_on_linesegment(a, b, p);
 
-//     Intersection inr = {};
-//     inr.contact_point =  B + (A - B)*0.5;
-//     inr.normal = normalize(p - A);
-//     inr.depth = radius - dist(A, p);
+    Intersection inr = {};
+    inr.normal = normalize(p - A);
+    inr.contact_point = A + inr.normal*radius;
+    inr.depth = radius - dist(A, p);
 
-//     return inr;
-// }
+    return inr;
+}
 
 // Intersection capsule_sphere_intersects(vec3 a, b, p, float32 ab_r, p_r) {
 

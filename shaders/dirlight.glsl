@@ -55,7 +55,6 @@ void main() {
     vec3 pos = pos_metallic.xyz;
     vec3 normal = normal_roughness.xyz;
 
-
     Geometry g;
     g.pos = pos;
     g.normal = normal;
@@ -63,7 +62,9 @@ void main() {
     g.roughness = normal_roughness.w;
     g.metallic  = pos_metallic.w;
 
+
     vec3 ambient = albedo * dirlight_radiance * dirlight_ambient_factor;
+    // vec3 ambient = vec3(1, 0, 0);
 
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
     FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g) + ambient;
@@ -73,6 +74,12 @@ void main() {
     if (wpos.y < 0) { // water
         float b = 0.005;
         FragColor = mix(FragColor, vec3(0.1, 0.4, 0.7), 1 - exp(-length(pos)*b));
+
+        float max_depth = 200;
+        float light_atten = 1.0 - clamp(-wpos.y, 0, max_depth) / max_depth;
+
+        FragColor *= light_atten;
+
     } else { // atmosphere
 
         float sun_amount = maxdot(normalize(pos), normalize(mat3(camera.view) * dirlight_direction));

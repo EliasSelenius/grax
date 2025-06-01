@@ -48,7 +48,9 @@ void main() {
     FragPos_Metallic.xyz = v2f.pos;
     FragPos_Metallic.w   = metallic;
 
-    FragNormal_Roughness.xyz = normalize(v2f.normal);
+    vec3 normal = v2f.normal;
+    if (!gl_FrontFacing)  normal = -normal;
+    FragNormal_Roughness.xyz = normalize(normal);
     FragNormal_Roughness.w   = roughness;
 
     FragColor = texture(albedo_texture, v2f.uv).rgb * albedo_color;

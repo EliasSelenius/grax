@@ -292,3 +292,48 @@ vec3 camera_ray(Camera cam, vec2 arcndc) {
     ray = ray + forward * -cam.near_plane;
     return normalize(ray);
 }
+
+vec3 world2arcndc(Camera cam, vec3 pos) {
+    let ndc = make_vec(pos, 1) * cam.view * cam.projection;
+    ndc = ndc / ndc.w;
+    ndc.x *= app.width_over_height;
+    return xyz(ndc);
+}
+
+bool arcndc_rect_of(Camera cam, mat4 m, vec3 bb_min, bb_max, vec2* out_min, out_max) {
+    vec3 bb_min_x = bb_min; bb_min_x.x = bb_max.x;
+    vec3 bb_min_y = bb_min; bb_min_y.y = bb_max.y;
+    vec3 bb_min_z = bb_min; bb_min_z.z = bb_max.z;
+    vec3 bb_max_x = bb_max; bb_max_x.x = bb_min.x;
+    vec3 bb_max_y = bb_max; bb_max_y.y = bb_min.y;
+    vec3 bb_max_z = bb_max; bb_max_z.z = bb_min.z;
+
+    vec3[] points = {
+        bb_min,
+        bb_max,
+        bb_min_x,
+        bb_min_y,
+        bb_min_z,
+        bb_max_x,
+        bb_max_y,
+        bb_max_z
+    };
+
+    vec3 arcndc_min = vec3_one*1000;
+    vec3 arcndc_max = vec3_one*-1000;
+
+    for 0 .. points.length {
+        let wpos = xyz(make_vec(points[it], 1.0) * m);
+        gizmo_point(wpos, Green, 1);
+        let clip = world2arcndc(cam, wpos);
+        if clip.z > 1 return false;
+
+        arcndc_min = min(arcndc_min, clip);
+        arcndc_max = max(arcndc_max, clip);
+    }
+
+    @out_min = xy(arcndc_min);
+    @out_max = xy(arcndc_max);
+
+    return true;
+}

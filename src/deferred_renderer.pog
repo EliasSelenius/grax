@@ -125,8 +125,7 @@ struct Material_PBR {
     float32 roughness;
 }
 
-// void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Transform tr) draw_geometry(dr, db, to_matrix(tr));
-// void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, Transform tr) draw_geometry(dr, db, mat, white_texture.gl_handle, to_matrix(tr));
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, mat4 model) draw_geometry(dr, db, mat, white_texture.gl_handle, model);
 
 void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
     Material_PBR mat = {

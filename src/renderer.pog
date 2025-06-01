@@ -281,6 +281,7 @@ void draw_opengl_debug_log() {
     anchor = .top_left;
     for 0 .. list_length(opengl_log) {
         let entry = *opengl_log[it];
+        pos = draw_text(pos, text_size, concat(to_string(entry.count), " "), White);
         pos = draw_text(pos, text_size, concat(get_debug_source(entry.source), " ", get_debug_type_string(entry._type)), White);
         pos = draw_text(pos, text_size, concat(" (severity: ", get_debug_severity(entry.severity), "): "), White);
         pos = draw_text(pos, text_size, entry.message, White);
