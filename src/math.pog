@@ -432,6 +432,8 @@ mat4 mul(mat4 a, mat4 b) as * {
 vec4 mul(mat4 m, vec4 v) as * return { dot(m.row1, v), dot(m.row2, v), dot(m.row3, v), dot(m.row4, v) };
 vec4 mul(vec4 v, mat4 m) as * return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)), dot(v, col4(m)) };
 
+vec3 transform_point(vec3 p, mat4 m) return xyz(make_vec(p, 1.0) * m);
+
 mat4 perspective(float32 fovy, aspect, near_depth, far_depth) {
     float32 maxY = near_depth * tanf(0.5 * fovy);
     float32 minY = -maxY;

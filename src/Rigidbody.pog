@@ -158,3 +158,48 @@ Intersection capsule_point_intersects(vec3 a, b, p, float32 radius) {
 // Intersection capsule_sphere_intersects(vec3 a, b, p, float32 ab_r, p_r) {
 
 // }
+
+
+// triangle(abc) and point(p)
+bool triangle_intersects(vec2 a,b,c,  p) {
+    vec2 ab = rot90deg(b - a);
+    vec2 bc = rot90deg(c - b);
+    vec2 ca = rot90deg(a - c);
+
+    bool b1 = dot(ab, p - a) < 0;
+    bool b2 = dot(bc, p - b) < 0;
+    bool b3 = dot(ca, p - c) < 0;
+
+    return b1 and b2 and b3;
+}
+
+// moller trumbore
+// ray: origin(o) direction(d)
+// triangle(abc)
+bool ray_triangle_intersects(vec3 o,d,  a,b,c, vec3* out_pos) {
+    float32 epsilon = 0.0001;
+
+    vec3 ab = b - a;
+    vec3 ac = c - a;
+
+    vec3 v_cross_ac = cross(d, ac);
+    float32 det = dot(ab, v_cross_ac);
+
+    if det > -epsilon and det < epsilon  return false;
+
+    float32 inv_det = 1.0 / det;
+    vec3 ao = o - a;
+
+    float32 u = inv_det * dot(ao, v_cross_ac);
+    if u < 0.0 or u > 1.0  return false;
+
+    vec3 ao_cross_ab = cross(ao, ab);
+    float32 v = inv_det * dot(d, ao_cross_ab);
+    if v < 0.0 or u + v > 1.0  return false;
+
+    float32 t = inv_det * dot(ac, ao_cross_ab);
+    if t <= epsilon  return false;
+
+    @out_pos = o + d*t;
+    return true;
+}
