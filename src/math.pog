@@ -28,6 +28,7 @@ const Tau = Pi * 2.0;
 const deg2rad = Pi / 180.0;
 const rad2deg = 180.0 / Pi;
 
+float32 sq(float32 a) return a*a;
 
 int32 min(int32 a, b) return a < b ? a : b;
 ivec2 min(ivec2 a, b) return { min(a.x, b.x), min(a.y, b.y) };
@@ -466,22 +467,49 @@ struct quat {
     float32 x, y, z, w;
 }
 
+// for unit quaternions conjugate is the same as inverse
 quat conj(quat q) { return { -q.x, -q.y, -q.z, q.w }; }
 quat normalize(quat q) {
     let l = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
     return { q.x / l, q.y / l, q.z / l, q.w / l };
 }
 
+float32 dot(quat a, b) return {a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w};
+
 quat lerp(float32 t, quat a, quat b) { return add(a, mul(sub(b, a), t)); } // TODO: are these correct? lerp and nlerp
 quat nlerp(float32 t, quat a, quat b) {
     return normalize(lerp(t, a, b));
 }
+quat slerp(float32 t, quat a, b) {
+    let d = dot(a, b);
+    if d < 0.0 {
+        b = b*-1;
+        d = -d;
+    }
 
-quat sub(quat a, quat b) { return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w}; }
-quat add(quat a, quat b) { return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w}; }
-quat mul(quat a, float32 s) { return {a.x * s, a.y * s, a.z * s, a.w * s}; }
+    if d > 0.9995  return nlerp(t, a, b);
 
-quat mul(quat l, quat r) {
+    return normalize(a * unit_quat_power(conj(a) * b, t));
+}
+
+
+quat unit_quat_power(quat q, float32 t) {
+    quat Q;
+    let a = acosf(q.w) * t;
+    Q.w = cosf(a);
+    let s = sinf(a);
+    let len = sqrtf(sq(q.x) + sq(q.y) + sq(q.z));
+    Q.x = s * q.x / len;
+    Q.y = s * q.y / len;
+    Q.z = s * q.z / len;
+    return Q;
+}
+
+quat sub(quat a, quat b) as - return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+quat add(quat a, quat b) as + return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
+quat mul(quat a, float32 s) as * return {a.x * s, a.y * s, a.z * s, a.w * s};
+
+quat mul(quat l, quat r) as * {
     float32 a = l.w;
     float32 b = l.x;
     float32 c = l.y;
