@@ -166,9 +166,8 @@ vec2 rot90deg_ccw(vec2 v) return make_vec(-v.y, v.x);
 vec2 rot90deg_cw(vec2 v) return make_vec(v.y, -v.x);
 
 
-float32 circle_dist(vec2 p0, float32 r0, vec2 p1, float32 r1) {
-    return dist(p0, p1) - r0 - r1;
-}
+float32 circle_dist(vec2 p0, float32 r0, vec2 p1, float32 r1) return dist(p0, p1) - r0 - r1;
+float32 sphere_dist(vec3 p0, float32 r0, vec3 p1, float32 r1) return dist(p0, p1) - r0 - r1;
 
 
 // ------------Camera-------------------------------------------------------------------
@@ -325,7 +324,7 @@ bool arcndc_rect_of(Camera cam, mat4 m, vec3 bb_min, bb_max, vec2* out_min, out_
 
     for 0 .. points.length {
         let wpos = xyz(make_vec(points[it], 1.0) * m);
-        gizmo_point(wpos, Green, 1);
+        // gizmo_point(wpos, Green, 1);
         let clip = world2arcndc(cam, wpos);
         if clip.z > 1 return false;
 

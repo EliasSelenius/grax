@@ -21,6 +21,7 @@ struct Mesh {
     uint32[..] indices;
 
     vec3 bb_min, bb_max;
+    float32 max_radius;
 }
 
 Mesh mesh_create() {
@@ -207,16 +208,21 @@ DrawBuffers load_drawable(char* name) {
 void calc_bounds(Mesh* mesh) {
     vec3 bb_min = mesh.vertices[0].pos;
     vec3 bb_max = mesh.vertices[0].pos;
+    let sql = sqlength(mesh.vertices[0].pos);
 
     uint32 count = list_length(mesh.vertices);
     for 1 .. count {
         let v = mesh.vertices[it];
         bb_min = min(bb_min, v.pos);
         bb_max = max(bb_max, v.pos);
+
+        let s = sqlength(v.pos);
+        if sql < s  sql = s;
     }
 
     mesh.bb_min = bb_min;
     mesh.bb_max = bb_max;
+    mesh.max_radius = sqrtf(sql);
 }
 
 void gen_normals(Mesh mesh) {

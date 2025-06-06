@@ -146,13 +146,6 @@ void gizmo_transform(Transform2D* tr) {
 
 }
 
-void gizmo_sphere(vec3 center, float32 radius, Color color) {
-    // NOTE: we are just using gizmo_golden_sphere() for now, we might want to draw this gizmo differently
-    uint32 n = (4*Pi*radius*radius) as uint32;
-    gizmo_golden_sphere(n, center, radius, color);
-}
-
-
 void gizmo_golden_sphere(uint32 n, vec3 center, float32 radius, Color color) {
     float32 golden_ratio = (1.0 + sqrtf(5)) / 2.0;
     for 0 .. n {
@@ -160,6 +153,31 @@ void gizmo_golden_sphere(uint32 n, vec3 center, float32 radius, Color color) {
         float32 angle = Tau * it / golden_ratio;
         vec3 pos = { cosf(angle) * sinf(phi), sinf(angle) * sinf(phi), cosf(phi) };
         gizmo_point(add(mul(pos, radius), center), color);
+    }
+}
+
+void gizmo_sphere(vec3 center, float32 radius, Color color) {
+    int32 res = 16;
+    for 0 .. res {
+        float32 angle1 = (it   as float32 / res) * Tau;
+        float32 angle2 = ((it+1) as float32 / res) * Tau;
+
+        float32 c1 = cosf(angle1);
+        float32 s1 = sinf(angle1);
+        float32 c2 = cosf(angle2);
+        float32 s2 = sinf(angle2);
+
+        vec3 p1 = {c1, s1, 0} * radius + center;
+        vec3 p2 = {c2, s2, 0} * radius + center;
+        gizmo_line(p1, p2, color);
+
+        p1 = {c1, 0, s1} * radius + center;
+        p2 = {c2, 0, s2} * radius + center;
+        gizmo_line(p1, p2, color);
+
+        p1 = {0, c1, s1} * radius + center;
+        p2 = {0, c2, s2} * radius + center;
+        gizmo_line(p1, p2, color);
     }
 }
 
