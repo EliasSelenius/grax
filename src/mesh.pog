@@ -294,3 +294,18 @@ Mesh gen_plane(uint32 size, float32 uv_scale, scale) {
 
     return mesh;
 }
+
+void set_origin(Mesh mesh, vec3 origin) {
+    for 0 .. list_length(mesh.vertices) {
+        mesh.vertices[it].pos = mesh.vertices[it].pos - origin;
+    }
+}
+
+vec3 avg_vertex_pos(Mesh mesh) {
+    vec3 avg = vec3_zero;
+    uint32 len = list_length(mesh.vertices);
+    for 0 .. len {
+        avg = avg + mesh.vertices[it].pos;
+    }
+    return avg / len as float32;
+}

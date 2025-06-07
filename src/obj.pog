@@ -177,13 +177,10 @@ vertex3D make_vert(OBJ_Data obj, OBJ_VertexIndices ind) {
     return v;
 }
 
-Mesh obj_to_mesh(OBJ_Data obj) {
-    Mesh mesh = mesh_create();
 
-    uint32 ind_len = list_length(obj.indices);
-    uint32 index_offset = 0;
-    // uint32 ind_len = obj.objects[1].indices_length;
-    // uint32 index_offset = obj.objects[1].indices_start;
+Mesh obj_to_mesh(OBJ_Data obj) return obj_to_mesh(obj, list_length(obj.indices), 0);
+Mesh obj_to_mesh(OBJ_Data obj, uint32 ind_len, index_offset) {
+    Mesh mesh = mesh_create();
 
     uint32 vlen = list_length(obj.vertices);
     uint32 tlen = list_length(obj.texture_coords);
