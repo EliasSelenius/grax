@@ -8,35 +8,31 @@ struct Transform {
 mat4 to_matrix(with Transform t) {
     mat4 res = quat2matrix(t.rotation);
 
-    // TODO: scale. I seem to recal I did this in stopgap
-
     res.row1 = res.row1 * t.scale.x;
     res.row2 = res.row2 * t.scale.y;
     res.row3 = res.row3 * t.scale.z;
 
-    res.row4.x = t.position.x;
-    res.row4.y = t.position.y;
-    res.row4.z = t.position.z;
-
+    res.row4 = make_vec(t.position, 1.0);
     return res;
 }
 
 mat4 to_inverse_matrix(with Transform t) {
-    mat4 m = to_matrix(t);
+    mat4 res = quat2matrix(normalize(conj(t.rotation)));
+    // mat4 res = transpose(quat2matrix(normalize(t.rotation)));
 
-    vec3 xaxis = xyz(m.row1) * t.scale.x;
-    vec3 yaxis = xyz(m.row2) * t.scale.y;
-    vec3 zaxis = xyz(m.row3) * t.scale.z;
+    vec4 S = { 1.0 / t.scale.x,
+               1.0 / t.scale.y,
+               1.0 / t.scale.z, 0.0 };
 
-    return {
-        // the axises here are on the columns (insted of rows) because the transpose of an orthonormalized matrix is the same as its inverse
-        xaxis.x, yaxis.x, zaxis.x, 0,
-        xaxis.y, yaxis.y, zaxis.y, 0,
-        xaxis.z, yaxis.z, zaxis.z, 0,
-        -dot(xaxis, t.position),
-        -dot(yaxis, t.position),
-        -dot(zaxis, t.position), 1
-    };
+    res.row1 = res.row1 * S;
+    res.row2 = res.row2 * S;
+    res.row3 = res.row3 * S;
+
+    res.row4.x = -dot(xyz(col1(res)), t.position);
+    res.row4.y = -dot(xyz(col2(res)), t.position);
+    res.row4.z = -dot(xyz(col3(res)), t.position);
+
+    return res;
 }
 
 Transform transform_default() {
