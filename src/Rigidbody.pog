@@ -209,3 +209,17 @@ bool ray_sphere_intersects(vec3 o,d,  c, float32 radius) {
     let delta = sq(dot(d, o - c)) - (sqlength(o - c) - sq(radius));
     return delta >= 0;
 }
+
+// https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+bool ray_plane_intersects(vec3 o,d,  p,n, vec3* out_point, float32* dist) {
+    let enumerator = dot(p - o, n);
+    let denominator = dot(d, n);
+
+    if denominator == 0.0  return false; // line and plane are parallel
+    if enumerator == 0.0  return false; // line is contained in plane
+
+    @dist = enumerator / denominator;
+    if @dist < 0.0  return false; // ray points in opposite direction of plane
+    @out_point = o + d*@dist;
+    return true;
+}
