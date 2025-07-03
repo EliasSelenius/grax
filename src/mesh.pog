@@ -267,34 +267,6 @@ void flip_indices(Mesh mesh, uint32 base, uint32 len) {
     // for uint32 i = 0, i < len, i += 3 {}
 }
 
-Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0, 1.0); }
-Mesh gen_plane(uint32 size, float32 uv_scale, scale) {
-    let vsize = size + 1;
-
-    float32 half_size = size as float32 / 2;
-
-    Mesh mesh = mesh_create();
-
-    for uint32 xi: 0 .. vsize {
-        for uint32 yi: 0 .. vsize {
-            vertex3D v = {
-                pos = { (xi - half_size) * scale, 0, (yi - half_size) * scale },
-                normal = vec3_unit_y,
-                uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale }
-            };
-            add_vert(*mesh, v);
-
-            if xi < size and yi < size {
-                uint32 vi = xi * vsize + yi;
-                add_tri(*mesh, vi, vi + 1, vi + vsize + 1);
-                add_tri(*mesh, vi, vi + vsize + 1, vi + vsize);
-            }
-        }
-    }
-
-    return mesh;
-}
-
 void set_origin(Mesh mesh, vec3 origin) {
     for 0 .. list_length(mesh.vertices) {
         mesh.vertices[it].pos = mesh.vertices[it].pos - origin;
@@ -308,4 +280,32 @@ vec3 avg_vertex_pos(Mesh mesh) {
         avg = avg + mesh.vertices[it].pos;
     }
     return avg / len as float32;
+}
+
+Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0, 1.0); }
+Mesh gen_plane(uint32 size, float32 uv_scale, scale) {
+    let vsize = size + 1;
+
+    float32 half_size = size as float32 / 2;
+
+    Mesh mesh = mesh_create();
+
+    for uint32 xi: 0 .. vsize {
+        for uint32 yi: 0 .. vsize {
+            vertex3D v = {};
+            v.pos = { (xi - half_size) * scale, 0, (yi - half_size) * scale };
+            v.normal = vec3_unit_y;
+            v.uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale };
+
+            add_vert(*mesh, v);
+
+            if xi < size and yi < size {
+                uint32 vi = xi * vsize + yi;
+                add_tri(*mesh, vi, vi + 1, vi + vsize + 1);
+                add_tri(*mesh, vi, vi + vsize + 1, vi + vsize);
+            }
+        }
+    }
+
+    return mesh;
 }

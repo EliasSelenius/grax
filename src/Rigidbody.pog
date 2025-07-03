@@ -205,9 +205,11 @@ bool ray_triangle_intersects(vec3 o,d,  a,b,c, vec3* out_pos) {
 }
 
 // https://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
-bool ray_sphere_intersects(vec3 o,d,  c, float32 radius) {
+// TODO: this function is actually a line-sphere intersection test, not ray-sphere
+bool ray_sphere_intersects(vec3 o,d,  c, float32 radius, float32* dist) {
     let delta = sq(dot(d, o - c)) - (sqlength(o - c) - sq(radius));
-    return delta >= 0;
+    @dist = -dot(d, o - c) - sqrtf(delta);
+    return delta >= 0 and @dist >= 0;
 }
 
 // https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection

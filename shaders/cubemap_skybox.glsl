@@ -37,7 +37,7 @@ float oct_noise(vec3 dir, int octaves) {
     float value = 0;
     for (int i = 1; i <= octaves; i++) {
         float f = pow(2, i);
-        value += noise(dir * f);
+        value += (noise(dir * f) + 1.0) / 2.0;
     }
 
     return value / octaves;
@@ -53,7 +53,9 @@ vec3 skybox_color(vec3 dir) {
     // vec3 blue   = vec3(0.1, 0.01, 1) * oct_noise(vec3(100) + dir * 10);
     // return purple;// + blue;
 
-    return vec3(0.6, 0.01, 1) * oct_noise(dir + vec3((oct_noise(dir*1, 10)+1.0) * 1), 2);
+    float d = oct_noise(dir + vec3((oct_noise(dir*1, 10)+1.0) * 1), 2);
+    if (d < 0.5) return vec3(0.0);
+    return vec3(0.6, 0.01, 1) * d;
 
     // return (dir);
 }

@@ -55,6 +55,7 @@ vec4 max(vec4 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.
 
 int32 clamp(int32 t, min, max) return t < min ? min : t > max ? max : t;
 float32 clamp(float32 t, min, max) return t < min ? min : t > max ? max : t;
+float32 clamp01(float32 t) return clamp(t, 0, 1);
 
 float32 lerp(float32 t, a, b) return a + (b - a) * t;
 
@@ -466,6 +467,10 @@ mat4 perspective_off_center(float32 left, right, bottom, top, near_depth, far_de
 struct quat {
     float32 x, y, z, w;
 }
+
+vec3 xyz(quat q) return { q.x, q.y, q.z };
+
+const quat_identity = {0,0,0,1} as quat;
 
 // for unit quaternions conjugate is the same as inverse
 quat conj(quat q) { return { -q.x, -q.y, -q.z, q.w }; }

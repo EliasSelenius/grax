@@ -1,0 +1,237 @@
+
+struct GUID {
+    uint32 Data1;
+    uint16 Data2;
+    uint16 Data3;
+    uint8[8] Data4;
+}
+
+GUID CLSID_MMDeviceEnumerator = {0xbcde0395, 0xe52f, 0x467c, {0x8e,0x3d,0xc4,0x57,0x92,0x91,0x69,0x2e}};
+GUID IID_IMMDeviceEnumerator  = {0xa95664d2, 0x9614, 0x4f35, {0xa7,0x46,0xde,0x8d,0xb6,0x36,0x17,0xe6}};
+GUID IID_IAudioClient         = {0x1cb9ad4c, 0xdbfa, 0x4c32, {0xb1,0x78,0xc2,0xf5,0x68,0xa7,0x03,0xb2}};
+GUID IID_IAudioRenderClient   = {0xf294acfc, 0x3146, 0x4483, {0xa7,0xbf,0xad,0xdc,0xa7,0xc2,0x60,0xe2}};
+
+type HRESULT = int32;
+type ULONG = uint32;
+
+type PROPVARIANT;
+
+enum EDataFlow {
+    eRender  = 0;
+    eCapture = 1;
+    eAll     = 2;
+}
+
+enum ERole {
+    eConsole        = 0;
+    eMultimedia     = 1;
+    eCommunications = 2;
+}
+
+enum AUDCLNT_SHAREMODE {
+    SHARED;
+    EXCLUSIVE;
+}
+
+struct WAVEFORMATEX {
+    uint16 wFormatTag;         /* format type */
+    uint16 nChannels;          /* number of channels (i.e. mono, stereo...) */
+    uint32 nSamplesPerSec;     /* sample rate */
+    uint32 nAvgBytesPerSec;    /* for buffer estimation */
+    uint16 nBlockAlign;        /* block size of data */
+    uint16 wBitsPerSample;     /* number of bits per sample of mono data */
+    uint16 cbSize;             /* the count in bytes of the size of */
+                               /* extra information (after cbSize) */
+}
+
+const WAVE_FORMAT_PCM = 1;
+
+struct IMMDeviceEnumerator { IMMDeviceEnumeratorVtbl* lpVtbl; }
+struct IMMDevice           { IMMDeviceVtbl*           lpVtbl; }
+struct IAudioClient        { IAudioClientVtbl*        lpVtbl; }
+struct IAudioRenderClient  { IAudioRenderClientVtbl*  lpVtbl; }
+
+type IMMDeviceCollection; // cannot be bothered to implement this unless I actually use it
+type IMMNotificationClient;
+type IPropertyStore;
+type IUnknown;
+
+struct IMMDeviceEnumeratorVtbl {
+    HRESULT(IMMDeviceEnumerator* This, GUID* riid, void** ppvObject) QueryInterface;
+    ULONG(IMMDeviceEnumerator* This) AddRef;
+    ULONG(IMMDeviceEnumerator* This) Release;
+    HRESULT(IMMDeviceEnumerator* This, EDataFlow dataFlow, uint32 dwStateMask, IMMDeviceCollection** ppDevices) EnumAudioEndpoints;
+    HRESULT(IMMDeviceEnumerator* This, EDataFlow dataFlow, ERole role, IMMDevice** ppEndpoint) GetDefaultAudioEndpoint;
+    HRESULT(IMMDeviceEnumerator* This, uint16* pwstrId, IMMDevice** ppDevice) GetDevice;
+    HRESULT(IMMDeviceEnumerator* This, IMMNotificationClient* pClient) RegisterEndpointNotificationCallback;
+    HRESULT(IMMDeviceEnumerator* This, IMMNotificationClient* pClient) UnregisterEndpointNotificationCallback;
+}
+
+struct IMMDeviceVtbl {
+    HRESULT(IMMDevice* This, GUID* riid, void** ppvObject) QueryInterface;
+    ULONG(IMMDevice* This) AddRef;
+    ULONG(IMMDevice* This) Release;
+    HRESULT(IMMDevice* This, GUID* iid, uint32 dwClsCtx, /*optional*/ PROPVARIANT* pActivationParams, void** ppInterface) Activate;
+    HRESULT(IMMDevice* This, uint32 stgmAccess, IPropertyStore** ppProperties) OpenPropertyStore;
+    HRESULT(IMMDevice* This, uint16** ppstrId) GetId;
+    HRESULT(IMMDevice* This, uint32* pdwState) GetState;
+}
+
+struct IAudioClientVtbl {
+    HRESULT(IAudioClient* This, GUID* riid, void** ppvObject) QueryInterface;
+    ULONG(IAudioClient* This) AddRef;
+    ULONG(IAudioClient* This) Release;
+    HRESULT(IAudioClient* This, AUDCLNT_SHAREMODE ShareMode, uint32 StreamFlags, int64 hnsBufferDuration, int64 hnsPeriodicity, WAVEFORMATEX* pFormat, /*optional*/ GUID* AudioSessionGuid) Initialize;
+    HRESULT(IAudioClient* This, uint32* pNumBufferFrames) GetBufferSize;
+    HRESULT(IAudioClient* This, int64* phnsLatency) GetStreamLatency;
+    HRESULT(IAudioClient* This, uint32* pNumPaddingFrames) GetCurrentPadding;
+    HRESULT(IAudioClient* This, AUDCLNT_SHAREMODE ShareMode, WAVEFORMATEX* pFormat, /*opt out*/ WAVEFORMATEX** ppClosestMatch) IsFormatSupported;
+    HRESULT(IAudioClient* This, WAVEFORMATEX** ppDeviceFormat) GetMixFormat;
+    HRESULT(IAudioClient* This, /*opt out*/ int64* phnsDefaultDevicePeriod, /*opt out*/ int64* phnsMinimumDevicePeriod) GetDevicePeriod;
+    HRESULT(IAudioClient* This) Start;
+    HRESULT(IAudioClient* This) Stop;
+    HRESULT(IAudioClient* This) Reset;
+    HRESULT(IAudioClient* This, HANDLE eventHandle) SetEventHandle;
+    HRESULT(IAudioClient* This, GUID* riid, void** ppv) GetService;
+}
+
+struct IAudioRenderClientVtbl {
+    HRESULT(IAudioRenderClient* This, GUID* riid, void** ppvObject) QueryInterface;
+    ULONG(IAudioRenderClient* This) AddRef;
+    ULONG(IAudioRenderClient* This) Release;
+    HRESULT(IAudioRenderClient* This, uint32 NumFramesRequested, uint8** ppData) GetBuffer; // NumFramesRequested * pFormat->nBlockAlign
+    HRESULT(IAudioRenderClient* This, uint32 NumFramesWritten, uint32 dwFlags) ReleaseBuffer;
+}
+
+HRESULT QueryInterface(IMMDeviceEnumerator* This, GUID* riid, void** ppvObject) return This.lpVtbl.QueryInterface(This, riid, ppvObject);
+ULONG AddRef(IMMDeviceEnumerator* This) return This.lpVtbl.AddRef(This);
+ULONG Release(IMMDeviceEnumerator* This) return This.lpVtbl.Release(This);
+HRESULT EnumAudioEndpoints(IMMDeviceEnumerator* This, EDataFlow dataFlow, uint32 dwStateMask, IMMDeviceCollection** ppDevices) return This.lpVtbl.EnumAudioEndpoints(This, dataFlow, dwStateMask, ppDevices);
+HRESULT GetDefaultAudioEndpoint(IMMDeviceEnumerator* This, EDataFlow dataFlow, ERole role, IMMDevice** ppEndpoint) return This.lpVtbl.GetDefaultAudioEndpoint(This, dataFlow, role, ppEndpoint);
+HRESULT GetDevice(IMMDeviceEnumerator* This, uint16* pwstrId, IMMDevice** ppDevice) return This.lpVtbl.GetDevice(This, pwstrId, ppDevice);
+HRESULT RegisterEndpointNotificationCallback(IMMDeviceEnumerator* This, IMMNotificationClient* pClient) return This.lpVtbl.RegisterEndpointNotificationCallback(This, pClient);
+HRESULT UnregisterEndpointNotificationCallback(IMMDeviceEnumerator* This, IMMNotificationClient* pClient) return This.lpVtbl.UnregisterEndpointNotificationCallback(This, pClient);
+
+HRESULT QueryInterface(IMMDevice* This, GUID* riid, void** ppvObject) return This.lpVtbl.QueryInterface(This, riid, ppvObject);
+ULONG AddRef(IMMDevice* This) return This.lpVtbl.AddRef(This);
+ULONG Release(IMMDevice* This) return This.lpVtbl.Release(This);
+HRESULT Activate(IMMDevice* This, GUID* iid, uint32 dwClsCtx, /*optional*/ PROPVARIANT* pActivationParams, void** ppInterface) return This.lpVtbl.Activate(This, iid, dwClsCtx, pActivationParams, ppInterface);
+HRESULT OpenPropertyStore(IMMDevice* This, uint32 stgmAccess, IPropertyStore** ppProperties) return This.lpVtbl.OpenPropertyStore(This, stgmAccess, ppProperties);
+HRESULT GetId(IMMDevice* This, uint16** ppstrId) return This.lpVtbl.GetId(This, ppstrId);
+HRESULT GetState(IMMDevice* This, uint32* pdwState) return This.lpVtbl.GetState(This, pdwState);
+
+HRESULT QueryInterface(IAudioClient* This, GUID* riid, void** ppvObject) return This.lpVtbl.QueryInterface(This, riid, ppvObject);
+ULONG AddRef(IAudioClient* This) return This.lpVtbl.AddRef(This);
+ULONG Release(IAudioClient* This) return This.lpVtbl.Release(This);
+HRESULT Initialize(IAudioClient* This, AUDCLNT_SHAREMODE ShareMode, uint32 StreamFlags, int64 hnsBufferDuration, int64 hnsPeriodicity, WAVEFORMATEX* pFormat, /*optional*/ GUID* AudioSessionGuid) return This.lpVtbl.Initialize(This, ShareMode, StreamFlags, hnsBufferDuration, hnsPeriodicity, pFormat, AudioSessionGuid);
+HRESULT GetBufferSize(IAudioClient* This, uint32* pNumBufferFrames) return This.lpVtbl.GetBufferSize(This, pNumBufferFrames);
+HRESULT GetStreamLatency(IAudioClient* This, int64* phnsLatency) return This.lpVtbl.GetStreamLatency(This, phnsLatency);
+HRESULT GetCurrentPadding(IAudioClient* This, uint32* pNumPaddingFrames) return This.lpVtbl.GetCurrentPadding(This, pNumPaddingFrames);
+HRESULT IsFormatSupported(IAudioClient* This, AUDCLNT_SHAREMODE ShareMode, WAVEFORMATEX* pFormat, /*opt out*/ WAVEFORMATEX** ppClosestMatch) return This.lpVtbl.IsFormatSupported(This, ShareMode, pFormat, ppClosestMatch);
+HRESULT GetMixFormat(IAudioClient* This, WAVEFORMATEX** ppDeviceFormat) return This.lpVtbl.GetMixFormat(This, ppDeviceFormat);
+HRESULT GetDevicePeriod(IAudioClient* This, /*opt out*/ int64* phnsDefaultDevicePeriod, /*opt out*/ int64* phnsMinimumDevicePeriod) return This.lpVtbl.GetDevicePeriod(This, phnsDefaultDevicePeriod, phnsMinimumDevicePeriod);
+HRESULT Start(IAudioClient* This) return This.lpVtbl.Start(This);
+HRESULT Stop(IAudioClient* This) return This.lpVtbl.Stop(This);
+HRESULT Reset(IAudioClient* This) return This.lpVtbl.Reset(This);
+HRESULT SetEventHandle(IAudioClient* This, HANDLE eventHandle) return This.lpVtbl.SetEventHandle(This, eventHandle);
+HRESULT GetService(IAudioClient* This, GUID* riid, void** ppv) return This.lpVtbl.GetService(This, riid, ppv);
+
+HRESULT QueryInterface(IAudioRenderClient* This, GUID* riid, void** ppvObject) return This.lpVtbl.QueryInterface(This, riid, ppvObject);
+ULONG AddRef(IAudioRenderClient* This) return This.lpVtbl.AddRef(This);
+ULONG Release(IAudioRenderClient* This) return This.lpVtbl.Release(This);
+HRESULT GetBuffer(IAudioRenderClient* This, uint32 NumFramesRequested, uint8** ppData) return This.lpVtbl.GetBuffer(This, NumFramesRequested, ppData);
+HRESULT ReleaseBuffer(IAudioRenderClient* This, uint32 NumFramesWritten, uint32 dwFlags) return This.lpVtbl.ReleaseBuffer(This, NumFramesWritten, dwFlags);
+
+
+
+const CLSCTX_ALL = (1|2|4|16);
+
+HRESULT CoInitialize(void* pvReserved);
+HRESULT CoCreateInstance(GUID* rclsid, IUnknown* pUnkOuter, uint32 dwClsContext, GUID* riid, void** ppv);
+
+struct Audio_State {
+    IMMDevice* device;
+    IAudioClient* client;
+    IAudioRenderClient* render_client;
+    WAVEFORMATEX* format;
+
+    float64 time;
+}
+
+Audio_State audio = {};
+
+
+void audio_init(Wav_File* wav) {
+
+    CoInitialize(null);
+
+    IMMDeviceEnumerator* enumerator;
+    CoCreateInstance(*CLSID_MMDeviceEnumerator, null, CLSCTX_ALL, *IID_IMMDeviceEnumerator, *enumerator);
+
+    GetDefaultAudioEndpoint(enumerator, EDataFlow.eRender, ERole.eConsole, *audio.device);
+    Activate(audio.device, *IID_IAudioClient, CLSCTX_ALL, 0, *audio.client);
+
+    // WAVEFORMATEX* format;
+    // GetMixFormat(client, *format);
+
+    audio.format = alloc WAVEFORMATEX;
+    @audio.format = {};
+    audio.format.wFormatTag = WAVE_FORMAT_PCM;
+    audio.format.nChannels = wav.fmt.channels;
+    audio.format.nSamplesPerSec = wav.fmt.sample_rate;
+    audio.format.nAvgBytesPerSec = wav.fmt.byte_rate;
+    audio.format.nBlockAlign = wav.fmt.block_align;
+    audio.format.wBitsPerSample = wav.fmt.bits_per_sample;
+    audio.format.cbSize = 0;
+
+    int64 requested_duration = 10000000;
+    Initialize(audio.client, AUDCLNT_SHAREMODE.SHARED, 0, requested_duration, 0, audio.format, null);
+
+    /*WORD */ print("format.wFormatTag = ",      audio.format.wFormatTag, "\n");         /* format type */
+    /*WORD */ print("format.nChannels = ",       audio.format.nChannels, "\n");          /* number of channels (i.e. mono, stereo...) */
+    /*DWORD*/ print("format.nSamplesPerSec = ",  audio.format.nSamplesPerSec, "\n");     /* sample rate */
+    /*DWORD*/ print("format.nAvgBytesPerSec = ", audio.format.nAvgBytesPerSec, "\n");    /* for buffer estimation */
+    /*WORD */ print("format.nBlockAlign = ",     audio.format.nBlockAlign, "\n");        /* block size of data */
+    /*WORD */ print("format.wBitsPerSample = ",  audio.format.wBitsPerSample, "\n");     /* number of bits per sample of mono data */
+    /*WORD */ print("format.cbSize = ",          audio.format.cbSize, "\n");             /* the count in bytes of the size of extra information (after cbSize) */
+
+    uint32 frame_count;
+    GetBufferSize(audio.client, *frame_count);
+
+    GetService(audio.client, *IID_IAudioRenderClient, *audio.render_client);
+
+    Start(audio.client);
+}
+
+void audio_loop(Wav_File* wav) {
+
+    uint32 padding;
+    GetCurrentPadding(audio.client, *padding);
+
+    uint32 frame_count;
+    GetBufferSize(audio.client, *frame_count);
+
+    uint32 frames_available = frame_count - padding;
+
+    if frames_available != 0 {
+        uint8* data;
+        GetBuffer(audio.render_client, frames_available, *data);
+        int16* buf = data as int16*;
+
+        // for 0 .. frames_available {
+        //     float32 max = (0xffff as float32) / 2;
+        //     int16 a = (sinf(Tau*audio.time*200)*max) as int16;
+        //     @buf++ = a;
+        //     @buf++ = a;
+
+        //     audio.time += 1.0 / audio.format.nSamplesPerSec;
+        // }
+
+        int32 size = min(wav.data_chunk.size, )
+        memcpy(buf, wav.data, )
+
+        uint32 flags = 0;
+        ReleaseBuffer(audio.render_client, frames_available, flags);
+    }
+
+}

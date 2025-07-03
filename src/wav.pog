@@ -1,0 +1,76 @@
+
+struct Wav_Header {
+    char[4] riff; // "RIFF"
+    uint32 file_size;
+    char[4] wave; // "WAVE"
+}
+
+struct Wav_FmtChunk {
+    char[4] id; // "fmt "
+    uint32 size;
+    uint16 audio_format; // 1 for PCM
+    uint16 channels;
+    uint32 sample_rate;
+    uint32 byte_rate;
+    uint16 block_align;
+    uint16 bits_per_sample;
+}
+
+struct Wav_DataChunk {
+    char[4] id; // "data"
+    uint32 size;
+    // Followed by raw PCM data
+}
+
+
+struct Wav_File {
+    Wav_Header* header;
+    Wav_FmtChunk* fmt;
+    Wav_DataChunk* data_chunk;
+    void* data;
+}
+
+Wav_File load_wav(char* filename) {
+    Wav_File wav = {};
+
+    uint8[] content = read_binary_file(filename);
+    wav.header = content.data;
+
+    print("Wav_Header: ", make_string(wav.header.riff as char*, 4), "\n");
+    print("Wav_Header: ", make_string(wav.header.wave as char*, 4), "\n");
+
+    uint32 i = sizeof Wav_Header;
+    while i < content.length {
+        let id = make_string(*content[i] as char*, 4);
+        uint32 chunk_size = @(*content[i+4] as uint32*);
+
+        print("chunk_size: ", chunk_size, "\n");
+
+        if string_equals(id, "fmt ") {
+            Wav_FmtChunk* fmt = *content[i] as Wav_FmtChunk*;
+            print("FmtChunk: ", make_string(fmt.id as char*, 4), "\n");
+            print("  size = ", fmt.size, "\n");
+            print("  audio_format = ", fmt.audio_format, "\n");
+            print("  channels = ", fmt.channels, "\n");
+            print("  sample_rate = ", fmt.sample_rate, "\n");
+            print("  byte_rate = ", fmt.byte_rate, "\n");
+            print("  block_align = ", fmt.block_align, "\n");
+            print("  bits_per_sample = ", fmt.bits_per_sample, "\n");
+
+            wav.fmt = fmt;
+
+        } else if string_equals(id, "data") {
+            Wav_DataChunk* data = *content[i] as Wav_DataChunk*;
+            print("DataChunk: ", make_string(data.id as char*, 4), "\n");
+
+            wav.data_chunk = data;
+            wav.data = *content[i + sizeof Wav_DataChunk] as void*;
+        } else {
+
+        }
+
+        i += chunk_size + 8; // plus 8 for id and chunk_size
+    }
+
+    return wav;
+}

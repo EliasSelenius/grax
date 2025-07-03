@@ -229,6 +229,11 @@ void camera_fly_control(Camera* cam) {
 }
 
 void camera_orbit_control(Camera* cam, vec3 center) {
+    Transform tr = transform_default();
+    tr.position = center;
+    camera_orbit_control(cam, tr);
+}
+void camera_orbit_control(Camera* cam, Transform local_space) {
     float32 dt = deltatime();
 
     // x,y,z = yaw,pitch,zoom
@@ -257,8 +262,11 @@ void camera_orbit_control(Camera* cam, vec3 center) {
     float32 zoom  = current.z;
 
     let c = cosf(pitch);
-    cam.transform.position = { cosf(yaw) * c, sinf(pitch), sinf(yaw) * c } * zoom + center;
-    look_at(*cam.transform, center);
+    vec3 l = { cosf(yaw) * c, sinf(pitch), sinf(yaw) * c };
+    l = l * make_mat3(quat2matrix(local_space.rotation));
+
+    cam.transform.position = l * zoom + local_space.position;
+    look_at(*cam.transform, local_space.position, up(local_space));
 }
 
 vec2 screen2ndc(float32 x, y) {

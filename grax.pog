@@ -26,3 +26,5 @@ include "../grax/src/noise.pog";
 include "../grax/src/Rigidbody.pog";
 include "../grax/src/deferred_renderer.pog";
 include "../grax/src/draw2d.pog";
+include "../grax/src/wav.pog";
+include "../grax/src/audio.pog";
