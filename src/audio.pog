@@ -154,8 +154,6 @@ struct Audio_State {
     IAudioClient* client;
     IAudioRenderClient* render_client;
     WAVEFORMATEX* format;
-
-    float64 time;
 }
 
 Audio_State audio = {};
@@ -184,7 +182,17 @@ void audio_init(Wav_File* wav) {
     audio.format.wBitsPerSample = wav.fmt.bits_per_sample;
     audio.format.cbSize = 0;
 
-    int64 requested_duration = 10000000;
+    /* millisecodns to hectonanoseconds
+        m = 1/1000
+        u = 1/1000_000
+        n = 1/1000_000_000
+        h = 100
+
+        ms = Xhns
+        X  = 10_000
+    */
+
+    int64 requested_duration = 10 * 10_000;
     Initialize(audio.client, AUDCLNT_SHAREMODE.SHARED, 0, requested_duration, 0, audio.format, null);
 
     /*WORD */ print("format.wFormatTag = ",      audio.format.wFormatTag, "\n");         /* format type */
@@ -195,8 +203,6 @@ void audio_init(Wav_File* wav) {
     /*WORD */ print("format.wBitsPerSample = ",  audio.format.wBitsPerSample, "\n");     /* number of bits per sample of mono data */
     /*WORD */ print("format.cbSize = ",          audio.format.cbSize, "\n");             /* the count in bytes of the size of extra information (after cbSize) */
 
-    uint32 frame_count;
-    GetBufferSize(audio.client, *frame_count);
 
     GetService(audio.client, *IID_IAudioRenderClient, *audio.render_client);
 
@@ -205,6 +211,12 @@ void audio_init(Wav_File* wav) {
 
 void audio_loop(Wav_File* wav) {
 
+    // int64 latency;
+    // GetStreamLatency(audio.client, *latency);
+    // print(latency, "\n");
+
+
+    // TODO: is GetCurrentPadding and GetBufferSize in units of bytes or frames?
     uint32 padding;
     GetCurrentPadding(audio.client, *padding);
 
@@ -216,8 +228,8 @@ void audio_loop(Wav_File* wav) {
     if frames_available != 0 {
         uint8* data;
         GetBuffer(audio.render_client, frames_available, *data);
-        int16* buf = data as int16*;
 
+        // int16* buf = data as int16*;
         // for 0 .. frames_available {
         //     float32 max = (0xffff as float32) / 2;
         //     int16 a = (sinf(Tau*audio.time*200)*max) as int16;
@@ -227,11 +239,52 @@ void audio_loop(Wav_File* wav) {
         //     audio.time += 1.0 / audio.format.nSamplesPerSec;
         // }
 
-        int32 size = min(wav.data_chunk.size, )
-        memcpy(buf, wav.data, )
+        uint32 frame_size = audio.format.nBlockAlign;
+        memset(data, 0, frames_available * frame_size);
+
+        for 0 .. list_length(sounds) {
+            Audio_Source* source = *sounds[it];
+
+            uint8* ptr = source.wav.data;
+            ptr += source.frame * frame_size;
+
+            int16* src = ptr;
+            int16* dst = data;
+
+            uint32 total_frames = source.wav.data_chunk.size / frame_size;
+            uint32 frames_left = total_frames - source.frame;
+            uint32 num_frames = min(frames_available, frames_left);
+
+            if num_frames == 0 {
+                list_unordered_remove(sounds, it);
+                it--;
+                continue;
+            }
+
+            for 0 .. num_frames*2 {
+                dst[it] = clamp(dst[it] as int32 + src[it], -32768, 32767) as int16;
+            }
+
+            source.frame += num_frames;
+        }
 
         uint32 flags = 0;
         ReleaseBuffer(audio.render_client, frames_available, flags);
     }
 
+}
+
+struct Audio_Source {
+    Wav_File* wav;
+    uint32 frame;
+}
+
+Audio_Source[..] sounds = list_create(sizeof Audio_Source);
+
+void audio_play(Wav_File* wav) {
+    Audio_Source s = {};
+    s.wav = wav;
+    s.frame = 0;
+
+    list_add(*sounds, *s);
 }
