@@ -5,6 +5,7 @@ IO FragData {
     vec4 color;
     vec4 color_factor;
     vec4 color_additive;
+    vec4 color_outline;
 } v2f;
 
 uniform vec2 cam_pos = vec2(0.0);
@@ -27,6 +28,7 @@ layout (location = 6) in vec2  a_Instance_uv_offset;
 layout (location = 7) in vec2  a_Instance_uv_scale;
 layout (location = 8) in vec4  a_Instance_color_factor;
 layout (location = 9) in vec4  a_Instance_color_additive;
+layout (location = 10) in vec4  a_Instance_color_outline;
 
 void main() {
 
@@ -35,6 +37,7 @@ void main() {
 
     v2f.color_factor = a_Instance_color_factor;
     v2f.color_additive = a_Instance_color_additive;
+    v2f.color_outline = a_Instance_color_outline;
 
     vec3  pos   = a_Instance_Pos;
     float rot   = a_Instance_Rot;
@@ -64,7 +67,21 @@ out vec4 FragColor;
 
 void main() {
     vec4 tex_color = texture(tex, v2f.uv) * v2f.color;
-    if (tex_color.a == 0.0) discard;
+    if (tex_color.a == 0.0) {
+        vec2 size = 1.0 / textureSize(tex, 0);
+
+        float e = texture(tex, v2f.uv + size*vec2(1,0)).a;
+        float w = texture(tex, v2f.uv + size*vec2(-1,0)).a;
+        float n = texture(tex, v2f.uv + size*vec2(0,1)).a;
+        float s = texture(tex, v2f.uv + size*vec2(0,-1)).a;
+
+        if (e != 0.0)      tex_color = v2f.color_outline;
+        else if (w != 0.0) tex_color = v2f.color_outline;
+        else if (n != 0.0) tex_color = v2f.color_outline;
+        else if (s != 0.0) tex_color = v2f.color_outline;
+
+        if (tex_color.a == 0.0) discard;
+    }
 
     FragColor = vec4(mix(tex_color.rgb, background_color, v2f.pos.z), tex_color.a);
     // FragColor = tex_color;

@@ -209,7 +209,7 @@ void audio_init(Wav_File* wav) {
     Start(audio.client);
 }
 
-void audio_loop(Wav_File* wav) {
+void audio_loop(vec3 listener_pos) {
 
     // int64 latency;
     // GetStreamLatency(audio.client, *latency);
@@ -262,7 +262,12 @@ void audio_loop(Wav_File* wav) {
             }
 
             for 0 .. num_frames*2 {
-                dst[it] = clamp(dst[it] as int32 + src[it], -32768, 32767) as int16;
+                float32 attenuation = clamp01(200_000.0 / sqdist(source.pos, listener_pos));
+
+
+
+                int16 s = ((src[it] as float32) * attenuation) as int16;
+                dst[it] = clamp(dst[it] as int32 + s, -32768, 32767) as int16;
             }
 
             source.frame += num_frames;
@@ -277,14 +282,16 @@ void audio_loop(Wav_File* wav) {
 struct Audio_Source {
     Wav_File* wav;
     uint32 frame;
+    vec3 pos;
 }
 
 Audio_Source[..] sounds = list_create(sizeof Audio_Source);
 
-void audio_play(Wav_File* wav) {
+void audio_play(Wav_File* wav, vec3 pos) {
     Audio_Source s = {};
     s.wav = wav;
     s.frame = 0;
+    s.pos = pos;
 
     list_add(*sounds, *s);
 }

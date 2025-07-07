@@ -15,7 +15,6 @@ enum AnchorPoint { center; top_left; top_right; bottom_left; bottom_right; }
 
 RenderLayer immediate_layer;
 AnchorPoint anchor = .center;
-Transform2D ui_camera = {scale = 1};
 
 // struct ImmediateRendererContex {
 //     AnchorPoint anchor;
@@ -24,6 +23,8 @@ Transform2D ui_camera = {scale = 1};
 // }
 
 struct RenderLayer {
+    Transform2D ui_camera;
+
     Trianglebatch geometry;
     Trianglebatch text;
     OpenGLBlendingMode blend_mode;
@@ -31,40 +32,41 @@ struct RenderLayer {
     RenderLayer* next_layer;
 }
 
-// TODO: this API is a good idea
-// void layer_push();
-// void layer_pop();
-
-RenderLayer create_layer() {
-    RenderLayer layer = {};
-    layer.text = create_trianglebatch();
-    layer.geometry = create_trianglebatch();
-
-    layer.text.shader = ui_shader;
-    layer.text.texture = CascadiaMono_texture;
-
-    layer.geometry.shader = ui_shader;
-    layer.geometry.texture = white_texture;
-
-    layer.blend_mode = .src_alpha;
-    return layer;
-}
-
 struct Trianglebatch {
     vertex2D* vertices; // list
     uint32* indices; // list
 
-    DrawBuffers draw_buffers;
-    Shader shader;
+    DrawBuffers db;
+    Shader* shader;
     Texture2D texture;
 }
 
-Trianglebatch create_trianglebatch() {
-    Trianglebatch tb = {};
-    tb.vertices = list_create(sizeof vertex2D);
-    tb.indices  = list_create(sizeof uint32);
-    tb.draw_buffers = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
-    return tb;
+
+// void layer_push() {}
+// void layer_pop() {}
+
+RenderLayer create_layer() {
+    Trianglebatch create_trianglebatch() {
+        Trianglebatch tb = {};
+        tb.vertices = list_create(sizeof vertex2D);
+        tb.indices  = list_create(sizeof uint32);
+        tb.db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+        return tb;
+    }
+
+    RenderLayer layer = {};
+    layer.ui_camera = {scale = 1};
+    layer.text = create_trianglebatch();
+    layer.geometry = create_trianglebatch();
+
+    layer.text.shader = *ui_shader;
+    layer.text.texture = CascadiaMono_texture;
+
+    layer.geometry.shader = *ui_shader;
+    layer.geometry.texture = white_texture;
+
+    layer.blend_mode = .src_alpha;
+    return layer;
 }
 
 void apply_camera(Transform2D t) {
@@ -73,31 +75,30 @@ void apply_camera(Transform2D t) {
     set_uniform("cam_rot", t.rot);
 }
 
-void dispatch_trianglebatch(Trianglebatch* tb) {
-    let vert_count = list_length(tb.vertices);
-    let ind_count = list_length(tb.indices);
+void dispatch_layer(RenderLayer* layer) {
+    void dispatch_trianglebatch(Trianglebatch* tb, Transform2D cam_tr) {
+        let vert_count = list_length(tb.vertices);
+        let ind_count = list_length(tb.indices);
 
-    if vert_count != 0 and ind_count != 0 {
-        update_buffers(*tb.draw_buffers, tb.vertices, vert_count, tb.indices, ind_count);
+        if vert_count != 0 and ind_count != 0 {
+            update_buffers(*tb.db, tb.vertices, vert_count, tb.indices, ind_count);
 
-        use(*tb.shader);
-        bind(tb.texture);
-        apply_camera(ui_camera);
+            use(tb.shader);
+            bind(tb.texture);
+            apply_camera(cam_tr);
+            draw_elements(tb.db);
+        }
 
-        draw_elements(tb.draw_buffers);
+        list_clear(tb.vertices);
+        list_clear(tb.indices);
     }
 
-    list_clear(tb.vertices);
-    list_clear(tb.indices);
-}
-
-void dispatch_layer(RenderLayer* layer) {
     disable_depth_test();
 
     set_blend_mode(layer.blend_mode);
-    dispatch_trianglebatch(*layer.geometry);
+    dispatch_trianglebatch(*layer.geometry, layer.ui_camera);
     enable_alpha_blending();
-    dispatch_trianglebatch(*layer.text);
+    dispatch_trianglebatch(*layer.text, layer.ui_camera);
 
     if layer.next_layer  dispatch_layer(layer.next_layer);
 }
@@ -108,7 +109,6 @@ void init_immediate_renderer() {
 
 void dispatch_immediate() {
     dispatch_layer(*immediate_layer);
-    ui_camera = {scale = 1};
 }
 
 void add_vertex(with Trianglebatch* tb, float32 x, y, u, v, Color color) {
@@ -196,11 +196,11 @@ void add_quad(with Trianglebatch* tb, vec2 pos, size, uv_offset, uv_scale, Color
 
 
 
-void rect(with RenderLayer* layer, vec2 pos, size, Color color) {
+void draw_rect(with RenderLayer* layer, vec2 pos, size, Color color) {
     add_quad(*layer.geometry, pos, size, vec2_zero, vec2_one, color);
 }
 
-void glyph(with RenderLayer* layer, vec2 pos, float32 size, char c, Color color) {
+void draw_glyph(with RenderLayer* layer, vec2 pos, float32 size, char c, Color color) {
     uint32 index = c as uint8 - ' ';
     float32 col = index % 14;
     float32 row = index / 14 + 1;
@@ -211,7 +211,7 @@ void glyph(with RenderLayer* layer, vec2 pos, float32 size, char c, Color color)
     add_quad(*layer.text, pos, vsize, uv, uv_scale, color);
 }
 
-vec2 text(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
+vec2 draw_text(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
     float32 start = pos.x;
     for i : 0 .. text.length {
         char c = text.chars[i];
@@ -222,14 +222,14 @@ vec2 text(with RenderLayer* layer, vec2 pos, float32 size, string text, Color co
             continue;
         }
 
-        if c != ' ' glyph(layer, pos, size, c, color);
+        if c != ' ' draw_glyph(layer, pos, size, c, color);
         pos.x += size * 0.5;
     }
 
     return pos;
 }
 
-vec2 text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Color color) {
+vec2 draw_text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Color color) {
     float32 start = pos.x;
 
     while @text {
@@ -239,7 +239,7 @@ vec2 text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Color col
                 pos.y -= size;
                 break;
             default:
-                glyph(layer, pos, size, @text, color);
+                draw_glyph(layer, pos, size, @text, color);
             case ' ':
                 pos.x += size * 0.5;
                 break;
@@ -251,12 +251,12 @@ vec2 text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Color col
 }
 
 // TODO: this is named oddly, its just right justifying it.
-vec2 text_backwards(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
+vec2 draw_text_backwards(with RenderLayer* layer, vec2 pos, float32 size, string text, Color color) {
     int32 i = text.length as int32 - 1;
     while i >= 0 {
         let c = text.chars[i--];
 
-        if c != ' ' glyph(layer, pos, size, c, color);
+        if c != ' ' draw_glyph(layer, pos, size, c, color);
         pos.x -= size * 0.5;
     }
 
@@ -264,8 +264,31 @@ vec2 text_backwards(with RenderLayer* layer, vec2 pos, float32 size, string text
 }
 
 
-void draw_rect(vec2 pos, size, Color color) { rect(*immediate_layer, pos, size, color); }
-void draw_glyph(vec2 pos, float32 size, char c, Color color) { glyph(*immediate_layer, pos, size, c, color); }
-vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return text(*immediate_layer, pos, size, txt, color); }
-vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return text(*immediate_layer, pos, size, txt, color); }
-vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return text_backwards(*immediate_layer, pos, size, text, color); }
+
+struct UI_Rect {
+    vec2 center, size;
+}
+
+UI_Rect rect(vec2 p1, p2) {
+    UI_Rect rect = {};
+    rect.center = (p1 + p2) / 2.0;
+    vec2 t = p2 - p1;
+    rect.size = {abs(t.x), abs(t.y)};
+    return rect;
+}
+
+vec2 bottom_left(UI_Rect r) return r.center - r.size/2.0;
+vec2 bottom_right(UI_Rect r) return r.center + (r.size * make_vec(1, -1))/2.0;
+vec2 top_left(UI_Rect r) return r.center + (r.size * make_vec(-1, 1))/2.0;
+vec2 top_right(UI_Rect r) return r.center + r.size/2.0;
+
+vec2 center_text(UI_Rect r, float32 height, string str) {
+    return r.center + make_vec((1.0 - str.length as float32) * height / 4.0, 0);
+}
+
+void draw_rect(UI_Rect r, Color color) { draw_rect(*immediate_layer, r.center, r.size, color); }
+void draw_rect(vec2 pos, size, Color color) { draw_rect(*immediate_layer, pos, size, color); }
+void draw_glyph(vec2 pos, float32 size, char c, Color color) { draw_glyph(*immediate_layer, pos, size, c, color); }
+vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return draw_text(*immediate_layer, pos, size, txt, color); }
+vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return draw_text(*immediate_layer, pos, size, txt, color); }
+vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return draw_text_backwards(*immediate_layer, pos, size, text, color); }
