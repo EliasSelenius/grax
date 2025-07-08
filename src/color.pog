@@ -45,6 +45,13 @@ vec4 color_to_vec4(Color c) { return { c.r as float32 / 255, c.g as float32 / 25
 Color opacity(Color c, float32 a) return {c.r, c.g, c.b, (a * 255) as uint8};
 vec4  opacity(vec4  c, float32 a) return {c.x, c.y, c.z, a};
 
+Color lerp(float32 t, Color a, b) return {
+    a.r + (b.r-a.r)*t,
+    a.g + (b.g-a.g)*t,
+    a.b + (b.b-a.b)*t,
+    a.a + (b.a-a.a)*t
+};
+
 const White  = {255, 255, 255, 255} as Color;
 const Gray   = {128, 128, 128, 255} as Color;
 const Black  = {0,   0,   0,   255} as Color;

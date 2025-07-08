@@ -209,7 +209,7 @@ void audio_init(Wav_File* wav) {
     Start(audio.client);
 }
 
-void audio_loop(vec3 listener_pos) {
+void audio_loop(vec3 listener_pos, float32 volume) {
 
     // int64 latency;
     // GetStreamLatency(audio.client, *latency);
@@ -266,7 +266,7 @@ void audio_loop(vec3 listener_pos) {
 
 
 
-                int16 s = ((src[it] as float32) * attenuation) as int16;
+                int16 s = ((src[it] as float32) * attenuation * volume) as int16;
                 dst[it] = clamp(dst[it] as int32 + s, -32768, 32767) as int16;
             }
 

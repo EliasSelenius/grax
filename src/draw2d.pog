@@ -100,12 +100,12 @@ void draw_sprite(Transform2D tr, float32 depth, Sprite sprite) {
     draw_sprite(tr, depth, sprite, vec4_one, vec4_zero);
 }
 
-void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive) {
-    draw_texture(db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, vec4_zero);
+void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive, color_outline) {
+    draw_texture(db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, color_outline);
 }
 
-void draw_sprite(Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive) {
-    draw_texture(draw2d_renderer.quad_db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, vec4_zero);
+void draw_sprite(Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive, color_outline) {
+    draw_texture(draw2d_renderer.quad_db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, color_outline);
 }
 
 void draw_texture(Transform2D tr, float32 depth, Texture2D tex, bool tex_is_semi_transparent, vec4 color_factor, color_additive) {
