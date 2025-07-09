@@ -510,11 +510,11 @@ quat unit_quat_power(quat q, float32 t) {
     return Q;
 }
 
-quat sub(quat a, quat b) as - return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
-quat add(quat a, quat b) as + return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
+quat sub(quat a, b) as - return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+quat add(quat a, b) as + return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
 quat mul(quat a, float32 s) as * return {a.x * s, a.y * s, a.z * s, a.w * s};
 
-quat mul(quat l, quat r) as * {
+quat mul(quat l, r) as * {
     float32 a = l.w;
     float32 b = l.x;
     float32 c = l.y;
