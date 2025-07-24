@@ -157,6 +157,13 @@ vec2 rotate_vec(vec2 dir, float32 angle) {
     return res;
 }
 
+// signed angle
+float32 sign_angle(vec2 a, b) {
+    let t = angle(a, b);
+    if dot(rot90deg(a), b) < 0 return -t;
+    return t;
+}
+
 vec2 rot90deg(vec2 v) return make_vec(-v.y, v.x); // rotate 90 degrees to the left. (multiplication with imaginary unit)
 vec2 rot90deg_ccw(vec2 v) return make_vec(-v.y, v.x);
 vec2 rot90deg_cw(vec2 v) return make_vec(v.y, -v.x);

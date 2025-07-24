@@ -67,6 +67,12 @@ float32 smoothstep(float32 edge0, edge1, x) {
 // map t from range [a, b] to [c, d]
 float32 map(float32 t, a, b, c, d) return lerp((t - a) / (b - a), c, d);
 
+
+bool exp_decay(float32* a, float32 b, decay, dt) {
+    @a = exp_decay(@a, b, decay, dt);
+    return almost_equals(@a, b);
+}
+
 float32 exp_decay(float32 a, b, decay, dt) return b + (a-b) * expf(-decay*dt);
 vec2 exp_decay(vec2 a, b, float32 decay, dt) return b + (a-b) * expf(-decay*dt);
 vec3 exp_decay(vec3 a, b, float32 decay, dt) return b + (a-b) * expf(-decay*dt);

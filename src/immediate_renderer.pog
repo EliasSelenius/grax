@@ -269,7 +269,7 @@ struct UI_Rect {
     vec2 center, size;
 }
 
-UI_Rect rect(vec2 p1, p2) {
+UI_Rect rect_pp(vec2 p1, p2) {
     UI_Rect rect = {};
     rect.center = (p1 + p2) / 2.0;
     vec2 t = p2 - p1;
@@ -285,6 +285,27 @@ vec2 top_right(UI_Rect r) return r.center + r.size/2.0;
 vec2 center_text(UI_Rect r, float32 height, string str) {
     return r.center + make_vec((1.0 - str.length as float32) * height / 4.0, 0);
 }
+
+UI_Rect div_x(UI_Rect r, uint32 divisions, index) {
+    float32 stride = r.size.x / divisions;
+    UI_Rect res = {};
+    res.size.y = r.size.y;
+    res.size.x = stride;
+
+    res.center.x = r.center.x + (-r.size.x + stride)/2.0 + stride*index;
+    res.center.y = r.center.y;
+    return res;
+}
+
+UI_Rect pad(UI_Rect r, float32 padding) {
+    let res = r;
+    res.size = res.size - make_vec2(padding);
+    return res;
+}
+
+bool hover(UI_Rect r, vec2 pos) return point_inside_bb(pos, bottom_left(r), top_right(r));
+
+
 
 void draw_rect(UI_Rect r, Color color) { draw_rect(*immediate_layer, r.center, r.size, color); }
 void draw_rect(vec2 pos, size, Color color) { draw_rect(*immediate_layer, pos, size, color); }

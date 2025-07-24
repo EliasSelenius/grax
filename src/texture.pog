@@ -167,7 +167,7 @@ void resize(with Framebuffer* fr, uint32 w, h) {
     bind_texture2D(0, 0);
 }
 
-void delete(with Framebuffer fr) { }
+void delete(with Framebuffer fr) { print("[ERROR]: delete(fbo) is not implemented.\n"); }
 
 
 Texture2D load_texture2D(char* name) {
