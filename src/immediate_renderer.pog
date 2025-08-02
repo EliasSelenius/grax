@@ -13,7 +13,7 @@ enum AnchorPoint { center; top_left; top_right; bottom_left; bottom_right; }
     - layers
 */
 
-RenderLayer immediate_layer;
+RenderLayer* immediate_layer;
 AnchorPoint anchor = .center;
 
 // struct ImmediateRendererContex {
@@ -28,8 +28,6 @@ struct RenderLayer {
     Trianglebatch geometry;
     Trianglebatch text;
     OpenGLBlendingMode blend_mode;
-
-    RenderLayer* next_layer;
 }
 
 struct Trianglebatch {
@@ -99,16 +97,6 @@ void dispatch_layer(RenderLayer* layer) {
     dispatch_trianglebatch(*layer.geometry, layer.ui_camera);
     enable_alpha_blending();
     dispatch_trianglebatch(*layer.text, layer.ui_camera);
-
-    if layer.next_layer  dispatch_layer(layer.next_layer);
-}
-
-void init_immediate_renderer() {
-    immediate_layer = create_layer();
-}
-
-void dispatch_immediate() {
-    dispatch_layer(*immediate_layer);
 }
 
 void add_vertex(with Trianglebatch* tb, float32 x, y, u, v, Color color) {
@@ -195,10 +183,6 @@ void add_quad(with Trianglebatch* tb, vec2 pos, size, uv_offset, uv_scale, Color
 
 
 
-
-void draw_rect(with RenderLayer* layer, vec2 pos, size, Color color) {
-    add_quad(*layer.geometry, pos, size, vec2_zero, vec2_one, color);
-}
 
 void draw_glyph(with RenderLayer* layer, vec2 pos, float32 size, char c, Color color) {
     uint32 index = c as uint8 - ' ';
@@ -307,9 +291,15 @@ bool hover(UI_Rect r, vec2 pos) return point_inside_bb(pos, bottom_left(r), top_
 
 
 
-void draw_rect(UI_Rect r, Color color) { draw_rect(*immediate_layer, r.center, r.size, color); }
-void draw_rect(vec2 pos, size, Color color) { draw_rect(*immediate_layer, pos, size, color); }
-void draw_glyph(vec2 pos, float32 size, char c, Color color) { draw_glyph(*immediate_layer, pos, size, c, color); }
-vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return draw_text(*immediate_layer, pos, size, txt, color); }
-vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return draw_text(*immediate_layer, pos, size, txt, color); }
-vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return draw_text_backwards(*immediate_layer, pos, size, text, color); }
+
+void draw_rect(with RenderLayer* layer, vec2 pos, size, Color color) {
+    add_quad(*layer.geometry, pos, size, vec2_zero, vec2_one, color);
+}
+void draw_rect(with RenderLayer* layer, UI_Rect rect, Color color) draw_rect(layer, rect.center, rect.size, color);
+void draw_rect(UI_Rect r, Color color) { draw_rect(immediate_layer, r.center, r.size, color); }
+void draw_rect(vec2 pos, size, Color color) { draw_rect(immediate_layer, pos, size, color); }
+
+void draw_glyph(vec2 pos, float32 size, char c, Color color) { draw_glyph(immediate_layer, pos, size, c, color); }
+vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return draw_text(immediate_layer, pos, size, txt, color); }
+vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return draw_text(immediate_layer, pos, size, txt, color); }
+vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return draw_text_backwards(immediate_layer, pos, size, text, color); }

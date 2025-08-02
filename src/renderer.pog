@@ -82,8 +82,6 @@ vec2 window_size() {
 
 bool grax_loop() {
 
-    dispatch_immediate();
-
     glfwSwapBuffers(app.main_window);
     input_state_reset();
     glfwPollEvents();
@@ -188,8 +186,6 @@ void grax_init() {
         Image image = { width = 1, height = 1, pixels = *pixel };
         white_texture = create_texture2D(image);
     }
-
-    init_immediate_renderer();
 }
 
 
