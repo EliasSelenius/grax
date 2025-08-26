@@ -23,8 +23,6 @@ AnchorPoint anchor = .center;
 // }
 
 struct RenderLayer {
-    Transform2D ui_camera;
-
     Trianglebatch geometry;
     Trianglebatch text;
     OpenGLBlendingMode blend_mode;
@@ -53,7 +51,6 @@ RenderLayer create_layer() {
     }
 
     RenderLayer layer = {};
-    layer.ui_camera = {scale = 1};
     layer.text = create_trianglebatch();
     layer.geometry = create_trianglebatch();
 
@@ -73,7 +70,7 @@ void apply_camera(Transform2D t) {
     set_uniform("cam_rot", t.rot);
 }
 
-void dispatch_layer(RenderLayer* layer) {
+void dispatch_layer(RenderLayer* layer, Transform2D cam) {
     void dispatch_trianglebatch(Trianglebatch* tb, Transform2D cam_tr) {
         let vert_count = list_length(tb.vertices);
         let ind_count = list_length(tb.indices);
@@ -94,9 +91,9 @@ void dispatch_layer(RenderLayer* layer) {
     disable_depth_test();
 
     set_blend_mode(layer.blend_mode);
-    dispatch_trianglebatch(*layer.geometry, layer.ui_camera);
+    dispatch_trianglebatch(*layer.geometry, cam);
     enable_alpha_blending();
-    dispatch_trianglebatch(*layer.text, layer.ui_camera);
+    dispatch_trianglebatch(*layer.text, cam);
 }
 
 void add_vertex(with Trianglebatch* tb, float32 x, y, u, v, Color color) {
@@ -303,3 +300,12 @@ void draw_glyph(vec2 pos, float32 size, char c, Color color) { draw_glyph(immedi
 vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return draw_text(immediate_layer, pos, size, txt, color); }
 vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return draw_text(immediate_layer, pos, size, txt, color); }
 vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return draw_text_backwards(immediate_layer, pos, size, text, color); }
+
+// enum TextWrap {
+//     expand;
+//     wrap_to_new_line;
+//     // hidden; must implement scissor rendering for this feature to work
+    
+// }
+
+// void draw_text(UI_Rect rect, float32 txt_height, string txt, Color txt_color, )

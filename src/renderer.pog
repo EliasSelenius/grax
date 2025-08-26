@@ -159,7 +159,7 @@ void grax_init() {
 
     enable_alpha_blending();
     enable_depth_test();
-    // glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
     // glClearColor(0.1, 0.1, 0.1, 1.0);
     glClearColor(0, 0, 0, 0);
 

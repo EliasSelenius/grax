@@ -215,7 +215,8 @@ void update_matrices(with Camera* cam) {
     };
 }
 
-void camera_fly_control(Camera* cam) {
+void camera_fly_control(Camera* cam) camera_fly_control(cam, 1.0);
+void camera_fly_control(Camera* cam, float32 speed) {
     let m = to_matrix(cam.transform); // TODO: this is wrong cuz we dont want the scale part in there
 
     vec3 left = xyz(m.row1);
@@ -226,7 +227,6 @@ void camera_fly_control(Camera* cam) {
         rotate(*cam.transform, vec3_unit_y, (dmouse_x / 100.0) as float32);
     }
 
-    float32 speed = 1;
     if key(GLFW_KEY_LEFT_SHIFT) {
         speed *= 10;
     }
@@ -275,6 +275,12 @@ void camera_orbit_control(Camera* cam, Transform local_space) {
     cam.transform.position = l * zoom + local_space.position;
     look_at(*cam.transform, local_space.position, up(local_space));
 }
+
+void mouse_drag_control(Transform2D* tr) {
+    if mouse(Right_Mouse) tr.pos = tr.pos - Input.mouse_delta * tr.scale;
+    tr.scale -= tr.scale * Input.mouse_scroll * 0.1;
+}
+
 
 vec2 screen2ndc(float32 x, y) {
     return {

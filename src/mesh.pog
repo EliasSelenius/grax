@@ -151,6 +151,11 @@ DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs,
     return db;
 }
 
+void update_buffers(with DrawBuffers* db, Mesh mesh) {
+    update_indices(db, list_length(mesh.indices), mesh.indices as uint32*);
+    update_vertices(db, list_length(mesh.vertices) * sizeof vertex3D, mesh.vertices as void*);
+}
+
 void update_buffers(with DrawBuffers* db, vertex2D[] vertices, uint32[] indices) { update_buffers(db, vertices.data, vertices.length, indices.data, indices.length); }
 void update_buffers(with DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
     db.elements_count = indices_count as int32;
@@ -284,28 +289,32 @@ vec3 avg_vertex_pos(Mesh mesh) {
 
 Mesh gen_plane(uint32 size) { return gen_plane(size, 1.0, 1.0); }
 Mesh gen_plane(uint32 size, float32 uv_scale, scale) {
+    let m = mesh_create();
+    add_plane(*m, size, uv_scale, make_mat4(scale));
+    return m;
+}
+
+
+void add_plane(Mesh* mesh, uint32 size, float32 uv_scale, mat4 matrix) {
     let vsize = size + 1;
-
     float32 half_size = size as float32 / 2;
+    uint32 start_index = list_length(mesh.vertices);
 
-    Mesh mesh = mesh_create();
+    for uint32 xi: 0 .. vsize  for uint32 yi: 0 .. vsize {
+        vertex3D v = {};
+        v.pos = { (xi - half_size), 0, (yi - half_size) };
+        v.normal = vec3_unit_y;
+        v.uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale };
 
-    for uint32 xi: 0 .. vsize {
-        for uint32 yi: 0 .. vsize {
-            vertex3D v = {};
-            v.pos = { (xi - half_size) * scale, 0, (yi - half_size) * scale };
-            v.normal = vec3_unit_y;
-            v.uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale };
+        v.pos = transform_point(v.pos, matrix);
+        v.normal = transform_dir(v.normal, matrix);
 
-            add_vert(*mesh, v);
+        add_vert(mesh, v);
 
-            if xi < size and yi < size {
-                uint32 vi = xi * vsize + yi;
-                add_tri(*mesh, vi, vi + 1, vi + vsize + 1);
-                add_tri(*mesh, vi, vi + vsize + 1, vi + vsize);
-            }
+        if xi < size and yi < size {
+            uint32 vi = start_index + xi * vsize + yi;
+            add_tri(mesh, vi, vi + 1, vi + vsize + 1);
+            add_tri(mesh, vi, vi + vsize + 1, vi + vsize);
         }
     }
-
-    return mesh;
 }

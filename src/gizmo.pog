@@ -241,3 +241,32 @@ void gizmo_capsule(vec3 a, b, up, float32 r, Color color) {
         gizmo_line(p1, p2, color);
     }
 }
+
+void gizmo_box(vec3 pos, size, Color color) {
+    let hs = size * 0.5;
+
+    vec3 p000 = pos + hs*{-1,-1,-1};
+    vec3 p001 = pos + hs*{-1,-1, 1};
+    vec3 p010 = pos + hs*{-1, 1,-1};
+    vec3 p011 = pos + hs*{-1, 1, 1};
+    vec3 p100 = pos + hs*{ 1,-1,-1};
+    vec3 p101 = pos + hs*{ 1,-1, 1};
+    vec3 p110 = pos + hs*{ 1, 1,-1};
+    vec3 p111 = pos + hs*{ 1, 1, 1};
+
+    gizmo_line(p000, p001, color);
+    gizmo_line(p000, p100, color);
+    gizmo_line(p001, p101, color);
+    gizmo_line(p100, p101, color);
+
+    gizmo_line(p010, p011, color);
+    gizmo_line(p010, p110, color);
+    gizmo_line(p011, p111, color);
+    gizmo_line(p110, p111, color);
+
+    gizmo_line(p000, p010, color);
+    gizmo_line(p001, p011, color);
+    gizmo_line(p100, p110, color);
+    gizmo_line(p101, p111, color);
+
+}

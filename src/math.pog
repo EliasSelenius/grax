@@ -204,6 +204,10 @@ vec2 round2multiple(vec2 v, float32 n) { return { round2multiple(v.x, n), round2
 vec3 round2multiple(vec3 v, float32 n) { return { round2multiple(v.x, n), round2multiple(v.y, n), round2multiple(v.z, n) }; }
 vec4 round2multiple(vec4 v, float32 n) { return { round2multiple(v.x, n), round2multiple(v.y, n), round2multiple(v.z, n), round2multiple(v.w, n) }; }
 
+vec2 abs(vec2 v) return { abs(v.x), abs(v.y) };
+vec3 abs(vec3 v) return { abs(v.x), abs(v.y), abs(v.z) };
+vec4 abs(vec4 v) return { abs(v.x), abs(v.y), abs(v.z), abs(v.w) };
+
 
 vec2 sub(vec2 a, b) as -  return { a.x - b.x, a.y - b.y };
 vec3 sub(vec3 a, b) as -  return { a.x - b.x, a.y - b.y, a.z - b.z };
@@ -305,6 +309,11 @@ vec2 xy(vec4 a)  return {a.x, a.y};
 vec2 xz(vec3 a)  return {a.x, a.z};
 vec2 xz(vec4 a)  return {a.x, a.z};
 
+ivec2 xy(ivec3 a)  return {a.x, a.y};
+ivec2 xy(ivec4 a)  return {a.x, a.y};
+ivec2 xz(ivec3 a)  return {a.x, a.z};
+ivec2 xz(ivec4 a)  return {a.x, a.z};
+
 vec3 xyz(vec4 a) return {a.x, a.y, a.z};
 
 vec3 cross(vec3 a, vec3 b) {
@@ -399,6 +408,11 @@ mat4 mat4_identity() {
 }
 
 
+mat4 make_mat4(float32 s) return { s, 0, 0, 0,
+                                   0, s, 0, 0,
+                                   0, 0, s, 0,
+                                   0, 0, 0, 1 };
+
 mat4 make_mat4(vec3 pos, scale) return { scale.x, 0, 0, 0,
                                          0, scale.y, 0, 0,
                                          0, 0, scale.z, 0,
@@ -441,6 +455,7 @@ vec4 mul(mat4 m, vec4 v) as * return { dot(m.row1, v), dot(m.row2, v), dot(m.row
 vec4 mul(vec4 v, mat4 m) as * return { dot(v, col1(m)), dot(v, col2(m)), dot(v, col3(m)), dot(v, col4(m)) };
 
 vec3 transform_point(vec3 p, mat4 m) return xyz(make_vec(p, 1.0) * m);
+vec3 transform_dir  (vec3 p, mat4 m) return xyz(make_vec(p, 0.0) * m);
 
 mat4 perspective(float32 fovy, aspect, near_depth, far_depth) {
     float32 maxY = near_depth * tanf(0.5 * fovy);
