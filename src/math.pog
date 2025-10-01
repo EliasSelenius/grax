@@ -100,6 +100,7 @@ float32 round2multiple(float32 x, n) return floorf(x/n + 0.5) * n;
 
 float32 abs(float32 x) return x < 0 ? -x : x;
 float64 abs(float64 x) return x < 0 ? -x : x;
+int32 abs(int32 x) return x < 0 ? -x : x;
 
 bool is_nan(float32 x) return x != x;
 bool is_nan(vec2 v) return is_nan(v.x) or is_nan(v.y);
@@ -207,6 +208,10 @@ vec4 round2multiple(vec4 v, float32 n) { return { round2multiple(v.x, n), round2
 vec2 abs(vec2 v) return { abs(v.x), abs(v.y) };
 vec3 abs(vec3 v) return { abs(v.x), abs(v.y), abs(v.z) };
 vec4 abs(vec4 v) return { abs(v.x), abs(v.y), abs(v.z), abs(v.w) };
+
+ivec2 abs(ivec2 v) return { abs(v.x), abs(v.y) };
+ivec3 abs(ivec3 v) return { abs(v.x), abs(v.y), abs(v.z) };
+ivec4 abs(ivec4 v) return { abs(v.x), abs(v.y), abs(v.z), abs(v.w) };
 
 
 vec2 sub(vec2 a, b) as -  return { a.x - b.x, a.y - b.y };

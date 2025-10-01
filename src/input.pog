@@ -11,7 +11,8 @@ struct InputState {
     // supposed to be Key.Count
     bool[350] keyboard_changed;
 
-    // bool[MouseButton.Count] mouse_button_changed;
+    // supposed to be MouseButton.Count
+    bool[2] mouse_button_changed;
 }
 
 InputState Input = {};
@@ -42,10 +43,9 @@ bool key_down(Key key) return glfwGetKey(app.main_window, key as int32) == GLFW_
 bool key_pressed(Key key)  return  key_down(key) and Input.keyboard_changed[key];
 bool key_released(Key key) return !key_down(key) and Input.keyboard_changed[key];
 
-bool mouse_down_prev(MouseButton btn);
 bool mouse_down(MouseButton btn) return glfwGetMouseButton(app.main_window, btn as int32) == GLFW_PRESS;
-bool mouse_pressed(MouseButton btn)  return mouse_down(btn) and !mouse_down_prev(btn);
-bool mouse_released(MouseButton btn) return !mouse_down(btn) and mouse_down_prev(btn);
+bool mouse_pressed(MouseButton btn)  return  mouse_down(btn) and Input.mouse_button_changed[btn];
+bool mouse_released(MouseButton btn) return !mouse_down(btn) and Input.mouse_button_changed[btn];
 
 enum MouseButton {
     Left = 0; Right = 1; Count;
@@ -57,13 +57,13 @@ bool mouse(int32 btn) {
     return glfwGetMouseButton(app.main_window, btn) as bool;
 }
 
-bool mouse_pressed(int32 btn) {
-    static bool[2] prev_state = {};
-    bool state = mouse(btn);
-    bool res = !prev_state[btn] and state;
-    prev_state[btn] = state;
-    return res;
-}
+// bool mouse_pressed(int32 btn) {
+//     static bool[2] prev_state = {};
+//     bool state = mouse(btn);
+//     bool res = !prev_state[btn] and state;
+//     prev_state[btn] = state;
+//     return res;
+// }
 
 void input_update() {
     pmouse_x = mouse_x;
@@ -93,7 +93,7 @@ void input_state_reset() {
         Input.keyboard_changed[it] = false;
     }
 
-    // Input.mouse_button_changed = {};
+    for 0 .. 2 Input.mouse_button_changed[it] = false;
 }
 
 void enable_cursor()  { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }

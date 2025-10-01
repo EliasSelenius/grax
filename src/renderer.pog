@@ -499,7 +499,11 @@ void register_glfw_callbacks(GLFWwindow* window) {
     }
 
     void glfw_windowcontentscale(GLFWwindow* window, float32 xscale, yscale) {}
-    void glfw_mousebutton(GLFWwindow* window, int32 button, action, mods) {}
+
+    void glfw_mousebutton(GLFWwindow* window, int32 button, action, mods) {
+        Input.mouse_button_changed[button] = true;
+    }
+
     void glfw_cursorpos(GLFWwindow* window, float64 x, y) {}
     void glfw_cursorenter(GLFWwindow* window, int32 entered) {}
     void glfw_scroll(GLFWwindow* window, float64 xoffset, yoffset) {

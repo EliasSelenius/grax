@@ -109,6 +109,7 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
         update_buffer(dr.ubo_camera.buffer_id, sizeof UBO_Data, *data);
     }
 
+    glDepthMask(true);
     enable_depth_test();
     disable_blending();
 
