@@ -53,6 +53,17 @@ vec2 max(vec2 a, b) return { max(a.x, b.x), max(a.y, b.y) };
 vec3 max(vec3 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) };
 vec4 max(vec4 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w) };
 
+int32 sign(float32 v) {
+    if v == 0.0 return 0;
+    if v < 0.0  return -1;
+    else        return 1;
+}
+
+ivec2 sign(vec2 v) return {sign(v.x), sign(v.y)};
+ivec3 sign(vec3 v) return {sign(v.x), sign(v.y), sign(v.z)};
+ivec4 sign(vec4 v) return {sign(v.x), sign(v.y), sign(v.z), sign(v.w)};
+
+
 int32 clamp(int32 t, min, max) return t < min ? min : t > max ? max : t;
 float32 clamp(float32 t, min, max) return t < min ? min : t > max ? max : t;
 float32 clamp01(float32 t) return clamp(t, 0, 1);
@@ -256,6 +267,12 @@ ivec2 div(ivec2 a, int32 s) as /  return { a.x / s, a.y / s };
 ivec3 div(ivec3 a, int32 s) as /  return { a.x / s, a.y / s, a.z / s };
 ivec4 div(ivec4 a, int32 s) as /  return { a.x / s, a.y / s, a.z / s, a.w / s };
 
+vec2 div(vec2 a, b) as /  return { a.x / b.x, a.y / b.y };
+vec3 div(vec3 a, b) as /  return { a.x / b.x, a.y / b.y, a.z / b.z };
+vec4 div(vec4 a, b) as /  return { a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w };
+ivec2 div(ivec2 a, b) as /  return { a.x / b.x, a.y / b.y };
+ivec3 div(ivec3 a, b) as /  return { a.x / b.x, a.y / b.y, a.z / b.z };
+ivec4 div(ivec4 a, b) as /  return { a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w };
 
 vec2 neg(vec2 a) { return { -a.x, -a.y }; }
 vec3 neg(vec3 a) { return { -a.x, -a.y, -a.z }; }

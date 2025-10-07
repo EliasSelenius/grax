@@ -114,6 +114,12 @@ vec3 closest_point_on_linesegment(vec3 a, b, p) {
     return lerp(t, a, b);
 }
 
+vec2 closest_point_on_linesegment(vec2 a, b, p) {
+    let ab = b - a;
+    let t = clamp(dot(ab, p - a) / dot(ab, ab), 0, 1);
+    return lerp(t, a, b);
+}
+
 /*
     capsules defined as:
         first: line segment ab with radius ab_r
