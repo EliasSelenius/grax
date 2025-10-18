@@ -1,8 +1,11 @@
 
+#extension GL_ARB_bindless_texture : require
+
 IO FragData {
     vec3 pos;
     vec3 normal;
     vec2 uv;
+    flat int id;
 } v2f;
 
 
@@ -27,13 +30,18 @@ void main() {
     v2f.uv = a_Uv;
 
     gl_Position = camera.projection * pos;
+
+    v2f.id = gl_InstanceID;
 }
 
 #endif
 
 
-
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout (std430) readonly buffer Textures {
+    sampler2D textures[];
+};
 
 uniform sampler2D albedo_texture;
 uniform vec3  albedo_color;
@@ -53,7 +61,10 @@ void main() {
     FragNormal_Roughness.xyz = normalize(normal);
     FragNormal_Roughness.w   = roughness;
 
-    FragColor = texture(albedo_texture, v2f.uv).rgb * albedo_color;
+    sampler2D tex = textures[v2f.id];
+    // sampler2D tex = albedo_texture;
+
+    FragColor = texture(tex, v2f.uv).rgb * albedo_color;
 }
 
 #endif

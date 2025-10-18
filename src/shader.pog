@@ -1,8 +1,39 @@
 
+
+struct Shader_Manager {
+    Shader
+}
+
+enum Shaderstages {
+    Vertex      = 0b000001;
+    TessControl = 0b000010;
+    TessEval    = 0b000100;
+    Geometry    = 0b001000;
+    Fragment    = 0b010000;
+    Compute     = 0b100000;
+}
+
 Shader* active_shader;
-UBO** uniform_buffer_objects = list_create(sizeof UBO*) as UBO**;
+UBO*[..] uniform_buffer_objects = list_create(sizeof UBO*);
+SSBO*[..] shader_storage_buffer_objects = list_create(sizeof SSBO*);
 
 struct UBO {
+    string name;
+    uint32 binding_point;
+    uint32 buffer_id;
+}
+
+struct SSBO {
+    string name;
+    uint32 binding_point;
+    uint32 buffer_id;
+}
+
+
+Named_Binding_Point*[..] ssbo_binding_points = list_create(sizeof Named_Binding_Point*);
+Named_Binding_Point*[..]  ubo_binding_points = list_create(sizeof Named_Binding_Point*);
+
+struct Named_Binding_Point {
     string name;
     uint32 binding_point;
     uint32 buffer_id;
@@ -14,11 +45,265 @@ struct Shader {
     StringBuilder debug_log;
 
     // TODO: implement introspection: https://www.khronos.org/opengl/wiki/Program_Introspection#Interface_query
+    // TODO: glValidateProgram might produce some insightfull info
 }
 
 void use(Shader* s) {
     active_shader = s;
     glUseProgram(s.gl_handle);
+}
+
+// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, buffer)
+
+
+/*
+void glGetProgramInterfaceiv(GLuint program, GLenum programInterface, GLenum pname, GLint* params);
+programInterface:
+    GL_UNIFORM
+    GL_UNIFORM_BLOCK
+    GL_ATOMIC_COUNTER_BUFFER
+    GL_PROGRAM_INPUT
+    GL_PROGRAM_OUTPUT
+
+    GL_VERTEX_SUBROUTINE
+    GL_TESS_CONTROL_SUBROUTINE
+    GL_TESS_EVALUATION_SUBROUTINE
+    GL_GEOMETRY_SUBROUTINE
+    GL_FRAGMENT_SUBROUTINE
+    GL_COMPUTE_SUBROUTINE
+
+    GL_VERTEX_SUBROUTINE_UNIFORM
+    GL_TESS_CONTROL_SUBROUTINE_UNIFORM
+    GL_TESS_EVALUATION_SUBROUTINE_UNIFORM
+    GL_GEOMETRY_SUBROUTINE_UNIFORM
+    GL_FRAGMENT_SUBROUTINE_UNIFORM
+    GL_COMPUTE_SUBROUTINE_UNIFORM
+
+    GL_TRANSFORM_FEEDBACK_VARYING
+    GL_BUFFER_VARIABLE
+    GL_SHADER_STORAGE_BLOCK
+    GL_TRANSFORM_FEEDBACK_BUFFER
+
+pname:
+    GL_ACTIVE_RESOURCES
+    GL_MAX_NAME_LENGTH
+    GL_MAX_NUM_ACTIVE_VARIABLES
+    GL_MAX_NUM_COMPATIBLE_SUBROUTINES
+
+void glGetProgramResourceName(GLuint program​, GLenum programInterface​, GLuint index​, GLsizei bufSize​, GLsizei* length​, char* name​);
+
+void glGetProgramResourceiv(GLuint program​, GLenum programInterface​, GLuint index​, GLsizei propCount​, const Glenum * props​, GLsizei bufSize​, GLsizei * length​, GLint * params​);
+*/
+
+void get_program_resource(uint32 program​, interface, index​, GLenum[] props, void* output) {
+    glGetProgramResourceiv(program​, interface, index​, props.length, props​.data, props.length, null, output);
+}
+
+int32 get_program_resource_prop(uint32 program, interface, index, GLenum prop) {
+    int32 res = 0;
+    glGetProgramResourceiv(program​, interface, index, 1, *prop, 1, null, *res);
+    return res;
+}
+
+Shader_Resource_Flags get_program_resource_usedby_flags(uint32 program, interface, index) {
+    struct Data {
+        int32 used_by_vertex;
+        int32 used_by_tess_control;
+        int32 used_by_tess_evaluation;
+        int32 used_by_geometry;
+        int32 used_by_fragment;
+        int32 used_by_compute;
+    }
+
+    GLenum[] props = {
+        GL_REFERENCED_BY_VERTEX_SHADER, GL_REFERENCED_BY_TESS_CONTROL_SHADER, GL_REFERENCED_BY_TESS_EVALUATION_SHADER,
+        GL_REFERENCED_BY_GEOMETRY_SHADER, GL_REFERENCED_BY_FRAGMENT_SHADER, GL_REFERENCED_BY_COMPUTE_SHADER
+    };
+
+    Data data = {};
+    get_program_resource(program, interface, index, props, *data);
+
+    Shader_Resource_Flags flags = data.used_by_vertex           << 0
+                                | data.used_by_tess_control     << 1
+                                | data.used_by_tess_evaluation  << 2
+                                | data.used_by_geometry         << 3
+                                | data.used_by_fragment         << 4
+                                | data.used_by_compute          << 5;
+    return flags;
+}
+
+string alloc_and_get_name(uint32 program, interface, index, name_len) {
+    string name = {chars=malloc(name_len)};
+    glGetProgramResourceName(program​, interface, index, name_len, *name.length​, name​.chars);
+    return name;
+}
+
+enum Shader_Resource_Flags {
+    used_by_vert      = 0b00000001;
+    used_by_tess_ctrl = 0b00000010;
+    used_by_tess_eval = 0b00000100;
+    used_by_geom      = 0b00001000;
+    used_by_frag      = 0b00010000;
+    used_by_comp      = 0b00100000;
+    is_row_major      = 0b01000000;
+    is_per_patch      = 0b10000000;
+}
+
+struct Shader_Uniform {
+    Shader_Resource_Flags flags;
+    string name;
+    GLenum ogl_type;
+    int32 array_size;
+    int32 offset;
+    int32 block_index;
+    int32 array_stride;
+    int32 matrix_stride;
+    int32 atomic_counter_buffer_index;
+    int32 location;
+}
+
+struct Shader_Uniform_Block {
+    Shader_Resource_Flags flags;
+    string name;
+    int32 buffer_binding;
+    int32 buffer_data_size;
+    int32[] active_variables;
+}
+
+struct Shader_Storage_Block {
+    Shader_Resource_Flags flags;
+    string name;
+    int32 buffer_binding;
+    int32 buffer_data_size;
+    int32[] active_variables;
+}
+
+void introspect_shader_program(uint32 program) {
+    {
+        int32 num_res = 0;
+        glGetProgramInterfaceiv(program, GL_UNIFORM, GL_ACTIVE_RESOURCES, *num_res);
+
+        Shader_Uniform[..] uniforms = list_create(sizeof Shader_Uniform);
+
+        for 0 .. num_res {
+
+            GLenum[] props = { GL_NAME_LENGTH, GL_TYPE, GL_ARRAY_SIZE, GL_OFFSET, GL_BLOCK_INDEX, GL_ARRAY_STRIDE, GL_MATRIX_STRIDE, GL_IS_ROW_MAJOR, GL_ATOMIC_COUNTER_BUFFER_INDEX, GL_LOCATION };
+            struct Data {
+                int32 name_length;
+                int32 _type;
+                int32 array_size;
+                int32 offset;
+                int32 block_index;
+                int32 array_stride;
+                int32 matrix_stride;
+                int32 is_row_major;
+                int32 atomic_counter_buffer_index;
+                int32 location;
+            }
+
+            Data data = {};
+            get_program_resource(program​, GL_UNIFORM, it, props, *data);
+
+            Shader_Uniform* uni = list_append(*uniforms);
+            uni.flags = get_program_resource_usedby_flags(program, GL_UNIFORM, it);
+            uni.flags |= data.is_row_major ? .is_row_major : 0;
+
+            uni.name = alloc_and_get_name(program, GL_UNIFORM, it, data.name_length);
+            uni.ogl_type                    = data._type;
+            uni.array_size                  = data.array_size;
+            uni.offset                      = data.offset;
+            uni.block_index                 = data.block_index;
+            uni.array_stride                = data.array_stride;
+            uni.matrix_stride               = data.matrix_stride;
+            uni.atomic_counter_buffer_index = data.atomic_counter_buffer_index;
+            uni.location                    = data.location;
+        }
+
+        for 0 .. list_length(uniforms) {
+            let uni = uniforms[it];
+            // print("layout(location=", uni.location, ") ", opengl_const_to_glsl_type_name(uni.ogl_type), " ", name, ";\n");
+            print("uniform: ", uni, "\n");
+        }
+    }
+
+    {
+        int32 num_res = 0;
+        glGetProgramInterfaceiv(program, GL_UNIFORM_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
+
+        Shader_Uniform_Block[..] ubos = list_create(sizeof Shader_Uniform_Block);
+        for 0 .. num_res {
+
+            GLenum[] props = { GL_NAME_LENGTH, GL_BUFFER_BINDING, GL_BUFFER_DATA_SIZE, GL_NUM_ACTIVE_VARIABLES };
+            struct Data {
+                int32 name_length;
+                int32 buffer_binding;
+                int32 buffer_data_size;
+                int32 num_active_variables;
+            }
+
+            Data data = {};
+            get_program_resource(program, GL_UNIFORM_BLOCK, it, props, *data);
+
+            Shader_Uniform_Block* res = list_append(*ubos);
+            res.flags = get_program_resource_usedby_flags(program, GL_UNIFORM_BLOCK, it);
+            res.name = alloc_and_get_name(program, GL_UNIFORM_BLOCK, it, data.name_length);
+            res.buffer_binding = data.buffer_binding;
+            res.buffer_data_size = data.buffer_data_size;
+            res.active_variables.length = data.num_active_variables;
+
+            res.active_variables.data = malloc(res.active_variables.length * sizeof int32);
+            get_program_resource(program, GL_UNIFORM_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+        }
+
+        print("Listing Uniform Blocks\n");
+        for 0 .. list_length(ubos) {
+            let res = ubos[it];
+            print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
+            for 0 .. res.active_variables.length {
+                print("        ", res.active_variables[it], "\n");
+            }
+        }
+    }
+
+    {
+        int32 num_res = 0;
+        glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
+
+        Shader_Storage_Block[..] ssbos = list_create(sizeof Shader_Storage_Block);
+
+        for 0 .. num_res {
+
+            GLenum[] props =  { GL_NAME_LENGTH, GL_BUFFER_BINDING, GL_BUFFER_DATA_SIZE, GL_NUM_ACTIVE_VARIABLES };
+            struct Data {
+                int32 name_length;
+                int32 buffer_binding;
+                int32 buffer_data_size;
+                int32 num_active_variables;
+            }
+
+            Data data = {};
+            get_program_resource(program, GL_SHADER_STORAGE_BLOCK, it, props, *data);
+
+            Shader_Storage_Block* res = list_append(*ssbos);
+            res.flags = get_program_resource_usedby_flags(program, GL_SHADER_STORAGE_BLOCK, it);
+            res.name = alloc_and_get_name(program, GL_SHADER_STORAGE_BLOCK, it, data.name_length);
+            res.buffer_binding = data.buffer_binding;
+            res.buffer_data_size = data.buffer_data_size;
+            res.active_variables.length = data.num_active_variables;
+
+            res.active_variables.data = malloc(res.active_variables.length * sizeof int32);
+            get_program_resource(program, GL_SHADER_STORAGE_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+        }
+
+        print("Listing Storage Blocks\n");
+        for 0 .. list_length(ssbos) {
+            let res = ssbos[it];
+            print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
+            for 0 .. res.active_variables.length {
+                print("        ", res.active_variables[it], "\n");
+            }
+        }
+    }
 }
 
 UBO* get_ubo(char* name) { return get_ubo(make_string(name)); }
@@ -40,6 +325,29 @@ UBO* get_ubo(string name) {
     list_add(*uniform_buffer_objects as void**, *ubo as void*);
 
     return uniform_buffer_objects[len];
+}
+
+Named_Binding_Point* get_named_binding_point(string name, GLenum target, Named_Binding_Point*[..]* list) {
+    uint32 len = list_length(@list);
+    for 0 .. len {
+        let bp = (@list)[it];
+        if string_equals(name, bp.name) return bp;
+    }
+
+    Named_Binding_Point* bp = malloc(sizeof Named_Binding_Point);
+    bp.binding_point = len;
+    bp.name = alloc_string_copy(name);
+
+    glGenBuffers(1, *bp.buffer_id);
+    glBindBufferBase(target, bp.binding_point, bp.buffer_id);
+
+    list_add(list, *bp);
+
+    return (@list)[len];
+}
+
+Named_Binding_Point* get_ssbo(string name) {
+    return get_named_binding_point(name, GL_SHADER_STORAGE_BUFFER, *ssbo_binding_points);
 }
 
 void bind_ubos(with Shader* s) {
@@ -103,7 +411,8 @@ Shader load_shader(char* filename, bool tess, geom) {
         if !incl return null;
         let sb = temp_builder();
         // NOTE: layout(binding) requires "#version 420" or later
-        char* glsl_version = "#version 420 core\n";
+        // NOTE: ssbo requires "#version 430 core"
+        char* glsl_version = "#version 430 core\n";
         sb_append(sb, glsl_version);
         sb_append(sb, "#define IO ");
         if def_IO sb_append(sb, def_IO);
@@ -263,6 +572,8 @@ Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) 
 
 
     bind_ubos(*program);
+    print("\nuniforms: ", program.name, "\n");
+    introspect_shader_program(program.gl_handle);
 
     print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" was successfully created.\n");
     return program;
@@ -420,3 +731,84 @@ void set_uniform(char* name, ivec4 v) set_uniform(name, v.x, v.y, v.z, v.w);
 // type proc_glProgramUniformMatrix4x2fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
 // type proc_glProgramUniformMatrix4x3dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
 // type proc_glProgramUniformMatrix4x3fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
+
+
+
+char* opengl_const_to_glsl_type_name(GLenum ty) switch (ty) {
+    case GL_FLOAT:                                     return "float";
+    case GL_FLOAT_VEC2:                                return "vec2";
+    case GL_FLOAT_VEC3:                                return "vec3";
+    case GL_FLOAT_VEC4:                                return "vec4";
+    case GL_DOUBLE:                                    return "double";
+    case GL_DOUBLE_VEC2:                               return "dvec2";
+    case GL_DOUBLE_VEC3:                               return "dvec3";
+    case GL_DOUBLE_VEC4:                               return "dvec4";
+    case GL_INT:                                       return "int";
+    case GL_INT_VEC2:                                  return "ivec2";
+    case GL_INT_VEC3:                                  return "ivec3";
+    case GL_INT_VEC4:                                  return "ivec4";
+    case GL_UNSIGNED_INT:                              return "unsigned int";
+    case GL_UNSIGNED_INT_VEC2:                         return "uvec2";
+    case GL_UNSIGNED_INT_VEC3:                         return "uvec3";
+    case GL_UNSIGNED_INT_VEC4:                         return "uvec4";
+    case GL_BOOL:                                      return "bool";
+    case GL_BOOL_VEC2:                                 return "bvec2";
+    case GL_BOOL_VEC3:                                 return "bvec3";
+    case GL_BOOL_VEC4:                                 return "bvec4";
+    case GL_FLOAT_MAT2:                                return "mat2";
+    case GL_FLOAT_MAT3:                                return "mat3";
+    case GL_FLOAT_MAT4:                                return "mat4";
+    case GL_FLOAT_MAT2x3:                              return "mat2x3";
+    case GL_FLOAT_MAT2x4:                              return "mat2x4";
+    case GL_FLOAT_MAT3x2:                              return "mat3x2";
+    case GL_FLOAT_MAT3x4:                              return "mat3x4";
+    case GL_FLOAT_MAT4x2:                              return "mat4x2";
+    case GL_FLOAT_MAT4x3:                              return "mat4x3";
+    case GL_DOUBLE_MAT2:                               return "dmat2";
+    case GL_DOUBLE_MAT3:                               return "dmat3";
+    case GL_DOUBLE_MAT4:                               return "dmat4";
+    case GL_DOUBLE_MAT2x3:                             return "dmat2x3";
+    case GL_DOUBLE_MAT2x4:                             return "dmat2x4";
+    case GL_DOUBLE_MAT3x2:                             return "dmat3x2";
+    case GL_DOUBLE_MAT3x4:                             return "dmat3x4";
+    case GL_DOUBLE_MAT4x2:                             return "dmat4x2";
+    case GL_DOUBLE_MAT4x3:                             return "dmat4x3";
+    case GL_SAMPLER_1D:                                return "sampler1D";
+    case GL_SAMPLER_2D:                                return "sampler2D";
+    case GL_SAMPLER_3D:                                return "sampler3D";
+    case GL_SAMPLER_CUBE:                              return "samplerCube";
+    case GL_SAMPLER_1D_SHADOW:                         return "sampler1DShadow";
+    case GL_SAMPLER_2D_SHADOW:                         return "sampler2DShadow";
+    case GL_SAMPLER_1D_ARRAY:                          return "sampler1DArray";
+    case GL_SAMPLER_2D_ARRAY:                          return "sampler2DArray";
+    case GL_SAMPLER_1D_ARRAY_SHADOW:                   return "sampler1DArrayShadow";
+    case GL_SAMPLER_2D_ARRAY_SHADOW:                   return "sampler2DArrayShadow";
+    case GL_SAMPLER_2D_MULTISAMPLE:                    return "sampler2DMS";
+    case GL_SAMPLER_2D_MULTISAMPLE_ARRAY:              return "sampler2DMSArray";
+    case GL_SAMPLER_CUBE_SHADOW:                       return "samplerCubeShadow";
+    case GL_SAMPLER_BUFFER:                            return "samplerBuffer";
+    case GL_SAMPLER_2D_RECT:                           return "sampler2DRect";
+    case GL_SAMPLER_2D_RECT_SHADOW:                    return "sampler2DRectShadow";
+    case GL_INT_SAMPLER_1D:                            return "isampler1D";
+    case GL_INT_SAMPLER_2D:                            return "isampler2D";
+    case GL_INT_SAMPLER_3D:                            return "isampler3D";
+    case GL_INT_SAMPLER_CUBE:                          return "isamplerCube";
+    case GL_INT_SAMPLER_1D_ARRAY:                      return "isampler1DArray";
+    case GL_INT_SAMPLER_2D_ARRAY:                      return "isampler2DArray";
+    case GL_INT_SAMPLER_2D_MULTISAMPLE:                return "isampler2DMS";
+    case GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:          return "isampler2DMSArray";
+    case GL_INT_SAMPLER_BUFFER:                        return "isamplerBuffer";
+    case GL_INT_SAMPLER_2D_RECT:                       return "isampler2DRect";
+    case GL_UNSIGNED_INT_SAMPLER_1D:                   return "usampler1D";
+    case GL_UNSIGNED_INT_SAMPLER_2D:                   return "usampler2D";
+    case GL_UNSIGNED_INT_SAMPLER_3D:                   return "usampler3D";
+    case GL_UNSIGNED_INT_SAMPLER_CUBE:                 return "usamplerCube";
+    case GL_UNSIGNED_INT_SAMPLER_1D_ARRAY:             return "usampler1DArray";
+    case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:             return "usampler2DArray";
+    case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:       return "usampler2DMS";
+    case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY: return "usampler2DMSArray";
+    case GL_UNSIGNED_INT_SAMPLER_BUFFER:               return "usamplerBuffer";
+    case GL_UNSIGNED_INT_SAMPLER_2D_RECT:              return "usampler2DRect";
+
+    default: return null;
+}
