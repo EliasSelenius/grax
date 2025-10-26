@@ -5,7 +5,7 @@ IO FragData {
     vec3 pos;
     vec3 normal;
     vec2 uv;
-    flat int id;
+    flat int instance_id;
 } v2f;
 
 
@@ -31,7 +31,7 @@ void main() {
 
     gl_Position = camera.projection * pos;
 
-    v2f.id = gl_InstanceID;
+    v2f.instance_id = gl_InstanceID;
 }
 
 #endif
@@ -61,8 +61,8 @@ void main() {
     FragNormal_Roughness.xyz = normalize(normal);
     FragNormal_Roughness.w   = roughness;
 
-    sampler2D tex = textures[v2f.id];
-    // sampler2D tex = albedo_texture;
+    // sampler2D tex = textures[v2f.instance_id];
+    sampler2D tex = albedo_texture;
 
     FragColor = texture(tex, v2f.uv).rgb * albedo_color;
 }

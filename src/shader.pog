@@ -42,6 +42,10 @@ struct Shader {
     uint32 gl_handle;
     StringBuilder debug_log;
 
+    Shader_Uniform[..] uniforms;
+    Shader_Uniform_Block[..] ubos;
+    Shader_Storage_Block[..] ssbos;
+
     // TODO: implement introspection: https://www.khronos.org/opengl/wiki/Program_Introspection#Interface_query
     // TODO: glValidateProgram might produce some insightfull info
 }
@@ -701,8 +705,9 @@ Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) 
 
 
     bind_ubos(*program);
-    print("\nuniforms: ", program.name, "\n");
-    introspect_shader_program(program.gl_handle);
+
+    // print("\nuniforms: ", program.name, "\n");
+    // introspect_shader_program(program.gl_handle);
 
     print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" was successfully created.\n");
     return program;

@@ -41,5 +41,96 @@ float noise(vec3 p) {
     return mix(mix(a, b, u.y), mix(c, d, u.y), u.z);
 }
 
+// from Inigo Quilez: https://iquilezles.org/articles/gradientnoise/
+// returns 3D gradient noise (in .w) and its derivatives (in .xyz)
+vec4 noised3(in vec3 x) {
+    // grid
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+
+    // quintic interpolant
+    vec3 u = f*f*f*(f*(f*6.0-15.0)+10.0);
+    vec3 du = 30.0*f*f*(f*(f-2.0)+1.0);
+
+    // gradients
+    vec3 ga = hash( i+vec3(0.0,0.0,0.0) );
+    vec3 gb = hash( i+vec3(1.0,0.0,0.0) );
+    vec3 gc = hash( i+vec3(0.0,1.0,0.0) );
+    vec3 gd = hash( i+vec3(1.0,1.0,0.0) );
+    vec3 ge = hash( i+vec3(0.0,0.0,1.0) );
+    vec3 gf = hash( i+vec3(1.0,0.0,1.0) );
+    vec3 gg = hash( i+vec3(0.0,1.0,1.0) );
+    vec3 gh = hash( i+vec3(1.0,1.0,1.0) );
+
+    // projections
+    float va = dot( ga, f-vec3(0.0,0.0,0.0) );
+    float vb = dot( gb, f-vec3(1.0,0.0,0.0) );
+    float vc = dot( gc, f-vec3(0.0,1.0,0.0) );
+    float vd = dot( gd, f-vec3(1.0,1.0,0.0) );
+    float ve = dot( ge, f-vec3(0.0,0.0,1.0) );
+    float vf = dot( gf, f-vec3(1.0,0.0,1.0) );
+    float vg = dot( gg, f-vec3(0.0,1.0,1.0) );
+    float vh = dot( gh, f-vec3(1.0,1.0,1.0) );
+
+    // interpolation
+    float v = va +
+              u.x*(vb-va) +
+              u.y*(vc-va) +
+              u.z*(ve-va) +
+              u.x*u.y*(va-vb-vc+vd) +
+              u.y*u.z*(va-vc-ve+vg) +
+              u.z*u.x*(va-vb-ve+vf) +
+              u.x*u.y*u.z*(-va+vb+vc-vd+ve-vf-vg+vh);
+
+    vec3 d = ga +
+             u.x*(gb-ga) +
+             u.y*(gc-ga) +
+             u.z*(ge-ga) +
+             u.x*u.y*(ga-gb-gc+gd) +
+             u.y*u.z*(ga-gc-ge+gg) +
+             u.z*u.x*(ga-gb-ge+gf) +
+             u.x*u.y*u.z*(-ga+gb+gc-gd+ge-gf-gg+gh) +
+
+             du * (vec3(vb-va,vc-va,ve-va) +
+                   u.yzx*vec3(va-vb-vc+vd,va-vc-ve+vg,va-vb-ve+vf) +
+                   u.zxy*vec3(va-vb-ve+vf,va-vb-vc+vd,va-vc-ve+vg) +
+                   u.yzx*u.zxy*(-va+vb+vc-vd+ve-vf-vg+vh) );
+
+    return vec4(d, v);
+}
+
+
+vec2 hash( in vec2 x )   // this hash is not production ready, please
+{                        // replace this by something better
+    const vec2 k = vec2( 0.3183099, 0.3678794 );
+    x = x*k + k.yx;
+    return -1.0 + 2.0*fract( 16.0 * k*fract( x.x*x.y*(x.x+x.y)) );
+}
+
+// returns gradient noise (in .z) and its derivatives (in .xy)
+vec3 noised2( in vec2 x ) {
+    vec2 i = floor( x );
+    vec2 f = fract( x );
+
+    vec2 u = f*f*f*(f*(f*6.0-15.0)+10.0);
+    vec2 du = 30.0*f*f*(f*(f-2.0)+1.0);
+
+    vec2 ga = hash( i + vec2(0.0,0.0) );
+    vec2 gb = hash( i + vec2(1.0,0.0) );
+    vec2 gc = hash( i + vec2(0.0,1.0) );
+    vec2 gd = hash( i + vec2(1.0,1.0) );
+
+    float va = dot( ga, f - vec2(0.0,0.0) );
+    float vb = dot( gb, f - vec2(1.0,0.0) );
+    float vc = dot( gc, f - vec2(0.0,1.0) );
+    float vd = dot( gd, f - vec2(1.0,1.0) );
+
+    float v = va + u.x*(vb-va) + u.y*(vc-va) + u.x*u.y*(va-vb-vc+vd);
+    vec2 d = ga + u.x*(gb-ga) + u.y*(gc-ga) + u.x*u.y*(ga-gb-gc+gd) +
+                 du * (u.yx*(va-vb-vc+vd) + vec2(vb,vc) - va);
+
+    return vec3(d, v);
+}
+
 
 #endif // NOISE_IMPL

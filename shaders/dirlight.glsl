@@ -71,7 +71,7 @@ void main() {
 
 
     vec3 wpos = (inverse(camera.view) * vec4(pos, 1.0)).xyz;
-    if (wpos.y < 0) { // water
+    if (wpos.y < 0 && false) { // water
         float b = 0.005;
         FragColor = mix(FragColor, vec3(0.1, 0.4, 0.7), 1 - exp(-length(pos)*b));
 
