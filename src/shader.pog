@@ -311,10 +311,10 @@ struct Shader_Storage_Block {
     int32[] active_variables;
 }
 
-void introspect_shader_program(uint32 program) {
+void introspect_shader_program(Shader* program) {
     {
         int32 num_res = 0;
-        glGetProgramInterfaceiv(program, GL_UNIFORM, GL_ACTIVE_RESOURCES, *num_res);
+        glGetProgramInterfaceiv(program.gl_handle, GL_UNIFORM, GL_ACTIVE_RESOURCES, *num_res);
 
         Shader_Uniform[..] uniforms = list_create(sizeof Shader_Uniform);
 
@@ -335,13 +335,13 @@ void introspect_shader_program(uint32 program) {
             }
 
             Data data = {};
-            get_program_resource(program, GL_UNIFORM, it, props, *data);
+            get_program_resource(program.gl_handle, GL_UNIFORM, it, props, *data);
 
             Shader_Uniform* uni = list_append(*uniforms);
-            uni.flags = get_program_resource_usedby_flags(program, GL_UNIFORM, it);
+            uni.flags = get_program_resource_usedby_flags(program.gl_handle, GL_UNIFORM, it);
             uni.flags |= data.is_row_major ? .is_row_major : 0;
 
-            uni.name = alloc_and_get_name(program, GL_UNIFORM, it, data.name_length);
+            uni.name = alloc_and_get_name(program.gl_handle, GL_UNIFORM, it, data.name_length);
             uni.ogl_type                    = data._type;
             uni.array_size                  = data.array_size;
             uni.offset                      = data.offset;
@@ -352,16 +352,12 @@ void introspect_shader_program(uint32 program) {
             uni.location                    = data.location;
         }
 
-        for 0 .. list_length(uniforms) {
-            let uni = uniforms[it];
-            // print("layout(location=", uni.location, ") ", opengl_const_to_glsl_type_name(uni.ogl_type), " ", name, ";\n");
-            print("uniform: ", uni, "\n");
-        }
+        program.uniforms = uniforms;
     }
 
     {
         int32 num_res = 0;
-        glGetProgramInterfaceiv(program, GL_UNIFORM_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
+        glGetProgramInterfaceiv(program.gl_handle, GL_UNIFORM_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
 
         Shader_Uniform_Block[..] ubos = list_create(sizeof Shader_Uniform_Block);
         for 0 .. num_res {
@@ -375,32 +371,25 @@ void introspect_shader_program(uint32 program) {
             }
 
             Data data = {};
-            get_program_resource(program, GL_UNIFORM_BLOCK, it, props, *data);
+            get_program_resource(program.gl_handle, GL_UNIFORM_BLOCK, it, props, *data);
 
             Shader_Uniform_Block* res = list_append(*ubos);
-            res.flags = get_program_resource_usedby_flags(program, GL_UNIFORM_BLOCK, it);
-            res.name = alloc_and_get_name(program, GL_UNIFORM_BLOCK, it, data.name_length);
+            res.flags = get_program_resource_usedby_flags(program.gl_handle, GL_UNIFORM_BLOCK, it);
+            res.name = alloc_and_get_name(program.gl_handle, GL_UNIFORM_BLOCK, it, data.name_length);
             res.buffer_binding = data.buffer_binding;
             res.buffer_data_size = data.buffer_data_size;
             res.active_variables.length = data.num_active_variables;
 
             res.active_variables.data = malloc(res.active_variables.length * sizeof int32);
-            get_program_resource(program, GL_UNIFORM_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+            get_program_resource(program.gl_handle, GL_UNIFORM_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
         }
 
-        print("Listing Uniform Blocks\n");
-        for 0 .. list_length(ubos) {
-            let res = ubos[it];
-            print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
-            for 0 .. res.active_variables.length {
-                print("        ", res.active_variables[it], "\n");
-            }
-        }
+        program.ubos = ubos;
     }
 
     {
         int32 num_res = 0;
-        glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
+        glGetProgramInterfaceiv(program.gl_handle, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
 
         Shader_Storage_Block[..] ssbos = list_create(sizeof Shader_Storage_Block);
 
@@ -415,22 +404,42 @@ void introspect_shader_program(uint32 program) {
             }
 
             Data data = {};
-            get_program_resource(program, GL_SHADER_STORAGE_BLOCK, it, props, *data);
+            get_program_resource(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it, props, *data);
 
             Shader_Storage_Block* res = list_append(*ssbos);
-            res.flags = get_program_resource_usedby_flags(program, GL_SHADER_STORAGE_BLOCK, it);
-            res.name = alloc_and_get_name(program, GL_SHADER_STORAGE_BLOCK, it, data.name_length);
+            res.flags = get_program_resource_usedby_flags(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it);
+            res.name = alloc_and_get_name(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it, data.name_length);
             res.buffer_binding = data.buffer_binding;
             res.buffer_data_size = data.buffer_data_size;
             res.active_variables.length = data.num_active_variables;
 
             res.active_variables.data = malloc(res.active_variables.length * sizeof int32);
-            get_program_resource(program, GL_SHADER_STORAGE_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+            get_program_resource(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+        }
+
+        program.ssbos = ssbos;
+    }
+
+
+    if false { // printing:
+        for 0 .. list_length(program.uniforms) {
+            let uni = program.uniforms[it];
+            // print("layout(location=", uni.location, ") ", opengl_const_to_glsl_type_name(uni.ogl_type), " ", name, ";\n");
+            print("uniform: ", uni, "\n");
+        }
+
+        print("Listing Uniform Blocks\n");
+        for 0 .. list_length(program.ubos) {
+            let res = program.ubos[it];
+            print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
+            for 0 .. res.active_variables.length {
+                print("        ", res.active_variables[it], "\n");
+            }
         }
 
         print("Listing Storage Blocks\n");
-        for 0 .. list_length(ssbos) {
-            let res = ssbos[it];
+        for 0 .. list_length(program.ssbos) {
+            let res = program.ssbos[it];
             print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
             for 0 .. res.active_variables.length {
                 print("        ", res.active_variables[it], "\n");
@@ -460,6 +469,27 @@ UBO* get_ubo(string name) {
     return uniform_buffer_objects[len];
 }
 
+SSBO* get_ssbo(char* name) return get_ssbo(make_string(name));
+SSBO* get_ssbo(string name) {
+
+    uint32 len = list_length(shader_storage_buffer_objects as void*);
+    for 0 .. len {
+        SSBO* ssbo = shader_storage_buffer_objects[it];
+        if string_equals(name, ssbo.name) return ssbo;
+    }
+
+    SSBO* ssbo = malloc(sizeof SSBO);
+    ssbo.binding_point = len;
+    ssbo.name = alloc_string_copy(name);
+
+    glGenBuffers(1, *ssbo.buffer_id);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo.binding_point, ssbo.buffer_id);
+
+    list_add(*shader_storage_buffer_objects as void**, *ssbo as void*);
+
+    return shader_storage_buffer_objects[len];
+}
+
 Named_Binding_Point* get_named_binding_point(string name, GLenum target, Named_Binding_Point*[..]* list) {
     uint32 len = list_length(@list);
     for 0 .. len {
@@ -479,10 +509,6 @@ Named_Binding_Point* get_named_binding_point(string name, GLenum target, Named_B
     return (@list)[len];
 }
 
-Named_Binding_Point* get_ssbo(string name) {
-    return get_named_binding_point(name, GL_SHADER_STORAGE_BUFFER, *ssbo_binding_points);
-}
-
 void bind_ubos(with Shader* s) {
     int32 num_ubos;
     int32 max_name_len;
@@ -494,12 +520,21 @@ void bind_ubos(with Shader* s) {
     for 0 .. num_ubos {
         int32 name_len;
         glGetActiveUniformBlockName(s.gl_handle, it, max_name_len, *name_len, ubo_name);
-        uint32 ubo_index = glGetUniformBlockIndex(s.gl_handle, ubo_name);
+        // uint32 ubo_index = glGetUniformBlockIndex(s.gl_handle, ubo_name);
+        uint32 ubo_index = it;
         UBO* ubo = get_ubo(make_string(ubo_name));
         glUniformBlockBinding(s.gl_handle, ubo_index, ubo.binding_point);
     }
 
     free(ubo_name);
+}
+
+void bind_ssbos(Shader* s) {
+    for 0 .. list_length(s.ssbos) {
+        let info = s.ssbos[it];
+        let ssbo = get_ssbo(info.name);
+        glShaderStorageBlockBinding(s.gl_handle, it, ssbo.binding_point);
+    }
 }
 
 void process_glsl_source(StringBuilder* sb, char* filename) {
@@ -707,25 +742,36 @@ Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) 
     bind_ubos(*program);
 
     // print("\nuniforms: ", program.name, "\n");
-    // introspect_shader_program(program.gl_handle);
+    introspect_shader_program(*program);
+
+    bind_ssbos(*program);
 
     print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" was successfully created.\n");
     return program;
 }
 
-void delete_shader(Shader shader) {
+void delete_shader(Shader* shader) {
     glDeleteProgram(shader.gl_handle);
     sb_free(shader.debug_log);
+
+
+    if shader.uniforms != null {
+
+        for 0 .. list_length(shader.uniforms) free(shader.uniforms[it].name.chars);
+        for 0 .. list_length(shader.ubos)     free(shader.ubos[it].name.chars);
+        for 0 .. list_length(shader.ssbos)    free(shader.ssbos[it].name.chars);
+
+        list_delete(shader.uniforms);
+        list_delete(shader.ubos);
+        list_delete(shader.ssbos);
+
+        shader.uniforms = null;
+        shader.ubos = null;
+        shader.ssbos = null;
+    }
+
 }
 
-void set_uniform(char* name, float32 x)          glUniform1f (glGetUniformLocation(active_shader.gl_handle, name), x);
-void set_uniform(char* name, float32 x, y)       glUniform2f (glGetUniformLocation(active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, float32 x, y, z)    glUniform3f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, float32 x, y, z, w) glUniform4f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, float64 x)          glUniform1d (glGetUniformLocation(active_shader.gl_handle, name), x);
-void set_uniform(char* name, float64 x, y)       glUniform2d (glGetUniformLocation(active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, float64 x, y, z)    glUniform3d (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, float64 x, y, z, w) glUniform4d (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
 void set_uniform(char* name, int32   x)          glUniform1i (glGetUniformLocation(active_shader.gl_handle, name), x);
 void set_uniform(char* name, int32   x, y)       glUniform2i (glGetUniformLocation(active_shader.gl_handle, name), x, y);
 void set_uniform(char* name, int32   x, y, z)    glUniform3i (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
@@ -734,6 +780,14 @@ void set_uniform(char* name, uint32  x)          glUniform1ui(glGetUniformLocati
 void set_uniform(char* name, uint32  x, y)       glUniform2ui(glGetUniformLocation(active_shader.gl_handle, name), x, y);
 void set_uniform(char* name, uint32  x, y, z)    glUniform3ui(glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
 void set_uniform(char* name, uint32  x, y, z, w) glUniform4ui(glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
+void set_uniform(char* name, float32 x)          glUniform1f (glGetUniformLocation(active_shader.gl_handle, name), x);
+void set_uniform(char* name, float32 x, y)       glUniform2f (glGetUniformLocation(active_shader.gl_handle, name), x, y);
+void set_uniform(char* name, float32 x, y, z)    glUniform3f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
+void set_uniform(char* name, float32 x, y, z, w) glUniform4f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
+void set_uniform(char* name, float64 x)          glUniform1d (glGetUniformLocation(active_shader.gl_handle, name), x);
+void set_uniform(char* name, float64 x, y)       glUniform2d (glGetUniformLocation(active_shader.gl_handle, name), x, y);
+void set_uniform(char* name, float64 x, y, z)    glUniform3d (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
+void set_uniform(char* name, float64 x, y, z, w) glUniform4d (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
 
 void set_uniform(char* name, vec2 v)  set_uniform(name, v.x, v.y);
 void set_uniform(char* name, vec3 v)  set_uniform(name, v.x, v.y, v.z);
