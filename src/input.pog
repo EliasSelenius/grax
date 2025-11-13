@@ -99,6 +99,18 @@ void input_state_reset() {
 void enable_cursor()  { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
 void disable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); }
 
+// can be used for
+// - keybinds menu
+// - display doable input actions to user
+// - facilitate for input state machine
+// struct InputAction {
+//     string description;
+//     Key key;
+//     MouseButton mouse_btn;
+//     int32 action; // 0:onpress 1:onhold 2:doublepress?
+// }
+
+
 // adapted from glfw
 enum Key {
     unknown = -1;

@@ -10,6 +10,16 @@ vec3 hash(vec3 p) {
 	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
 }
 
+
+vec2 hash(in vec2 x)   // this hash is not production ready, please
+{                        // replace this by something better
+    const vec2 k = vec2( 0.3183099, 0.3678794 );
+    x = x*k + k.yx;
+    return -1.0 + 2.0*fract( 16.0 * k*fract( x.x*x.y*(x.x+x.y)) );
+}
+
+
+
 float noise(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
@@ -99,14 +109,6 @@ vec4 noised3(in vec3 x) {
     return vec4(d, v);
 }
 
-
-vec2 hash( in vec2 x )   // this hash is not production ready, please
-{                        // replace this by something better
-    const vec2 k = vec2( 0.3183099, 0.3678794 );
-    x = x*k + k.yx;
-    return -1.0 + 2.0*fract( 16.0 * k*fract( x.x*x.y*(x.x+x.y)) );
-}
-
 // returns gradient noise (in .z) and its derivatives (in .xy)
 vec3 noised2( in vec2 x ) {
     vec2 i = floor( x );
@@ -130,6 +132,24 @@ vec3 noised2( in vec2 x ) {
                  du * (u.yx*(va-vb-vc+vd) + vec2(vb,vc) - va);
 
     return vec3(d, v);
+}
+
+// https://iquilezles.org/articles/smoothvoronoi/
+float voronoi(in vec2 x) {
+    vec2 p = floor(x);
+    vec2 f = fract(x);
+
+    float res = 8.0;
+    for(int j=-1; j<=1; j++)
+    for(int i=-1; i<=1; i++) {
+        vec2 b = vec2(i, j);
+
+        vec2  r = b - f + (hash(p + b)+1.0)/2.0;
+        float d = dot(r, r);
+        res = min(res, d);
+    }
+
+    return sqrt(res);
 }
 
 
