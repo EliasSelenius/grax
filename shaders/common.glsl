@@ -13,6 +13,13 @@ float maxdot(vec3 a, vec3 b) { return max(0.0, dot(a, b)); }
 float sq(float x) { return x*x; }
 
 
+vec3 noz(vec3 v) {
+    float l = length(v);
+    if (l == 0.0) return v;
+    return normalize(v);
+}
+
+
 mat3 create_mat3(vec2 pos, float rot, vec2 scale) {
     float c = cos(rot);
     float s = sin(rot);

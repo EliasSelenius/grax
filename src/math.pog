@@ -522,6 +522,11 @@ quat normalize(quat q) {
     return { q.x / l, q.y / l, q.z / l, q.w / l };
 }
 
+vec3 rotate(quat q, vec3 v) {
+    quat r = {v.x, v.y, v.z, 0};
+    return xyz(q * r * conj(q));
+}
+
 float32 dot(quat a, b) return {a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w};
 
 quat lerp(float32 t, quat a, quat b) { return add(a, mul(sub(b, a), t)); } // TODO: are these correct? lerp and nlerp

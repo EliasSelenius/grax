@@ -185,9 +185,13 @@ void gizmo_capsule(vec3 a, b, up, float32 r, Color color) {
     gizmo_point(a, color);
     gizmo_point(b, color);
 
-    vec3 ab = normalize(b - a);
-    vec3 side = normalize(cross(ab, up));
-         up   = normalize(cross(side, ab));
+    vec3 ab = noz(b - a);
+    if abs(dot(ab, up)) >= 1.0 {
+        up = {-up.y, up.x, up.z};
+    }
+
+    vec3 side = noz(cross(ab, up));
+         up   = noz(cross(side, ab));
 
     mat3 m = { side, up, ab };
 

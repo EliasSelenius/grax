@@ -11,6 +11,7 @@ IO FragData {
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uniform sampler2D hdr_buffer;
+// uniform int u_output_mode = 0;
 
 out vec3 FragColor;
 
@@ -23,6 +24,12 @@ void main() {
     ldr_color = pow(ldr_color, vec3(1.0 / 2.2));
 
     FragColor = ldr_color;
+
+    // switch (u_output_mode) {
+    //     case 0: { // Normal
+            
+    //     } break;
+    // }
 
 
     // vec3 avg_color = vec3((ldr_color.r + ldr_color.g + ldr_color.b) / 3.0);

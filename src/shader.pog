@@ -27,6 +27,10 @@ struct SSBO {
     uint32 buffer_id;
 }
 
+void update_ssbo(char* name, void* data, uint32 size) {
+    let ssbo = get_ssbo(name);
+    update_buffer(ssbo.buffer_id, data, size);
+}
 
 Named_Binding_Point*[..] ssbo_binding_points = list_create(sizeof Named_Binding_Point*);
 Named_Binding_Point*[..]  ubo_binding_points = list_create(sizeof Named_Binding_Point*);
@@ -53,6 +57,10 @@ struct Shader {
 void use(Shader* s) {
     active_shader = s;
     glUseProgram(s.gl_handle);
+}
+
+void dispatch_compute(uint32 x, y, z) {
+    glDispatchCompute(x, y, z);
 }
 
 // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, buffer)
