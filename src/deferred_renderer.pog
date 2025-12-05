@@ -28,7 +28,7 @@ DeferredRenderer deferred_renderer_init() {
     dr.shader_geometry = load_shader("../grax/shaders/gpass.glsl");
     dr.shader_hdr2ldr  = load_shader("../grax/shaders/hdr2ldr.glsl");
     dr.shader_dirlight = load_shader("../grax/shaders/dirlight.glsl");
-    dr.shader_skybox   = load_shader("../grax/shaders/cubemap_skybox.glsl");
+    dr.shader_skybox   = load_shader("../grax/shaders/skybox.glsl");
 
     //                          pos/metallic  normal/roughness  albedo
     TextureFormat[] g_attachments   = { .rgba16f, .rgba16f, .rgb8 };

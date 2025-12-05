@@ -6,7 +6,7 @@
 
 
 #define IO_Data FragData {\
-    vec3 pos;\
+    vec3 view_pos;\
     vec3 world_normal;\
     vec3 view_normal;\
     vec2 uv;\
@@ -38,15 +38,15 @@ out IO_Data vert_output;
 void main() {
     mat4 model = instances.transform[gl_InstanceID];
     mat4 view_model = camera.view * model;
-    vec4 pos = view_model * vec4(a_Pos, 1.0);
+    vec4 view_pos = view_model * vec4(a_Pos, 1.0);
 
-    vert_output.pos = pos.xyz;
+    vert_output.view_pos = view_pos.xyz;
     vert_output.world_normal = mat3(model) * a_Normal;
     vert_output.view_normal = mat3(view_model) * a_Normal;
     vert_output.uv = a_Uv;
     vert_output.instance_id = gl_InstanceID;
 
-    gl_Position = camera.projection * pos;
+    gl_Position = camera.projection * view_pos;
 }
 #endif
 
@@ -96,21 +96,20 @@ vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
     // vec2 grad = vec2(dFdx(b), dFdy(b));
 
     vec2 size = textureSize(sam, 0);
-    float run = 1.0 / size.x;
+    float pix = 1.0 / size.x;
 
     float b0 = dot(texture(sam, uv+vec2(0.0, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-    float b1 = dot(texture(sam, uv+vec2(run, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-    float b2 = dot(texture(sam, uv+vec2(0.0, run)).rgb, vec3(0.299, 0.587, 0.114));
+    float b1 = dot(texture(sam, uv+vec2(pix, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+    float b2 = dot(texture(sam, uv+vec2(0.0, pix)).rgb, vec3(0.299, 0.587, 0.114));
 
-    vec2 grad = vec2(b1 - b0, b2 - b0) / (run*100.0);
-
+    vec2 grad = vec2(b1 - b0, b2 - b0) / (pix*100.0);
     vec3 norm = normalize(vec3(-grad.x, 1, -grad.y));
+
+    if (surface_normal.y < 0) norm = -norm;
 
     vec3 cro = cross(vec3(0,1,0), surface_normal);
     vec4 q = quat_from_axis_angle(noz(cro), length(cro));
     return rotate_by_quat(q, norm);
-
-    // return norm;
 }
 
 layout (location = 0) out vec4 FragPos_Metallic;
@@ -120,23 +119,19 @@ layout (location = 2) out vec3 FragColor;
 in IO_Data frag_input;
 
 void main() {
-
     // sampler2D tex = textures[frag_input.instance_id];
     sampler2D tex = albedo_texture;
 
-    vec3 norm = mat3(camera.view) * normal_from_sampler(tex, frag_input.uv, frag_input.world_normal);
-    FragColor = norm;
-
-    FragPos_Metallic.xyz = frag_input.pos;
-    FragPos_Metallic.w   = metallic;
-
-    vec3 normal = norm;
+    vec3 world_normal = normalize(frag_input.world_normal);
+    vec3 normal = mat3(camera.view) * normal_from_sampler(tex, frag_input.uv, world_normal);
     // vec3 normal = frag_input.view_normal;
     if (!gl_FrontFacing)  normal = -normal;
-    FragNormal_Roughness.xyz = normalize(normal);
-    FragNormal_Roughness.w   = roughness;
 
     FragColor = texture(tex, frag_input.uv).rgb * albedo_color;
     // FragColor = albedo_color;
+    // FragColor = normal;
+
+    FragPos_Metallic = vec4(frag_input.view_pos, metallic);
+    FragNormal_Roughness = vec4(normalize(normal), roughness);
 }
 #endif
