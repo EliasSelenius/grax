@@ -258,6 +258,8 @@ UI_Rect rect_pp(vec2 p1, p2) {
     return rect;
 }
 
+bool hover(UI_Rect r, vec2 pos) return point_inside_bb(pos, bottom_left(r), top_right(r));
+
 vec2 bottom_left(UI_Rect r) return r.center - r.size/2.0;
 vec2 bottom_right(UI_Rect r) return r.center + (r.size * make_vec(1, -1))/2.0;
 vec2 top_left(UI_Rect r) return r.center + (r.size * make_vec(-1, 1))/2.0;
@@ -320,8 +322,13 @@ UI_Rect anchor_constraint(UI_Rect rect, AnchorPoint ap, vec2 pos) {
     return rect;
 }
 
-
-bool hover(UI_Rect r, vec2 pos) return point_inside_bb(pos, bottom_left(r), top_right(r));
+UI_Rect grid(UI_Rect r, uint32 rows, cols, x, y) {
+    vec2 size = {r.size.x/cols, r.size.y/rows};
+    UI_Rect res = {};
+    res.center = r.center + (size - r.size)/2.0 + size*make_vec(x, y);
+    res.size = size;
+    return res;
+}
 
 
 
