@@ -29,7 +29,7 @@ struct SSBO {
 
 void update_ssbo(char* name, void* data, uint32 size) {
     let ssbo = get_ssbo(name);
-    update_buffer(ssbo.buffer_id, data, size);
+    update_buffer(ssbo.buffer_id, size, data);
 }
 
 Named_Binding_Point*[..] ssbo_binding_points = list_create(sizeof Named_Binding_Point*);

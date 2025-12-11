@@ -1,93 +1,100 @@
 
-IO FragData {
-    vec3 pos;
-    vec2 uv;
-    vec4 color;
+#include "../grax/shaders/app.glsl"
+#include "../grax/shaders/common.glsl"
+
+#define IO_Data FragData {\
+    vec3 pos;\
+    vec2 uv;\
+    vec4 color;\
+    vec4 color_factor;\
+    vec4 color_additive;\
+    vec4 color_outline;\
+}\
+
+uniform vec2  u_cam_pos = vec2(0.0);
+uniform float u_cam_rot = 0;
+uniform float u_zoom = 1.0;
+uniform sampler2D u_sampler;
+
+struct InstanceData {
+    vec4 pos_rot;
+    vec4 scale;
+    vec4 uv_offset_scale;
     vec4 color_factor;
     vec4 color_additive;
     vec4 color_outline;
-} v2f;
+};
 
-uniform vec2 cam_pos = vec2(0.0);
-uniform float cam_rot = 0;
-uniform float zoom = 1.0;
+layout (std430) readonly buffer Instances2D {
+    InstanceData instance_data[];
+};
 
 #ifdef VertexShader /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#include "../grax/shaders/app.glsl"
-#include "../grax/shaders/common.glsl"
 
 layout (location = 0) in vec2 a_Pos;
 layout (location = 1) in vec2 a_Uv;
 layout (location = 2) in vec4 a_Color;
 
-layout (location = 3) in vec3  a_Instance_Pos;
-layout (location = 4) in float a_Instance_Rot;
-layout (location = 5) in vec2  a_Instance_Scale;
-layout (location = 6) in vec2  a_Instance_uv_offset;
-layout (location = 7) in vec2  a_Instance_uv_scale;
-layout (location = 8) in vec4  a_Instance_color_factor;
-layout (location = 9) in vec4  a_Instance_color_additive;
-layout (location = 10) in vec4  a_Instance_color_outline;
+out IO_Data vert_output;
 
 void main() {
+    InstanceData inst = instance_data[gl_InstanceID];
 
-    v2f.uv = a_Instance_uv_offset + a_Uv * a_Instance_uv_scale;
-    v2f.color = a_Color;
+    vec2 uv_offset = inst.uv_offset_scale.xy;
+    vec2 uv_scale  = inst.uv_offset_scale.zw;
 
-    v2f.color_factor = a_Instance_color_factor;
-    v2f.color_additive = a_Instance_color_additive;
-    v2f.color_outline = a_Instance_color_outline;
+    vert_output.uv = uv_offset + a_Uv * uv_scale;
+    vert_output.color = a_Color;
 
-    vec3  pos   = a_Instance_Pos;
-    float rot   = a_Instance_Rot;
-    vec2  scale = a_Instance_Scale;
+    vert_output.color_factor   = inst.color_factor;
+    vert_output.color_additive = inst.color_additive;
+    vert_output.color_outline  = inst.color_outline;
 
-    vec3 v = vec3(a_Pos, 1);
-    v *= create_mat3(pos.xy, rot, scale);
-    v *= create_mat3_inv(cam_pos, cam_rot, vec2(zoom));
-    v.x *= Aspect;
+    vec3  pos   = inst.pos_rot.xyz;
+    float rot   = inst.pos_rot.w;
+    vec2  scale = inst.scale.xy;
 
-    v2f.pos = pos;
+    vec3 v = vec3(a_Pos, 1)
+        * create_mat3(pos.xy, rot, scale)
+        * create_mat3_inv(u_cam_pos, u_cam_rot, vec2(u_zoom))
+        * vec3(Aspect, 1, 1);
+
+    vert_output.pos = pos;
     gl_Position = vec4(v.xy, pos.z, 1.0 + pos.z);
 }
-
 #endif
+
+
+
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uniform sampler2D tex;
-
-// // TODO: color_factor and color_additive could just be computed in the vertex shader and assigned to vertex color
-// uniform vec4 color_factor = vec4(1.0);
-// uniform vec4 color_additive = vec4(0.0);
-
-const vec3 background_color = vec3(0.1);
-
+in IO_Data frag_input;
 out vec4 FragColor;
 
 void main() {
-    vec4 tex_color = texture(tex, v2f.uv) * v2f.color;
+    vec4 color_outline = frag_input.color_outline;
+
+    vec2 uv = frag_input.uv;
+
+    vec4 tex_color = texture(u_sampler, uv) * frag_input.color;
     if (tex_color.a == 0.0) {
-        vec2 size = 1.0 / textureSize(tex, 0);
+        vec2 size = 1.0 / textureSize(u_sampler, 0);
 
-        float e = texture(tex, v2f.uv + size*vec2(1,0)).a;
-        float w = texture(tex, v2f.uv + size*vec2(-1,0)).a;
-        float n = texture(tex, v2f.uv + size*vec2(0,1)).a;
-        float s = texture(tex, v2f.uv + size*vec2(0,-1)).a;
+        float e = texture(u_sampler, uv + size*vec2( 1, 0)).a;
+        float w = texture(u_sampler, uv + size*vec2(-1, 0)).a;
+        float n = texture(u_sampler, uv + size*vec2( 0, 1)).a;
+        float s = texture(u_sampler, uv + size*vec2( 0,-1)).a;
 
-        if (e != 0.0)      tex_color = v2f.color_outline;
-        else if (w != 0.0) tex_color = v2f.color_outline;
-        else if (n != 0.0) tex_color = v2f.color_outline;
-        else if (s != 0.0) tex_color = v2f.color_outline;
+        if (e != 0.0)      tex_color = color_outline;
+        else if (w != 0.0) tex_color = color_outline;
+        else if (n != 0.0) tex_color = color_outline;
+        else if (s != 0.0) tex_color = color_outline;
 
         if (tex_color.a == 0.0) discard;
     }
 
-    FragColor = vec4(mix(tex_color.rgb, background_color, v2f.pos.z), tex_color.a);
-    // FragColor = tex_color;
-
-    FragColor *= v2f.color_factor;
-    FragColor += v2f.color_additive;
+    vec4 factor = frag_input.color_factor;
+    vec4 additive = frag_input.color_additive;
+    FragColor = tex_color * factor + additive;
 }
-
 #endif

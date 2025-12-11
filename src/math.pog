@@ -185,6 +185,11 @@ vec4 make_vec(float32 x, vec3 yzw) { return { x, yzw.x, yzw.y, yzw.z }; }
 ivec4 make_ivec(ivec3 xyz, int32 w) { return { xyz.x, xyz.y, xyz.z, w }; }
 ivec4 make_ivec(int32 x, ivec3 yzw) { return { x, yzw.x, yzw.y, yzw.z }; }
 
+vec4 make_vec(vec2 xy, zw) return {xy.x, xy.y, zw.x, zw.y};
+vec4 make_vec(vec2 xy, float32 z, w) return {xy.x, xy.y, z, w};
+vec4 make_vec(float32 x, y, vec2 zw) return {x, y, zw.x, zw.y};
+vec4 make_vec(float32 x, vec2 yz, float32 w) return {x, yz.x, yz.y, w};
+
 vec2 make_vec(ivec2 v) { return { v.x as float32, v.y as float32 }; }
 vec3 make_vec(ivec3 v) { return { v.x as float32, v.y as float32, v.z as float32 }; }
 vec4 make_vec(ivec4 v) { return { v.x as float32, v.y as float32, v.z as float32, v.w as float32 }; }

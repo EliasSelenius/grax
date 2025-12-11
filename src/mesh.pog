@@ -124,6 +124,12 @@ DrawBuffers create_draw_buffers(Mesh mesh) {
                                 list_length(mesh.indices), mesh.indices as uint32*);
 }
 
+DrawBuffers create_draw_buffers(vertex3D[] verts, uint32[] inds) {
+    return create_draw_buffers(sizeof vertex3D, vertex3D_attribs,
+                                verts.length * sizeof vertex3D, verts.data as void*,
+                                inds.length, inds.data as uint32*);
+}
+
 DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs) return create_draw_buffers(vertex_size, attribs, 0, null, 0, null);
 
 DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs,

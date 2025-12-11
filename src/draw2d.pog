@@ -1,11 +1,8 @@
 
-
-Vertex_Attrib_Type[] instance_attribs = { .vec3, .float32, .vec2, .vec2, .vec2, .vec4, .vec4, .vec4 };
 struct InstanceData {
-    vec3 pos;
-    float32 rot;
-    vec2 scale;
-    vec2 uv_offset, uv_scale;
+    vec4 pos_rot;
+    vec4 scale;
+    vec4 uv_offset_scale;
     vec4 color_factor;
     vec4 color_additive;
     vec4 color_outline;
@@ -21,7 +18,6 @@ RendererData draw2d_renderer;
 struct RendererData {
     Instanced_Draw_Call[..] draw_calls;
     Instanced_Draw_Call[..] draw_calls_semi_transparent;
-    uint32 vbo_instances;
 
     DrawBuffers quad_db;
 }
@@ -45,18 +41,9 @@ void init_draw2d() {
     { // init renderer
         draw2d_renderer.draw_calls = list_create(sizeof Instanced_Draw_Call);
         draw2d_renderer.draw_calls_semi_transparent = list_create(sizeof Instanced_Draw_Call);
-
-        glGenBuffers(1, *draw2d_renderer.vbo_instances);
-        bind_instance_buffer_to_vao(draw2d_renderer.quad_db.vao, draw2d_renderer.vbo_instances);
     }
 }
 
-void bind_instance_buffer_to_vao(uint32 vao, vbo) {
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    init_vertex_layout(3, 1, sizeof InstanceData, instance_attribs);
-    glBindVertexArray(0);
-}
 
 
 
@@ -168,13 +155,9 @@ void draw_texture(
 
     append_instance: {
         InstanceData ins = {};
-        ins.pos = make_vec(tr.pos, depth);
-        ins.rot = tr.rot;
-        ins.scale = uv_scale * make_vec(tex.width, tex.height) * tr.scale;
-
-        ins.uv_offset = uv_offset;
-        ins.uv_scale = uv_scale;
-
+        ins.pos_rot = make_vec(tr.pos, depth, tr.rot);
+        ins.scale   = make_vec(uv_scale * make_vec(tex.width, tex.height) * tr.scale, 0, 0);
+        ins.uv_offset_scale = make_vec(uv_offset, uv_scale);
         ins.color_factor = color_factor;
         ins.color_additive = color_additive;
         ins.color_outline = color_outline;
@@ -183,9 +166,6 @@ void draw_texture(
     }
 }
 
-void set_instance_data(InstanceData data) {
-    update_buffer(draw2d_renderer.vbo_instances, sizeof InstanceData, *data);
-}
 
 void dispatch_sprites(Transform2D cam) {
 
@@ -194,7 +174,7 @@ void dispatch_sprites(Transform2D cam) {
     enable_depth_test();
 
     glDepthMask(true);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     disable_blending();
     // enable_alpha_blending();
 
@@ -202,7 +182,7 @@ void dispatch_sprites(Transform2D cam) {
 
     void issue_draw_command(Instanced_Draw_Call* dc) {
         uint32 instance_count = list_length(dc.instances);
-        update_buffer(draw2d_renderer.vbo_instances, instance_count * sizeof InstanceData, dc.instances);
+        update_ssbo("Instances2D", dc.instances as void*, instance_count * sizeof InstanceData);
 
         bind_texture2D(dc.tex, 0);
         draw_elements(dc.db, instance_count);

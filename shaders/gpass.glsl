@@ -102,7 +102,7 @@ vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
     float b1 = dot(texture(sam, uv+vec2(pix, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
     float b2 = dot(texture(sam, uv+vec2(0.0, pix)).rgb, vec3(0.299, 0.587, 0.114));
 
-    vec2 grad = vec2(b1 - b0, b2 - b0) / (pix*100.0);
+    vec2 grad = vec2(b1 - b0, b2 - b0);// / (pix*100.0);
     vec3 norm = normalize(vec3(-grad.x, 1, -grad.y));
 
     if (surface_normal.y < 0) norm = -norm;
