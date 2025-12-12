@@ -139,7 +139,10 @@ void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
 
 void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, uint32 tex, mat4 model) {
     update_buffer(dr.ubo_model.buffer_id, sizeof mat4, *model);
+
     bind_texture2D(tex, 0);
+    set_uniform("u_uv_offset", vec2_zero);
+    set_uniform("u_uv_scale", vec2_one);
 
     set_uniform("albedo_color", mat.albedo);
     set_uniform("metallic",     mat.metallic);

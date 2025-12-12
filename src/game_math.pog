@@ -6,34 +6,12 @@ struct Transform {
 }
 
 mat4 to_matrix(with Transform t) {
-    mat4 res = quat2matrix(t.rotation);
-
-    res.row1 = res.row1 * t.scale.x;
-    res.row2 = res.row2 * t.scale.y;
-    res.row3 = res.row3 * t.scale.z;
-
-    res.row4 = make_vec(t.position, 1.0);
-    return res;
+    return make_mat4(t.position, t.scale, t.rotation);
 }
-
 mat4 to_inverse_matrix(with Transform t) {
-    mat4 res = quat2matrix(normalize(conj(t.rotation)));
-    // mat4 res = transpose(quat2matrix(normalize(t.rotation)));
-
-    vec4 S = { 1.0 / t.scale.x,
-               1.0 / t.scale.y,
-               1.0 / t.scale.z, 0.0 };
-
-    res.row1 = res.row1 * S;
-    res.row2 = res.row2 * S;
-    res.row3 = res.row3 * S;
-
-    res.row4.x = -dot(xyz(col1(res)), t.position);
-    res.row4.y = -dot(xyz(col2(res)), t.position);
-    res.row4.z = -dot(xyz(col3(res)), t.position);
-
-    return res;
+    return make_mat4_inverse(t.position, t.scale, t.rotation);
 }
+
 
 Transform transform_default() {
     return {

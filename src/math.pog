@@ -446,6 +446,37 @@ mat4 make_mat4(vec3 pos, scale) return { scale.x, 0, 0, 0,
                                          pos.x, pos.y, pos.z, 1 };
 mat4 make_mat4(vec3 pos, float32 scale) return make_mat4(pos, make_vec3(scale));
 
+mat4 make_mat4(vec3 position, scale, quat rotation) {
+    mat4 res = quat2matrix(rotation);
+
+    res.row1 = res.row1 * scale.x;
+    res.row2 = res.row2 * scale.y;
+    res.row3 = res.row3 * scale.z;
+
+    res.row4 = make_vec(position, 1.0);
+    return res;
+}
+
+mat4 make_mat4_inverse(vec3 position, scale, quat rotation) {
+    mat4 res = quat2matrix(normalize(conj(rotation)));
+    // mat4 res = transpose(quat2matrix(normalize(rotation)));
+
+    vec4 S = { 1.0 / scale.x,
+               1.0 / scale.y,
+               1.0 / scale.z, 0.0 };
+
+    res.row1 = res.row1 * S;
+    res.row2 = res.row2 * S;
+    res.row3 = res.row3 * S;
+
+    res.row4.x = -dot(xyz(col1(res)), position);
+    res.row4.y = -dot(xyz(col2(res)), position);
+    res.row4.z = -dot(xyz(col3(res)), position);
+
+    return res;
+}
+
+
 vec4 col1(mat4 m) { return { m.row1.x, m.row2.x, m.row3.x, m.row4.x }; }
 vec4 col2(mat4 m) { return { m.row1.y, m.row2.y, m.row3.y, m.row4.y }; }
 vec4 col3(mat4 m) { return { m.row1.z, m.row2.z, m.row3.z, m.row4.z }; }
@@ -584,6 +615,8 @@ quat mul(quat l, r) as * {
         a*e - b*f - c*g - d*h
     };
 }
+
+quat axis_angle(vec3 axis, float32 angle) return axisangle2quat(axis, angle);
 
 quat axisangle2quat(vec3 axis, float32 angle) {
     let ha = angle / 2.0;

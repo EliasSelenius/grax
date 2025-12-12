@@ -22,6 +22,8 @@ layout (std430) readonly buffer Textures {
 };
 
 uniform sampler2D albedo_texture;
+uniform vec2 u_uv_offset = vec2(0.0);
+uniform vec2 u_uv_scale = vec2(1.0);
 uniform vec3  albedo_color;
 uniform float metallic;
 uniform float roughness;
@@ -43,7 +45,7 @@ void main() {
     vert_output.view_pos = view_pos.xyz;
     vert_output.world_normal = mat3(model) * a_Normal;
     vert_output.view_normal = mat3(view_model) * a_Normal;
-    vert_output.uv = a_Uv;
+    vert_output.uv = u_uv_offset + a_Uv * u_uv_scale;
     vert_output.instance_id = gl_InstanceID;
 
     gl_Position = camera.projection * view_pos;
@@ -127,7 +129,10 @@ void main() {
     // vec3 normal = frag_input.view_normal;
     if (!gl_FrontFacing)  normal = -normal;
 
-    FragColor = texture(tex, frag_input.uv).rgb * albedo_color;
+    vec4 tex_color = texture(tex, frag_input.uv);
+    if (tex_color.a == 0.0) discard;
+
+    FragColor = tex_color.rgb * albedo_color;
     // FragColor = albedo_color;
     // FragColor = normal;
 
