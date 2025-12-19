@@ -303,9 +303,9 @@ vec2 normalize(vec2 a) return a / length(a);
 vec3 normalize(vec3 a) return a / length(a);
 vec4 normalize(vec4 a) return a / length(a);
 
-vec2 normalize_or(vec2 a, b) return equals(a, vec2_zero) ? b : a / length(a);
-vec3 normalize_or(vec3 a, b) return equals(a, vec3_zero) ? b : a / length(a);
-vec4 normalize_or(vec4 a, b) return equals(a, vec4_zero) ? b : a / length(a);
+vec2 normalize_or(vec2 a, b) { float32 len = length(a); return len == 0.0 ? b : a/len; }
+vec3 normalize_or(vec3 a, b) { float32 len = length(a); return len == 0.0 ? b : a/len; }
+vec4 normalize_or(vec4 a, b) { float32 len = length(a); return len == 0.0 ? b : a/len; }
 
 vec2 noz(vec2 a) return normalize_or(a, vec2_zero);
 vec3 noz(vec3 a) return normalize_or(a, vec3_zero);
@@ -350,7 +350,14 @@ vec3 cross(vec3 a, vec3 b) {
 }
 
 
-
+// pos = move(pos, target_pos, vel*dt);
+// vel = move(vel, target_vel, acc*dt);
+vec3 move(vec3 current, target, float32 step_dist) {
+    vec3 diff = target - current;
+    float32 len = length(diff);
+    float32 mag = min(step_dist, len);
+    return current + noz(diff)*mag;
+}
 
 
 
@@ -427,6 +434,11 @@ struct mat4 {
     vec4 row1, row2, row3, row4;
 }
 
+const mat4_id = {1,0,0,0,
+                 0,1,0,0,
+                 0,0,1,0,
+                 0,0,0,1} as mat4;
+
 mat4 mat4_identity() {
     return {1,0,0,0,
             0,1,0,0,
@@ -476,6 +488,9 @@ mat4 make_mat4_inverse(vec3 position, scale, quat rotation) {
     return res;
 }
 
+mat4 rotate(mat4 m, quat q, vec3 p) {
+    return m * make_mat4(p, 1.0) * make_mat4(vec3_zero, vec3_one, q) * make_mat4(neg(p), 1.0);
+}
 
 vec4 col1(mat4 m) { return { m.row1.x, m.row2.x, m.row3.x, m.row4.x }; }
 vec4 col2(mat4 m) { return { m.row1.y, m.row2.y, m.row3.y, m.row4.y }; }

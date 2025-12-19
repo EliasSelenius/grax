@@ -7,9 +7,16 @@
 
 */
 
+struct PhysicsProperties {
+    float32 cof_s; // coefficient of static friction
+    float32 cof_k; // coefficient of kinetic friction
+    float32 cod;   // coefficient of drag
+    float32 cor;   // coefficient of restitution
+}
 
 struct Rigidbody {
     float32 mass;
+    PhysicsProperties props;
     vec3 velocity;
     vec3 angular_velocity;
 }
@@ -47,6 +54,38 @@ void update_rigidbody_transform(with Transform* tr, with Rigidbody* rb, float32 
         rotate(tr, axis, angle * dt);
     }
 }
+
+vec3 calc_dragforce(vec3 vel, float32 cod, fluid_density) {
+    float32 dragforce_mag = 0.5 * fluid_density * cod * sqlength(vel);
+    vec3    dragforce = neg(noz(vel)) * dragforce_mag;
+    return dragforce;
+}
+
+vec3 calc_new_vel(vec3 vel, normal, float32 mass, e, cof_s, cof_k) {
+    float32 perp_speed = dot(vel, normal);
+    vec3 perp = normal * perp_speed; // perpendicular velocity
+    vec3 tang = vel - perp;          // tangential velocity
+
+    vec3 new_perp = normal * -e * perp_speed;
+
+    float32 tang_speed = length(tang);
+    if tang_speed < 0.000001  return new_perp;
+
+    float32 normal_impulse = mass * (1 + e) * abs(perp_speed);
+    float32 tangental_impulse = mass * tang_speed;
+
+    float32 static_friction  = cof_s * normal_impulse;
+    float32 dynamic_friction = cof_k * normal_impulse;
+
+    if tangental_impulse <= static_friction  return new_perp;
+
+    vec3 new_tang = noz(tang) * max(0, tang_speed - dynamic_friction / mass);
+    return new_tang + new_perp;
+}
+
+
+
+
 
 // enum CollisonShape {
 //     Sphere; Point; Capsule; Cube; Triangle;
