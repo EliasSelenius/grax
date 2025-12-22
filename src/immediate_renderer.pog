@@ -260,10 +260,12 @@ UI_Rect rect_pp(vec2 p1, p2) {
 
 bool hover(UI_Rect r, vec2 pos) return point_inside_bb(pos, bottom_left(r), top_right(r));
 
-vec2 bottom_left(UI_Rect r) return r.center - r.size/2.0;
-vec2 bottom_right(UI_Rect r) return r.center + (r.size * make_vec(1, -1))/2.0;
-vec2 top_left(UI_Rect r) return r.center + (r.size * make_vec(-1, 1))/2.0;
-vec2 top_right(UI_Rect r) return r.center + r.size/2.0;
+vec2 point(UI_Rect rect, vec2 p) return point(rect, p.x, p.y);
+vec2 point(UI_Rect rect, float32 x, y) return rect.center + rect.size*{x,y}*0.5;
+vec2 bottom_left(UI_Rect r)  return point(r, -1, -1);
+vec2 bottom_right(UI_Rect r) return point(r,  1, -1);
+vec2 top_left(UI_Rect r)     return point(r, -1,  1);
+vec2 top_right(UI_Rect r)    return point(r,  1,  1);
 
 vec2 anchor_point(UI_Rect r, AnchorPoint ap) {
     vec2 a;
@@ -275,7 +277,7 @@ vec2 anchor_point(UI_Rect r, AnchorPoint ap) {
         case .bottom_right: a = { 1, -1}; break;
     }
 
-    return r.center + (r.size*a*0.5);
+    return point(r, a);
 }
 
 vec2 center_text(UI_Rect r, float32 height, string str) {
@@ -306,6 +308,25 @@ UI_Rect pad_top(UI_Rect r, float32 padding) {
     return r;
 }
 
+UI_Rect scale(UI_Rect rect, float32 x, y) {
+    rect.size = rect.size * {x, y};
+    return rect;
+}
+
+UI_Rect scale_pivot(UI_Rect rect, float32 x, y, px, py) {
+    vec2 scale = {x, y};
+    vec2 pivot = rect.center + {px, py} * rect.size*0.5;
+    vec2 p1 = (rect.center - rect.size*0.5 - pivot) * scale + pivot;
+    vec2 p2 = (rect.center + rect.size*0.5 - pivot) * scale + pivot;
+    return rect_pp(p1, p2);
+}
+
+UI_Rect translate(UI_Rect rect, vec2 p) return translate(rect, p.x, p.y);
+UI_Rect translate(UI_Rect rect, float32 x, y) {
+    rect.center = rect.center + {x, y};
+    return rect;
+}
+
 UI_Rect bottom_right(UI_Rect inner, outer) {
     // bottom_right(inner) = bottom_right(outer)
     // solve for inner.center and keep all else constant
@@ -316,8 +337,14 @@ UI_Rect bottom_right(UI_Rect inner, outer) {
     // return anchor_constraint(inner, AnchorPoint.bottom_right, bottom_right(outer));
 }
 
-UI_Rect anchor_constraint(UI_Rect rect, AnchorPoint ap, vec2 pos) {
+UI_Rect anchor_place(UI_Rect rect, AnchorPoint ap, vec2 pos) {
     vec2 rel = pos - anchor_point(rect, ap);
+    rect.center = rect.center + rel;
+    return rect;
+}
+
+UI_Rect place(UI_Rect rect, float32 px, py, vec2 pos) {
+    vec2 rel = pos - point(rect, px, py);
     rect.center = rect.center + rel;
     return rect;
 }
@@ -330,7 +357,15 @@ UI_Rect grid(UI_Rect r, uint32 rows, cols, x, y) {
     return res;
 }
 
+// coe - corner or edge
+UI_Rect child(UI_Rect rect, float32 x, y, w, h) {
+    vec2 p = rect.center + rect.size * {x,y} * 0.5;
 
+    vec2 size = {w, h};
+    vec2 pos = p - {x,y} * size * 0.5;
+
+    return {pos, size};
+}
 
 
 void draw_rect(with RenderLayer* layer, vec2 pos, size, Color color) {

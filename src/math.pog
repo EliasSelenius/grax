@@ -53,6 +53,10 @@ vec2 max(vec2 a, b) return { max(a.x, b.x), max(a.y, b.y) };
 vec3 max(vec3 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) };
 vec4 max(vec4 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w) };
 
+float32 min_axis(vec3 v) return min(v.x, min(v.y, v.z));
+float32 max_axis(vec3 v) return max(v.x, max(v.y, v.z));
+
+
 int32 sign(float32 v) {
     if v == 0.0 return 0;
     if v < 0.0  return -1;
@@ -358,6 +362,14 @@ vec3 move(vec3 current, target, float32 step_dist) {
     float32 mag = min(step_dist, len);
     return current + noz(diff)*mag;
 }
+
+vec2 move(vec2 current, target, float32 step_dist) {
+    vec2 diff = target - current;
+    float32 len = length(diff);
+    float32 mag = min(step_dist, len);
+    return current + noz(diff)*mag;
+}
+
 
 
 

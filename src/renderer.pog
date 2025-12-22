@@ -458,6 +458,72 @@ void clear_depth(float64 depth) { set_clear_depth(depth); glClear(GL_DEPTH_BUFFE
 
 
 
+enum Blend {
+    Overwrite;
+    Lerp_Src_Alpha;
+    Add;
+}
+
+void set_blend_mode(Blend blend) switch (blend) {
+    case .Overwrite: glDisable(GL_BLEND); break;
+    case .Lerp_Src_Alpha:
+        glEnable(GL_BLEND);
+        glBlendEquation(GL_FUNC_ADD);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        break;
+    case .Add:
+        glEnable(GL_BLEND);
+        glBlendEquation(GL_FUNC_ADD);
+        glBlendFunc(GL_ONE, GL_ONE);
+        break;
+}
+
+enum DepthTest {
+    Disabled;
+    Never; // GL_NEVER
+    Less; // GL_LESS
+    Equal; // GL_EQUAL
+    Less_Equal; // GL_LEQUAL
+    Greater; // GL_GREATER
+    Not_Equal; // GL_NOTEQUAL
+    Greater_Equal; // GL_GEQUAL
+    Always; // GL_ALWAYS
+}
+
+void set_depth_mode(DepthTest dt, bool depth_write) {
+    glDepthMask(depth_write);
+    switch (dt) {
+        case .Disabled:      glDisable(GL_DEPTH_TEST); break;
+        case .Never:         glEnable(GL_DEPTH_TEST); glDepthFunc(GL_NEVER); break;
+        case .Less:          glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LESS); break;
+        case .Equal:         glEnable(GL_DEPTH_TEST); glDepthFunc(GL_EQUAL); break;
+        case .Less_Equal:    glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); break;
+        case .Greater:       glEnable(GL_DEPTH_TEST); glDepthFunc(GL_GREATER); break;
+        case .Not_Equal:     glEnable(GL_DEPTH_TEST); glDepthFunc(GL_NOTEQUAL); break;
+        case .Greater_Equal: glEnable(GL_DEPTH_TEST); glDepthFunc(GL_GEQUAL); break;
+        case .Always:        glEnable(GL_DEPTH_TEST); glDepthFunc(GL_ALWAYS); break;
+    }
+}
+
+enum Poly { Cull; Point; Line; Fill; }
+void set_face_render_mode(Poly front, back) {
+    void polymode(GLenum face, Poly mode) switch (mode) {
+        case .Cull:  glEnable(GL_CULL_FACE); glCullFace(face); break;
+        case .Point: glPolygonMode(face, GL_POINT); break;
+        case .Line:  glPolygonMode(face, GL_LINE); break;
+        case .Fill:  glPolygonMode(face, GL_FILL); break;
+    }
+
+    glDisable(GL_CULL_FACE);
+    if front == back {
+        polymode(GL_FRONT_AND_BACK, front);
+    } else {
+        polymode(GL_FRONT, front);
+        polymode(GL_BACK, back);
+    }
+}
+
+
 enum AppEvent {
     key_press; key_release; key_repeat; text_input;
     resize; file_drop;

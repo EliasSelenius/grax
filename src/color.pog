@@ -45,6 +45,12 @@ vec4 color_to_vec4(Color c) { return { c.r as float32 / 255, c.g as float32 / 25
 Color opacity(Color c, float32 a) return {c.r, c.g, c.b, (a * 255) as uint8};
 vec4  opacity(vec4  c, float32 a) return {c.x, c.y, c.z, a};
 
+// Color opacity(float32 opa, Color color) {}
+// Color hue(float32 hue, Color color);
+// Color saturation(float32 sat, Color color) {}
+// Color brightness(float32 bri, Color color) {}
+// hue(0, saturation(0.5, brightness(0.4, opacity())))
+
 Color lerp(float32 t, Color a, b) return {
     a.r + (b.r-a.r)*t,
     a.g + (b.g-a.g)*t,
