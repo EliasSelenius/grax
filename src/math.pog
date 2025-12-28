@@ -291,9 +291,9 @@ ivec3 neg(ivec3 a) { return { -a.x, -a.y, -a.z }; }
 ivec4 neg(ivec4 a) { return { -a.x, -a.y, -a.z, -a.w }; }
 
 
-float32 angle(vec2 a, b) { return acosf(dot(a, b) / (length(a) * length(b))); }
-float32 angle(vec3 a, b) { return acosf(dot(a, b) / (length(a) * length(b))); }
-float32 angle(vec4 a, b) { return acosf(dot(a, b) / (length(a) * length(b))); }
+float32 angle(vec2 a, b) { float32 denom = length(a) * length(b); return denom == 0.0 ? 0.0 : acosf(dot(a, b) / denom); }
+float32 angle(vec3 a, b) { float32 denom = length(a) * length(b); return denom == 0.0 ? 0.0 : acosf(dot(a, b) / denom); }
+float32 angle(vec4 a, b) { float32 denom = length(a) * length(b); return denom == 0.0 ? 0.0 : acosf(dot(a, b) / denom); }
 
 float32 dot(vec2 a, b) { return a.x * b.x + a.y * b.y; }
 float32 dot(vec3 a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }

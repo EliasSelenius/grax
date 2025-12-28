@@ -286,12 +286,17 @@ vec2 center_text(UI_Rect r, float32 height, string str) {
 
 UI_Rect div_x(UI_Rect r, uint32 divisions, index) {
     float32 stride = r.size.x / divisions;
-    UI_Rect res = {};
-    res.size.y = r.size.y;
+    UI_Rect res = r;
     res.size.x = stride;
-
     res.center.x = r.center.x + (-r.size.x + stride)/2.0 + stride*index;
-    res.center.y = r.center.y;
+    return res;
+}
+
+UI_Rect div_y(UI_Rect r, uint32 divisions, index) {
+    float32 stride = r.size.y / divisions;
+    UI_Rect res = r;
+    res.size.y = stride;
+    res.center.y = r.center.y + (-r.size.y + stride)/2.0 + stride*index;
     return res;
 }
 
