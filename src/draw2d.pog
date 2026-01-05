@@ -1,15 +1,18 @@
 
-struct InstanceData {
-    vec4 pos_rot;
-    vec4 scale;
-    vec4 uv_offset_scale;
+struct Draw2D_Instance_Data {
+    vec3 pos;
+    float32 rot;
+    vec2 scale;
+    vec2 padding0;
+    vec2 uv_offset;
+    vec2 uv_scale;
     vec4 color_factor;
     vec4 color_additive;
     vec4 color_outline;
 }
 
 struct Instanced_Draw_Call {
-    InstanceData[..] instances;
+    Draw2D_Instance_Data[..] instances;
     uint32 tex;
     DrawBuffers db;
 }
@@ -124,10 +127,30 @@ void draw_texture(
     vec2 uv_offset, uv_scale,
     vec4 color_factor, color_additive, color_outline)
 {
+
+    Draw2D_Instance_Data ins = {};
+    ins.pos = make_vec(tr.pos, depth);
+    ins.rot = tr.rot;
+    ins.scale   = uv_scale * make_vec(tex.width, tex.height) * tr.scale;
+    ins.uv_offset = uv_offset;
+    ins.uv_scale  = uv_scale;
+    ins.color_factor = color_factor;
+    ins.color_additive = color_additive;
+    ins.color_outline = color_outline;
+
+    draw_texture(db, tex, ins, tex_is_semi_transparent);
+}
+
+void draw_texture(
+    DrawBuffers db,
+    Texture2D tex,
+    Draw2D_Instance_Data ins_data,
+    bool tex_is_semi_transparent)
+{
     Instanced_Draw_Call* draw_call = null;
     Instanced_Draw_Call[..]* draw_calls_list;
     if tex_is_semi_transparent
-    or color_factor.w + color_additive.w < 1.0
+    or ins_data.color_factor.w + ins_data.color_additive.w < 1.0
     {
         draw_calls_list = *draw2d_renderer.draw_calls_semi_transparent;
     } else {
@@ -147,22 +170,14 @@ void draw_texture(
 
     if draw_call == null {
         Instanced_Draw_Call dc = {};
-        dc.instances = list_create(sizeof InstanceData);
+        dc.instances = list_create(sizeof Draw2D_Instance_Data);
         dc.tex = tex.gl_handle;
         dc.db = db;
         draw_call = list_add(draw_calls_list, *dc);
     }
 
     append_instance: {
-        InstanceData ins = {};
-        ins.pos_rot = make_vec(tr.pos, depth, tr.rot);
-        ins.scale   = make_vec(uv_scale * make_vec(tex.width, tex.height) * tr.scale, 0, 0);
-        ins.uv_offset_scale = make_vec(uv_offset, uv_scale);
-        ins.color_factor = color_factor;
-        ins.color_additive = color_additive;
-        ins.color_outline = color_outline;
-
-        list_add(*draw_call.instances, *ins);
+        list_add(*draw_call.instances, *ins_data);
     }
 }
 
@@ -182,7 +197,7 @@ void dispatch_sprites(Transform2D cam) {
 
     void issue_draw_command(Instanced_Draw_Call* dc) {
         uint32 instance_count = list_length(dc.instances);
-        update_ssbo("Instances2D", dc.instances as void*, instance_count * sizeof InstanceData);
+        update_ssbo("Instances2D", dc.instances as void*, instance_count * sizeof Draw2D_Instance_Data);
 
         bind_texture2D(dc.tex, 0);
         draw_elements(dc.db, instance_count);
