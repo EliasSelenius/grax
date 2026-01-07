@@ -215,8 +215,8 @@ Image_Boundingbox flood_fill(Image image, uint32 x, y, bool eight_way) {
     return bb;
 }
 
-Image_Boundingbox* get_all_regions(Image image) {
-    Image_Boundingbox* regions = list_create(sizeof Image_Boundingbox);
+Image_Boundingbox[..] get_all_regions(Image image) {
+    Image_Boundingbox[..] regions = list_create(sizeof Image_Boundingbox);
 
     for (uint32 y : 0 .. image.height) {
         for (uint32 x : 0 .. image.width) {

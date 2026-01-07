@@ -51,7 +51,7 @@ void init_draw2d() {
 
 
 struct Spritesheet {
-    Image_Boundingbox* regions; // list
+    Image_Boundingbox[..] regions;
     Texture2D texture;
 }
 
@@ -87,7 +87,7 @@ ivec2 get_sprite_pixel_size(Sprite s) {
 
 
 void draw_sprite(Transform2D tr, float32 depth, Sprite sprite) {
-    draw_sprite(tr, depth, sprite, vec4_one, vec4_zero);
+    draw_sprite(tr, depth, sprite, vec4_one, vec4_zero, vec4_zero);
 }
 
 void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive, color_outline) {

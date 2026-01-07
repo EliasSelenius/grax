@@ -29,8 +29,8 @@ struct RenderLayer {
 }
 
 struct Trianglebatch {
-    vertex2D* vertices; // list
-    uint32* indices; // list
+    vertex2D[..] vertices;
+    uint32[..] indices;
 
     DrawBuffers db;
     Shader* shader;
@@ -76,7 +76,7 @@ void dispatch_layer(RenderLayer* layer, Transform2D cam) {
         let ind_count = list_length(tb.indices);
 
         if vert_count != 0 and ind_count != 0 {
-            update_buffers(*tb.db, tb.vertices, vert_count, tb.indices, ind_count);
+            update_buffers(*tb.db, tb.vertices as void*, vert_count, tb.indices as void*, ind_count);
 
             use(tb.shader);
             bind(tb.texture);
