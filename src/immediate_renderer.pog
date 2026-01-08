@@ -300,6 +300,7 @@ UI_Rect div_y(UI_Rect r, uint32 divisions, index) {
     return res;
 }
 
+UI_Rect pad(UI_Rect r, float32 x, y) return pad(r, make_vec(x, y));
 UI_Rect pad(UI_Rect r, float32 padding) return pad(r, make_vec2(padding));
 UI_Rect pad(UI_Rect r, vec2 padding) {
     let res = r;
@@ -384,6 +385,11 @@ void draw_glyph(vec2 pos, float32 size, char c, Color color) { draw_glyph(immedi
 vec2 draw_text(vec2 pos, float32 size, string txt, Color color) { return draw_text(immediate_layer, pos, size, txt, color); }
 vec2 draw_text(vec2 pos, float32 size, char* txt, Color color)  { return draw_text(immediate_layer, pos, size, txt, color); }
 vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) { return draw_text_backwards(immediate_layer, pos, size, text, color); }
+
+void draw_text_centered(UI_Rect r, float32 glyph_height, string txt, Color color) {
+    draw_text(center_text(r, glyph_height, txt), glyph_height, txt, color);
+}
+
 
 // enum TextWrap {
 //     expand;
