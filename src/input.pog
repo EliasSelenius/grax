@@ -116,7 +116,18 @@ void disable_cursor() { glfwSetInputMode(app.main_window, GLFW_CURSOR, GLFW_CURS
 // }
 
 
-// adapted from glfw
+// Key and Keymods enums adapted from glfw
+
+enum Keymods {
+    none      = 0x0000;
+    shift     = 0x0001;
+    control   = 0x0002;
+    alt       = 0x0004;
+    super     = 0x0008;
+    caps_lock = 0x0010;
+    num_lock  = 0x0020;
+}
+
 enum Key {
     unknown = -1;
     space = 32;

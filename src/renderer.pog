@@ -46,7 +46,7 @@ struct Application {
 
     bool profiler_graph;
 
-    void(AppEvent, AppEventData) on_event;
+    void(AppEvent) on_event;
 }
 
 float32 deltatime() {
@@ -524,15 +524,19 @@ void set_face_render_mode(Poly front, back) {
 }
 
 
-enum AppEvent {
+enum AppEventKind {
     key_press; key_release; key_repeat; text_input;
     resize; file_drop;
     lost_focus; gained_focus;
 }
 
-// TODO: this should be a union
-struct AppEventData {
-    int32 key, scancode, mods;
+struct AppEvent {
+    AppEventKind kind;
+
+    Key key;
+    Keymods mods;
+    int32 scancode;
+
     uint32 unicode_codepoint;
     char*[] files;
 }
@@ -547,9 +551,8 @@ void register_glfw_callbacks(GLFWwindow* window) {
     void glfw_windowrefresh(GLFWwindow* window) {}
 
     void glfw_windowfocus(GLFWwindow* window, int32 focused) {
-        AppEventData data = {};
-        if focused app.on_event(AppEvent.gained_focus, data);
-        else       app.on_event(AppEvent.lost_focus,   data);
+        AppEvent event = {kind = focused ? .gained_focus : .lost_focus};
+        app.on_event(event);
     }
 
     void glfw_windowiconify(GLFWwindow* window, int32 iconified) {}
@@ -560,8 +563,8 @@ void register_glfw_callbacks(GLFWwindow* window) {
         app_update_size(w as uint32, h as uint32);
         print("[INFO]: Window resize: ", w, "x", h, "\n");
         glViewport(0, 0, w, h);
-        AppEventData data = {};
-        app.on_event(AppEvent.resize, data);
+        AppEvent event = {kind = .resize};
+        app.on_event(event);
     }
 
     void glfw_windowcontentscale(GLFWwindow* window, float32 xscale, yscale) {}
@@ -578,34 +581,40 @@ void register_glfw_callbacks(GLFWwindow* window) {
     }
 
     void glfw_key(GLFWwindow* window, int32 key, scancode, action, mods) {
-        if (action == GLFW_PRESS and key == GLFW_KEY_F11 and mods == 0) toggle_fullscreen(app.main_window);
-        AppEventData data = { key = key, scancode = scancode, mods = mods };
-        switch action {
+        AppEvent event = { key = key, scancode = scancode, mods = mods };
+        switch (action) {
             case GLFW_PRESS: {
                 if key == GLFW_KEY_F1  app.profiler_graph = !app.profiler_graph;
-                app.on_event(AppEvent.key_press, data);
+                if key == GLFW_KEY_F11 and mods == 0  toggle_fullscreen(app.main_window);
+
+                event.kind = .key_press;
+                app.on_event(event);
                 Input.keyboard_changed[key] = true;
             } break;
-            case GLFW_REPEAT:  app.on_event(AppEvent.key_repeat, data); break;
+            case GLFW_REPEAT: {
+                event.kind = .key_repeat;
+                app.on_event(event); 
+            } break;
             case GLFW_RELEASE: {
-                app.on_event(AppEvent.key_release, data);
+                event.kind = .key_release;
+                app.on_event(event);
                 Input.keyboard_changed[key] = true;
             } break;
         }
     }
 
     void glfw_char(GLFWwindow* window, uint32 codepoint) {
-        AppEventData data = { unicode_codepoint = codepoint };
-        app.on_event(AppEvent.text_input, data);
+        AppEvent event = { kind = .text_input, unicode_codepoint = codepoint };
+        app.on_event(event);
     }
 
     void glfw_charmods(GLFWwindow* window, uint32 codepoint, int32 mods) {}
 
     void glfw_drop(GLFWwindow* window, int32 path_count, char** paths) {
-        AppEventData data = {};
-        data.files.data = paths;
-        data.files.length = path_count as uint32;
-        app.on_event(AppEvent.file_drop, data);
+        AppEvent event = {kind = .file_drop};
+        event.files.data = paths;
+        event.files.length = path_count as uint32;
+        app.on_event(event);
     }
 
     void glfw_monitor(GLFWmonitor* monitor, int32 event) {}
@@ -633,6 +642,6 @@ void register_glfw_callbacks(GLFWwindow* window) {
     glfwSetMonitorCallback            (        glfw_monitor);
     glfwSetJoystickCallback           (        glfw_joystick);
 
-    void null_event(AppEvent event, AppEventData data) {}
+    void null_event(AppEvent event) {}
     if app.on_event == null  app.on_event = null_event;
 }

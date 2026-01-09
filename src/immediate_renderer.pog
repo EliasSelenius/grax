@@ -374,6 +374,22 @@ UI_Rect child(UI_Rect rect, float32 x, y, w, h) {
 }
 
 
+// UI_Rect rows(UI_Rect r, uint32 row, float32[] fractions) {
+//     float32 pad_top = 0.0;
+//     float32 sum = 0.0;
+//     for uint32 it: 0 .. fractions.length {
+//         let f = fractions[it];
+//         if it == row  pad_top = sum;
+
+//         sum += f;
+//     }
+
+//     UI_Rect rect = r;
+//     rect.size.y = r.size.y * fractions[row] / sum;
+//     rect.center.y
+// }
+
+
 void draw_rect(with RenderLayer* layer, vec2 pos, size, Color color) {
     add_quad(*layer.geometry, pos, size, vec2_zero, vec2_one, color);
 }
@@ -390,6 +406,20 @@ void draw_text_centered(UI_Rect r, float32 glyph_height, string txt, Color color
     draw_text(center_text(r, glyph_height, txt), glyph_height, txt, color);
 }
 
+vec2 text_size(string txt, float32 height) {
+    float32 width = height*0.5*txt.length;
+    return {width, height};
+}
+
+UI_Rect draw_text(UI_Rect r, float32 x, y, height, string txt, Color color) {
+    float32 width = height*0.5*txt.length;
+    UI_Rect rect_txt = child(r, x, y, width, height);
+
+    draw_text_centered(rect_txt, height, txt, color);
+    // draw_text(center_text(rect_txt, height, txt), height, txt, color);
+
+    return rect_txt;
+}
 
 // enum TextWrap {
 //     expand;
