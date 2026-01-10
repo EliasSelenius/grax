@@ -313,6 +313,22 @@ UI_Rect pad_top(UI_Rect r, float32 padding) {
     r.center.y -= padding/2.0;
     return r;
 }
+UI_Rect pad_bottom(UI_Rect r, float32 padding) {
+    r.size.y -= padding;
+    r.center.x += padding/2.0;
+    return r;
+}
+UI_Rect pad_left(UI_Rect r, float32 padding) {
+    r.size.x -= padding;
+    r.center.x += padding/2.0;
+    return r;
+}
+UI_Rect pad_right(UI_Rect r, float32 padding) {
+    r.size.x -= padding;
+    r.center.x -= padding/2.0;
+    return r;
+}
+
 
 UI_Rect scale(UI_Rect rect, float32 x, y) {
     rect.size = rect.size * {x, y};
@@ -411,14 +427,25 @@ vec2 text_size(string txt, float32 height) {
     return {width, height};
 }
 
-UI_Rect draw_text(UI_Rect r, float32 x, y, height, string txt, Color color) {
+float32 text_width(string txt, float32 height) {
+    return text_size(txt, height).x;
+}
+
+vec2 text_start_pos(UI_Rect rect, float32 ncx, ncy, height, string txt) {
+    float32 text_width = height*0.5*txt.length;
+    UI_Rect rect_txt = child(rect, ncx, ncy, text_width, height);
+    float32 half_w = height * (txt.length as float32) / 4.0;
+
+    return rect_txt.center - make_vec(half_w, 0);
+}
+
+// nc = normalized coordinates
+void draw_text(UI_Rect r, float32 nc_x, nc_y, height, string txt, Color color) {
     float32 width = height*0.5*txt.length;
-    UI_Rect rect_txt = child(r, x, y, width, height);
+    UI_Rect rect_txt = child(r, nc_x, nc_y, width, height);
 
     draw_text_centered(rect_txt, height, txt, color);
     // draw_text(center_text(rect_txt, height, txt), height, txt, color);
-
-    return rect_txt;
 }
 
 // enum TextWrap {
