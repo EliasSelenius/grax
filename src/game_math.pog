@@ -64,18 +64,37 @@ struct Transform2D {
     float32 scale;
 }
 
-// mat3 to_matrix(Transform2D tr) {
-//     float32 c = cosf(tr.rot);
-//     float32 s = sinf(tr.rot);
-//     mat3 m = {c, s, 0,
-//              -s, c, 0,
-//               0, 0, 1};
+mat3 to_matrix(Transform2D tr) {
+    float32 c = cosf(tr.rot);
+    float32 s = sinf(tr.rot);
 
-//     m.row1 = m.row1 * tr.scale.x;
-//     m.row2 = m.row2 * tr.scale.y;
-//     m.row3 = make_vec(tr.pos, 1);
-//     return m;
-// }
+    float32 sx = tr.scale;
+    float32 sy = tr.scale;
+
+    mat3 m = {c*sx, s*sx, 0,
+             -s*sy, c*sy, 0,
+              tr.pos.x, tr.pos.y, 1};
+
+    return m;
+}
+
+mat3 to_matrix_inverse(Transform2D tr) {
+    float32 c = cosf(-tr.rot);
+    float32 s = sinf(-tr.rot);
+
+    float32 sx = tr.scale;
+    float32 sy = tr.scale;
+    vec2 sc = { 1.0 / sx, 1.0 / sy };
+
+    mat3 m = {c*sc.x, s*sc.y, 0,
+             -s*sc.x, c*sc.y, 0,
+              0, 0, 1};
+
+    m.row3 = { -dot(xy(col1(m)), tr.pos), -dot(xy(col2(m)), tr.pos), 1 };
+
+    return m;
+}
+
 
 Transform2D lerp(float32 t, Transform2D a, Transform2D b) {
     Transform2D res = {};
@@ -90,7 +109,7 @@ vec2 up(with Transform2D t) { return make_vec(-sinf(t.rot), cosf(t.rot)); }
 
 vec2 local2world(with Transform2D t, float32 x, y) { return local2world(t, make_vec(x, y)); }
 vec2 local2world(with Transform2D t, vec2 p) {
-    float32 c = cosf(t.rot);
+    float32 c = cosf(t.rot); // TODO: ackshually according to my calculations (https://www.desmos.com/calculator/fq1fuf3ejr) we should use -t.rot in cos and sin
     float32 s = sinf(t.rot);
     mat2 m = { c, s, -s, c };
     m.row1 = m.row1 * t.scale; // .x;
@@ -112,6 +131,14 @@ vec2 world2local(with Transform2D t, float32 x, float32 y) {
     res.x = c*px - s*py;
     res.y = s*px + c*py;
     return res;
+}
+
+Transform2D local2world(Transform2D p, c) {
+    Transform2D r = {};
+    r.pos = local2world(p, c.pos);
+    r.rot = p.rot + c.rot;
+    r.scale = p.scale * c.scale;
+    return r;
 }
 
 float32 vec2_to_angle(vec2 v) {

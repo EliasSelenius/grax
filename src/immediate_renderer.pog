@@ -436,7 +436,7 @@ vec2 text_start_pos(UI_Rect rect, float32 ncx, ncy, height, string txt) {
     UI_Rect rect_txt = child(rect, ncx, ncy, text_width, height);
     float32 half_w = height * (txt.length as float32) / 4.0;
 
-    return rect_txt.center - make_vec(half_w, 0);
+    return rect_txt.center + make_vec(height/2.0 - half_w, 0);
 }
 
 // nc = normalized coordinates
