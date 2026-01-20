@@ -18,7 +18,7 @@ uniform sampler2D u_sampler;
 
 struct InstanceData {
     vec4 pos_rot;
-    vec4 scale;
+    vec4 scale_healthprcnt;
     vec4 uv_offset_scale;
     vec4 color_factor;
     vec4 color_additive;
@@ -52,7 +52,8 @@ void main() {
 
     vec3  pos   = inst.pos_rot.xyz;
     float rot   = inst.pos_rot.w;
-    vec2  scale = inst.scale.xy;
+    vec2  scale = inst.scale_healthprcnt.xy;
+    float health = inst.scale_healthprcnt.z;
 
     vec3 v = vec3(a_Pos, 1)
         * create_mat3(pos.xy, rot, scale)
@@ -72,6 +73,8 @@ in IO_Data frag_input;
 out vec4 FragColor;
 
 void main() {
+    vec4 color_factor = frag_input.color_factor;
+    vec4 color_additive = frag_input.color_additive;
     vec4 color_outline = frag_input.color_outline;
 
     vec2 uv = frag_input.uv;
@@ -91,10 +94,11 @@ void main() {
         else if (s != 0.0) tex_color = color_outline;
 
         if (tex_color.a == 0.0) discard;
+    } else {
+        tex_color = tex_color * color_factor + color_additive;
     }
 
-    vec4 factor = frag_input.color_factor;
-    vec4 additive = frag_input.color_additive;
-    FragColor = tex_color * factor + additive;
+
+    FragColor = tex_color;
 }
 #endif

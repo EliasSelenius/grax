@@ -3,7 +3,8 @@ struct Draw2D_Instance_Data {
     vec3 pos;
     float32 rot;
     vec2 scale;
-    vec2 padding0;
+    float32 health;
+    float32 padding0;
     vec2 uv_offset;
     vec2 uv_scale;
     vec4 color_factor;
@@ -86,12 +87,12 @@ void draw_sprite(Transform2D tr, float32 depth, Sprite sprite) {
     draw_sprite(tr, depth, sprite, vec4_one, vec4_zero, vec4_zero);
 }
 
-void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive, color_outline) {
-    draw_texture(db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, color_outline);
-}
-
 void draw_sprite(Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive, color_outline) {
     draw_texture(draw2d_renderer.quad_db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, color_outline);
+}
+
+void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, vec4 color_factor, color_additive, color_outline) {
+    draw_texture(db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, color_outline);
 }
 
 void draw_texture(Transform2D tr, float32 depth, Texture2D tex, bool tex_is_semi_transparent, vec4 color_factor, color_additive) {
@@ -127,7 +128,8 @@ void draw_texture(
     Draw2D_Instance_Data ins = {};
     ins.pos = make_vec(tr.pos, depth);
     ins.rot = tr.rot;
-    ins.scale   = uv_scale * make_vec(tex.width, tex.height) * tr.scale;
+    ins.scale = uv_scale * make_vec(tex.width, tex.height) * tr.scale;
+    ins.health = 1.0;
     ins.uv_offset = uv_offset;
     ins.uv_scale  = uv_scale;
     ins.color_factor = color_factor;
@@ -136,6 +138,7 @@ void draw_texture(
 
     Draw2D_Batch* batch = *draw2d_renderer.batch;
     if tex_is_semi_transparent
+    or color_factor.w < 1.0
         batch = *draw2d_renderer.batch_semi_transparent;
 
     draw_texture(batch, db, tex.gl_handle, ins);
@@ -205,6 +208,7 @@ void dispatch_sprites(Transform2D cam) {
     glDepthMask(false);
     // enable_alpha_blending();
     // enable_additive_blending();
+
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
