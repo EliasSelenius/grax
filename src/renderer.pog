@@ -101,6 +101,22 @@ bool grax_loop() {
     app.frame_time = app.total_run_time - prev_time;
 
     if app.profiler_graph  {
+
+        UI_Rect rect_window = rect_pp(app.bottom_left, app.top_right);
+
+        float32 glyph_height = 0.04;
+        vec2 start = app.top_left + {glyph_height/4.0, -glyph_height/2.0};
+        vec2 pos = start;
+
+        int32 num_ext = 0;
+        glGetIntegerv(GL_NUM_EXTENSIONS, *num_ext);
+        for 0 .. num_ext {
+            let exts = glGetStringi(GL_EXTENSIONS, it) as char*;
+            pos = draw_text(pos, glyph_height, make_string(exts), White);
+            pos.x = start.x;
+            pos.y -= glyph_height;
+        }
+
         draw_opengl_debug_log();
         measure_frametime();
     }
