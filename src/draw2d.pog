@@ -206,12 +206,26 @@ void dispatch_sprites(Transform2D cam) {
 
 
     glDepthMask(false);
-    // enable_alpha_blending();
+    enable_alpha_blending();
     // enable_additive_blending();
 
-    glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    // glEnable(GL_BLEND);
+    // glBlendEquation(GL_FUNC_ADD);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+    {
+        let batch = *draw2d_renderer.batch_semi_transparent;
+        for 0 .. list_length(batch.draw_calls) {
+            let dc = *batch.draw_calls[it];
+
+            int32 comp(Draw2D_Instance_Data* a, b) {
+                return sign(b.pos.z - a.pos.z) as int32;
+            }
+
+            qsort(dc.instances, list_length(dc.instances), sizeof Draw2D_Instance_Data, comp);
+        }
+    }
+
 
     dispatch_sprites(*draw2d_renderer.batch_semi_transparent, cam);
 }
