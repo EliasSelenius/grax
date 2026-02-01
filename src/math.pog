@@ -43,12 +43,22 @@ ivec4 max(ivec4 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(
 uint32 min(uint32 a, b) return a < b ? a : b;
 uint32 max(uint32 a, b) return a < b ? b : a;
 
-float32 min(float32 a, b) return a < b ? a : b;
+float32 min(float32 a, b) {
+    if is_nan(a) return b;
+    if is_nan(b) return a;
+    return a < b ? a : b;
+}
+
 vec2 min(vec2 a, b) return { min(a.x, b.x), min(a.y, b.y) };
 vec3 min(vec3 a, b) return { min(a.x, b.x), min(a.y, b.y), min(a.z, b.z) };
 vec4 min(vec4 a, b) return { min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w) };
 
-float32 max(float32 a, b) return a < b ? b : a;
+float32 max(float32 a, b) {
+    if is_nan(a) return b;
+    if is_nan(b) return a;
+    return a < b ? b : a;
+}
+
 vec2 max(vec2 a, b) return { max(a.x, b.x), max(a.y, b.y) };
 vec3 max(vec3 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) };
 vec4 max(vec4 a, b) return { max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w) };

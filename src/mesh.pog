@@ -108,8 +108,7 @@ uint32 set_vertex_attribute_pointer(uint32 index, Vertex_Attrib_Type datatype, i
     return info.bytesize;
 }
 
-void init_vertex_layout(int32 stride, Vertex_Attrib_Type[] attribs)
-    return init_vertex_layout(0, 0, stride, attribs);
+void init_vertex_layout(int32 stride, Vertex_Attrib_Type[] attribs) return init_vertex_layout(0, 0, stride, attribs);
 void init_vertex_layout(uint32 base_index, divisor, int32 stride, Vertex_Attrib_Type[] attribs) {
     uint32 offset = 0;
     for uint32 index : 0 .. attribs.length {
