@@ -330,10 +330,13 @@ UI_Rect pad_right(UI_Rect r, float32 padding) {
 }
 
 
+UI_Rect scale(UI_Rect rect, vec2 s) return scale(rect, s.x, s.y);
+UI_Rect scale(UI_Rect rect, float32 s) return scale(rect, s, s);
 UI_Rect scale(UI_Rect rect, float32 x, y) {
     rect.size = rect.size * {x, y};
     return rect;
 }
+
 
 UI_Rect scale_pivot(UI_Rect rect, float32 x, y, px, py) {
     vec2 scale = {x, y};

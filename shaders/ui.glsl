@@ -60,13 +60,14 @@ void main() {
 
     vec2 pos = frag_input.pos;
 
-    float radius = 0.2;
+    float radius = 0.5; //  0.2;
 
     vec2 p = vec2(1.0 - radius);
     float d = length(max(abs(pos), p) - p) - radius;
 
-    float thickness = 0.1;
-    float alpha = smoothstep(0.0, thickness, -d);
+    // float thickness = 0.5;
+    // float alpha = smoothstep(0.0, thickness, -d);
+    float alpha = 1;
 
 
     vec4 color_tex = texture(u_texture, frag_input.uv);
