@@ -468,6 +468,38 @@ mat4 mat4_identity() {
             0,0,0,1};
 }
 
+/*
+
+| x 0 0 0 | * | 1 0 0 0 | = | 1 0 0 0 |
+| 0 y 0 0 | * | 0 1 0 0 | = | 0 1 0 0 |
+| 0 0 z 0 | * | 0 0 1 0 | = | 0 0 1 0 |
+| 0 0 0 1 | * | 0 0 0 1 | = | 0 0 0 1 |
+
+
+| 1 0 0 0 | * | c c c c | = | 1 0 0 0 |
+| 0 1 0 0 | * | o o o o | = | 0 1 0 0 |
+| 0 0 1 0 | * | l l l l | = | 0 0 1 0 |
+| x y z 1 | * | 1 2 3 4 | = | dot(r, c1) 0 0 1 |
+
+
+*/
+
+
+mat4 mat4_translate(vec3 v) return mat4_translate(v.x, v.y, v.z);
+mat4 mat4_translate(float32 x, y, z) return{1, 0, 0, 0,
+                                            0, 1, 0, 0,
+                                            0, 0, 1, 0,
+                                            x, y, z, 1};
+
+
+mat4 mat4_scale(vec3 v) return mat4_scale(v.x, v.y, v.z);
+mat4 mat4_scale(float32 s) return mat4_scale(s,s,s);
+mat4 mat4_scale(float32 x, y, z) return{x, 0, 0, 0,
+                                        0, y, 0, 0,
+                                        0, 0, z, 0,
+                                        0, 0, 0, 1};
+
+mat4 mat4_rotate(quat q) return quat2matrix(q);
 
 mat4 make_mat4(float32 s) return { s, 0, 0, 0,
                                    0, s, 0, 0,
@@ -511,7 +543,7 @@ mat4 make_mat4_inverse(vec3 position, scale, quat rotation) {
 }
 
 mat4 rotate(mat4 m, quat q, vec3 p) {
-    return m * make_mat4(p, 1.0) * make_mat4(vec3_zero, vec3_one, q) * make_mat4(neg(p), 1.0);
+    return m * mat4_translate(p) * mat4_rotate(q) * mat4_translate(neg(p));
 }
 
 vec4 col1(mat4 m) { return { m.row1.x, m.row2.x, m.row3.x, m.row4.x }; }
