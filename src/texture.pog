@@ -30,6 +30,7 @@ enum TextureWrapMode {
 }
 
 struct Texture2D {
+    uint64 texture_handle;
     uint32 width, height;
     uint32 gl_handle;
 }
@@ -249,4 +250,20 @@ void set_filter(with Texture2D tex, TextureFilter filter) {
     bind(tex);
     set_filter(filter);
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+// GLuint64 glGetTextureHandleARB(GLuint texture);
+// GLboolean glIsTextureHandleResidentARB(GLuint64 handle);
+// void glMakeTextureHandleResidentARB(GLuint64 handle);
+// void glMakeTextureHandleNonResidentARB(GLuint64 handle);
+
+uint64 ensure_texture_handle(Texture2D* tex) {
+    if tex.texture_handle == 0 {
+        tex.texture_handle = glGetTextureHandleARB(tex.gl_handle);
+        glMakeTextureHandleResidentARB(tex.texture_handle);
+
+        print("[INFO]: Texture2D ", tex.gl_handle, " made resident handle: ", tex.texture_handle, "\n");
+    }
+
+    return tex.texture_handle;
 }

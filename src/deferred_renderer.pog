@@ -1,5 +1,76 @@
 
 
+struct DrawMode {
+    DepthTest depth_test;
+    Blend blend;
+    Poly front_face;
+    Poly back_face;
+    bool depth_write;
+}
+
+DrawMode drawmode_gpass = {
+    depth_test  = DepthTest.Less_Equal,
+    blend       = Blend.Overwrite,
+    front_face  = Poly.Fill,
+    back_face   = Poly.Cull,
+    depth_write = true
+};
+
+DrawMode drawmode_gpass_double_sided = {
+    depth_test  = DepthTest.Less_Equal,
+    blend       = Blend.Overwrite,
+    front_face  = Poly.Fill,
+    back_face   = Poly.Fill,
+    depth_write = true
+};
+
+
+struct InstanceData {
+    mat4 model;
+    vec4 uv_offset_scale;
+    vec4 albedo_color;
+    vec2 metallic_roughness;
+    uint64 albedo_texture;
+}
+
+struct DrawCommand {
+    // Mesh* mesh;
+
+    DrawBuffers* db;
+    InstanceData[..] instance_data;
+    DrawMode mode;
+}
+
+DrawCommand make_draw_command(DrawBuffers* db, DrawMode mode) {
+    DrawCommand dc = {};
+    dc.db = db;
+    dc.mode = mode;
+    dc.instance_data = list_create(sizeof InstanceData);
+    return dc;
+}
+
+void batch(DrawCommand* dc, mat4 model, vec2 uv_offset, uv_scale, Material_PBR mat, Texture2D* tex) {
+    InstanceData data = {};
+    data.model = model;
+    data.uv_offset_scale = make_vec(uv_offset, uv_scale);
+    data.albedo_color = make_vec(mat.albedo, 1.0);
+    data.metallic_roughness = make_vec(mat.metallic, mat.roughness);
+    data.albedo_texture = ensure_texture_handle(tex);
+
+    list_add(*dc.instance_data, *data);
+}
+
+void issue_draw_command(DrawCommand* dc) {
+    set_depth_mode(dc.mode.depth_test, dc.mode.depth_write);
+    set_blend_mode(dc.mode.blend);
+    set_face_render_mode(dc.mode.front_face, dc.mode.back_face);
+
+    uint32 instance_count = list_length(dc.instance_data);
+    update_ssbo("Instances", dc.instance_data, instance_count * sizeof InstanceData);
+    draw_elements(@dc.db, instance_count);
+}
+
+
 struct DeferredRenderer {
     Shader shader_geometry;
     Shader shader_hdr2ldr;
@@ -126,7 +197,7 @@ struct Material_PBR {
     float32 roughness;
 }
 
-void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, mat4 model) draw_geometry(dr, db, mat, white_texture.gl_handle, model);
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, mat4 model) draw_geometry(dr, db, mat, *white_texture, model);
 
 void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
     Material_PBR mat = {
@@ -134,19 +205,29 @@ void draw_geometry(DeferredRenderer* dr, DrawBuffers db, mat4 model) {
         metallic = 0.1,
         roughness = 0.1
     };
-    draw_geometry(dr, db, mat, white_texture.gl_handle, model);
+    draw_geometry(dr, db, mat, *white_texture, model);
 }
 
-void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, uint32 tex, mat4 model) {
-    update_buffer(dr.ubo_model.buffer_id, sizeof mat4, *model);
+void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, Texture2D* tex, mat4 model) {
 
-    bind_texture2D(tex, 0);
-    set_uniform("u_uv_offset", vec2_zero);
-    set_uniform("u_uv_scale", vec2_one);
+    InstanceData data = {};
+    data.model = model;
+    data.uv_offset_scale = make_vec(vec2_zero, vec2_one);
+    data.albedo_color = make_vec(mat.albedo, 1.0);
+    data.metallic_roughness = make_vec(mat.metallic, mat.roughness);
+    data.albedo_texture = ensure_texture_handle(tex);
 
-    set_uniform("albedo_color", mat.albedo);
-    set_uniform("metallic",     mat.metallic);
-    set_uniform("roughness",    mat.roughness);
+    update_ssbo("Instances", *data, sizeof InstanceData);
+
+    // update_buffer(dr.ubo_model.buffer_id, sizeof mat4, *model);
+
+    // bind_texture2D(tex, 0);
+    // set_uniform("u_uv_offset", vec2_zero);
+    // set_uniform("u_uv_scale", vec2_one);
+
+    // set_uniform("albedo_color", mat.albedo);
+    // set_uniform("metallic",     mat.metallic);
+    // set_uniform("roughness",    mat.roughness);
 
     draw_elements(db);
 }

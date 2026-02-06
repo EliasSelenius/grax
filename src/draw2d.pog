@@ -55,13 +55,14 @@ struct Spritesheet {
 struct Sprite {
     vec2 uv_offset;
     vec2 uv_scale;
-    Texture2D tex;
+    Texture2D* tex;
     bool is_semi_transparent;
 }
 
+
 Sprite get_sprite(with Spritesheet* sheet, uint32 index) {
     Sprite s = {};
-    s.tex = sheet.texture;
+    s.tex = *sheet.texture;
 
     let bb = sheet.regions[index];
     ivec2 size = get_boundingbox_size(bb);
@@ -73,7 +74,7 @@ Sprite get_sprite(with Spritesheet* sheet, uint32 index) {
     return s;
 }
 
-Sprite make_sprite(Texture2D tex) {
+Sprite make_sprite(Texture2D* tex) {
     return { uv_offset = vec2_zero, uv_scale = vec2_one, tex = tex };
 }
 
@@ -95,7 +96,7 @@ void draw_sprite(DrawBuffers db, Transform2D tr, float32 depth, Sprite sprite, v
     draw_texture(db, tr, depth, sprite.tex, sprite.is_semi_transparent, sprite.uv_offset, sprite.uv_scale, color_factor, color_additive, color_outline);
 }
 
-void draw_texture(Transform2D tr, float32 depth, Texture2D tex, bool tex_is_semi_transparent, vec4 color_factor, color_additive) {
+void draw_texture(Transform2D tr, float32 depth, Texture2D* tex, bool tex_is_semi_transparent, vec4 color_factor, color_additive) {
     draw_texture(draw2d_renderer.quad_db, tr, depth, tex, tex_is_semi_transparent, vec2_zero, vec2_one, color_factor, color_additive, vec4_zero);
 }
 
@@ -119,7 +120,7 @@ void draw_texture(
     DrawBuffers db,
     Transform2D tr,
     float32 depth,
-    Texture2D tex,
+    Texture2D* tex,
     bool tex_is_semi_transparent,
     vec2 uv_offset, uv_scale,
     vec4 color_factor, color_additive, color_outline)
