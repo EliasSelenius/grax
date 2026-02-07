@@ -89,11 +89,9 @@ void main() {
     if (!gl_FrontFacing)  normal = -normal;
 
     vec4 tex_color = texture(tex, frag_input.uv);
-    if (tex_color.a == 0.0) discard;
-
-    FragColor = tex_color.rgb * data.albedo_color.rgb;
-    // FragColor = albedo_color;
-    // FragColor = normal;
+    vec3 color = tex_color.rgb * data.albedo_color.rgb;
+    if (tex_color.a < data.albedo_color.a) discard;
+    FragColor = color.rgb;
 
     FragPos_Metallic = vec4(frag_input.view_pos, metallic);
     FragNormal_Roughness = vec4(normalize(normal), roughness);

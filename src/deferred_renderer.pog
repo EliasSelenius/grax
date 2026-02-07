@@ -49,7 +49,7 @@ DrawCommand make_draw_command(DrawBuffers* db, DrawMode mode) {
     return dc;
 }
 
-void batch(DrawCommand* dc, mat4 model, vec2 uv_offset, uv_scale, Material_PBR mat, Texture2D* tex) {
+InstanceData* batch(DrawCommand* dc, mat4 model, vec2 uv_offset, uv_scale, Material_PBR mat, Texture2D* tex) {
     InstanceData data = {};
     data.model = model;
     data.uv_offset_scale = make_vec(uv_offset, uv_scale);
@@ -57,7 +57,7 @@ void batch(DrawCommand* dc, mat4 model, vec2 uv_offset, uv_scale, Material_PBR m
     data.metallic_roughness = make_vec(mat.metallic, mat.roughness);
     data.albedo_texture = ensure_texture_handle(tex);
 
-    list_add(*dc.instance_data, *data);
+    return list_add(*dc.instance_data, *data) as InstanceData*;
 }
 
 void issue_draw_command(DrawCommand* dc) {
@@ -70,6 +70,11 @@ void issue_draw_command(DrawCommand* dc) {
     draw_elements(@dc.db, instance_count);
 }
 
+struct Material_PBR {
+    vec3    albedo;
+    float32 metallic;
+    float32 roughness;
+}
 
 struct DeferredRenderer {
     Shader shader_geometry;
@@ -189,12 +194,6 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
     clear_depth();
 
     use(*dr.shader_geometry);
-}
-
-struct Material_PBR {
-    vec3    albedo;
-    float32 metallic;
-    float32 roughness;
 }
 
 void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, mat4 model) draw_geometry(dr, db, mat, *white_texture, model);

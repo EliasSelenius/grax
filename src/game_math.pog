@@ -359,3 +359,15 @@ bool arcndc_rect_of(Camera cam, mat4 m, vec3 bb_min, bb_max, vec2* out_min, out_
 
     return true;
 }
+
+UI_Rect ui_rect_of(Camera cam, mat4 m, Box box) {
+    vec3 bb_min = box.center - box.size*0.5;
+    vec3 bb_max = box.center + box.size*0.5;
+    return ui_rect_of(cam, m, bb_min, bb_max);
+}
+UI_Rect ui_rect_of(Camera cam, mat4 m, vec3 bb_min, bb_max) {
+    vec2 mi, mx;
+    if arcndc_rect_of(cam, m, bb_min, bb_max, *mi, *mx)
+        return rect_pp(mi, mx);
+    return {};
+}
