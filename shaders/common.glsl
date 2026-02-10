@@ -12,6 +12,9 @@
 float maxdot(vec3 a, vec3 b) { return max(0.0, dot(a, b)); }
 float sq(float x) { return x*x; }
 
+float min_axis(vec3 v) { return min(v.x, min(v.y, v.z)); }
+float max_axis(vec3 v) { return max(v.x, max(v.y, v.z)); }
+
 
 vec3 noz(vec3 v) {
     float l = length(v);
@@ -68,7 +71,8 @@ vec3 rotate_by_quat(vec4 q, vec3 v) {
     return quat_mul(quat_mul(q, vec4(v, 0.0)), conj).xyz;
 }
 
-vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
+
+vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec2 uv_offset, vec2 uv_scale, vec3 surface_normal) {
     /*
     // random github. luma
     return dot(color, vec3(0.299, 0.587, 0.114));
@@ -82,12 +86,12 @@ vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
     // float b = dot(color, vec3(0.2126, 0.7152, 0.0722));
     // vec2 grad = vec2(dFdx(b), dFdy(b));
 
-    vec2 size = textureSize(sam, 0);
+    vec2 size = textureSize(sam, 0) * uv_scale;
     float pix = 1.0 / size.x;
 
-    float b0 = dot(texture(sam, uv+vec2(0.0, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-    float b1 = dot(texture(sam, uv+vec2(pix, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-    float b2 = dot(texture(sam, uv+vec2(0.0, pix)).rgb, vec3(0.299, 0.587, 0.114));
+    float b0 = dot(texture(sam, uv_offset + fract(uv+vec2(0.0, 0.0)) * uv_scale).rgb, vec3(0.299, 0.587, 0.114));
+    float b1 = dot(texture(sam, uv_offset + fract(uv+vec2(pix, 0.0)) * uv_scale).rgb, vec3(0.299, 0.587, 0.114));
+    float b2 = dot(texture(sam, uv_offset + fract(uv+vec2(0.0, pix)) * uv_scale).rgb, vec3(0.299, 0.587, 0.114));
 
     vec2 grad = vec2(b1 - b0, b2 - b0);// / (pix*100.0);
     vec3 norm = normalize(vec3(-grad.x, 1, -grad.y));
@@ -97,6 +101,10 @@ vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
     vec3 cro = cross(vec3(0,1,0), surface_normal);
     vec4 q = quat_from_axis_angle(noz(cro), length(cro));
     return rotate_by_quat(q, norm);
+}
+
+vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
+    return normal_from_sampler(sam, uv, vec2(0.0), vec2(1.0), surface_normal);
 }
 
 #endif

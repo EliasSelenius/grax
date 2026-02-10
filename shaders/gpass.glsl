@@ -2,7 +2,6 @@
 #extension GL_ARB_bindless_texture : require
 
 #include "../grax/shaders/camera.glsl"
-#include "../grax/shaders/common.glsl"
 
 
 #define IO_Data FragData {\
