@@ -27,7 +27,7 @@ Batch_Of_Points create_batch_of_points() {
 
 void dispatch(Batch_Of_Points* bop) {
     uint32 len = list_length(bop.points);
-    update_buffer(bop.vbo, len * sizeof GizmoPoint, bop.points);
+    update_buffer(bop.vbo, bop.points);
 
     glBindVertexArray(bop.vao);
     glDrawArrays(GL_POINTS, 0, len);

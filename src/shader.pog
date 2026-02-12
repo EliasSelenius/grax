@@ -32,6 +32,10 @@ void update_ssbo(char* name, void* data, uint32 size) {
     update_buffer(ssbo.buffer_id, size, data);
 }
 
+void update_ssbo(char* name, void[..] list) {
+    update_ssbo(name, list as void*, list_length(list) * list_stride(list));
+}
+
 Named_Binding_Point*[..] ssbo_binding_points = list_create(sizeof Named_Binding_Point*);
 Named_Binding_Point*[..]  ubo_binding_points = list_create(sizeof Named_Binding_Point*);
 
@@ -459,7 +463,7 @@ void introspect_shader_program(Shader* program) {
 UBO* get_ubo(char* name) { return get_ubo(make_string(name)); }
 UBO* get_ubo(string name) {
 
-    uint32 len = list_length(uniform_buffer_objects as void*);
+    uint32 len = list_length(uniform_buffer_objects);
     for 0 .. len {
         UBO* ubo = uniform_buffer_objects[it];
         if string_equals(name, ubo.name) return ubo;
@@ -472,7 +476,7 @@ UBO* get_ubo(string name) {
     glGenBuffers(1, *ubo.buffer_id);
     glBindBufferBase(GL_UNIFORM_BUFFER, ubo.binding_point, ubo.buffer_id);
 
-    list_add(*uniform_buffer_objects as void**, *ubo as void*);
+    list_add(*uniform_buffer_objects, *ubo);
 
     return uniform_buffer_objects[len];
 }
@@ -480,7 +484,7 @@ UBO* get_ubo(string name) {
 SSBO* get_ssbo(char* name) return get_ssbo(make_string(name));
 SSBO* get_ssbo(string name) {
 
-    uint32 len = list_length(shader_storage_buffer_objects as void*);
+    uint32 len = list_length(shader_storage_buffer_objects);
     for 0 .. len {
         SSBO* ssbo = shader_storage_buffer_objects[it];
         if string_equals(name, ssbo.name) return ssbo;
@@ -493,7 +497,7 @@ SSBO* get_ssbo(string name) {
     glGenBuffers(1, *ssbo.buffer_id);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo.binding_point, ssbo.buffer_id);
 
-    list_add(*shader_storage_buffer_objects as void**, *ssbo as void*);
+    list_add(*shader_storage_buffer_objects, *ssbo);
 
     return shader_storage_buffer_objects[len];
 }

@@ -196,6 +196,7 @@ void draw_elements_lines(with DrawBuffers db) {
 
 
 
+void update_buffer(uint32 buffer, void[..] list) update_buffer(buffer, list_length(list) * list_stride(list), list as void*);
 void update_buffer(uint32 buffer, uint32 size, void* data) {
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);

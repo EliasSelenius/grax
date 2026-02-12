@@ -65,8 +65,8 @@ void issue_draw_command(DrawCommand* dc) {
     set_blend_mode(dc.mode.blend);
     set_face_render_mode(dc.mode.front_face, dc.mode.back_face);
 
+    update_ssbo("Instances", dc.instance_data);
     uint32 instance_count = list_length(dc.instance_data);
-    update_ssbo("Instances", dc.instance_data, instance_count * sizeof InstanceData);
     draw_elements(@dc.db, instance_count);
 }
 

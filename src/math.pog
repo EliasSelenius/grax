@@ -380,6 +380,11 @@ vec2 move(vec2 current, target, float32 step_dist) {
     return current + noz(diff)*mag;
 }
 
+float32 move(float32 current, target, step_dist) {
+    float32 diff = target - current;
+    float32 mag = min(step_dist, abs(diff));
+    return current + sign(diff)*mag;
+}
 
 
 
