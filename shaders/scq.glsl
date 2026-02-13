@@ -1,6 +1,9 @@
 
 #ifdef VertexShader /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// TODO: do a single triangle instead: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
+// would be intresting to measure the difference
+
 vec2 positions[] = vec2[](
     vec2(-1, -1), vec2(1, -1), vec2(-1, 1),
     vec2(1, -1), vec2(1, 1), vec2(-1, 1)

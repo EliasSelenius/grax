@@ -15,6 +15,7 @@ layout (std140) uniform Camera {
 
 vec3 camera_ray(vec2 ndc) {
 
+    // TODO: ...
     float fov = 90.0 * deg2rad;
     float near_plane = 0.1;
     mat4 view = camera.view;
@@ -31,5 +32,18 @@ vec3 camera_ray(vec2 ndc) {
     vec3 ray = normalize(m * p);
     return ray;
 }
+
+
+float get_fragdepth_from_view_space_point(vec3 view_point) {
+    vec4 clip_pos = camera.projection * vec4(view_point, 1.0);
+    vec3 clip = clip_pos.xyz / clip_pos.w;
+    return (clip.z + 1.0) * 0.5;
+}
+
+float get_fragdepth_from_world_space_point(vec3 world_point) {
+    vec3 view_point = (camera.view * vec4(world_point, 1.0)).xyz;
+    return get_fragdepth_from_view_space_point(view_point);
+}
+
 
 #endif
