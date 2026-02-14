@@ -5,8 +5,8 @@
 #include "../grax/shaders/common.glsl"
 
 struct Geometry {
-    vec3 pos;
-    vec3 normal;
+    vec3 view_pos;
+    vec3 view_normal;
     vec3 albedo;
     vec3 F0;
     float roughness;
@@ -22,8 +22,8 @@ LightRay point_light(vec3 pos, vec3 color, Geometry g) {
     pos = (camera.view * vec4(pos, 1.0)).xyz;
 
     LightRay ray;
-    ray.dir = normalize(pos - g.pos);
-    float attenuation = 1.0 / sq(length(pos - g.pos));
+    ray.dir = normalize(pos - g.view_pos);
+    float attenuation = 1.0 / sq(length(pos - g.view_pos));
     ray.radiance = color * attenuation;
     return ray;
 }
@@ -61,8 +61,8 @@ Last chapter named "Completing the IBL reflectance"
 */
 
 vec3 cook_torrance_BRDF(LightRay light, Geometry g) {
-    vec3 N = g.normal;
-    vec3 V = normalize(-g.pos);
+    vec3 N = g.view_normal;
+    vec3 V = normalize(-g.view_pos);
     vec3 L = light.dir;
     vec3 H = normalize(V + L);
 

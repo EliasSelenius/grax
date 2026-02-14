@@ -12,6 +12,9 @@ layout (std140) uniform Camera {
     vec4 sun_radiance;
 } camera;
 
+// LightRay get_sun_lightray() {
+    
+// }
 
 vec3 camera_ray(vec2 ndc) {
 
