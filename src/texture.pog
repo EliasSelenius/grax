@@ -267,3 +267,15 @@ uint64 ensure_texture_handle(Texture2D* tex) {
 
     return tex.texture_handle;
 }
+
+void texture_delete(Texture2D* tex) {
+    if tex.gl_handle == 0 return;
+
+    if tex.texture_handle != 0 {
+        glMakeTextureHandleNonResidentARB(tex.texture_handle);
+        tex.texture_handle = 0;
+    }
+
+    glDeleteTextures(1, *tex.gl_handle);
+    tex.gl_handle = 0;
+}
