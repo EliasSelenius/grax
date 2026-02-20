@@ -12,9 +12,14 @@
 float maxdot(vec3 a, vec3 b) { return max(0.0, dot(a, b)); }
 float sq(float x) { return x*x; }
 
+float min_axis(vec2 v) { return min(v.x, v.y); }
+float max_axis(vec2 v) { return max(v.x, v.y); }
+
 float min_axis(vec3 v) { return min(v.x, min(v.y, v.z)); }
 float max_axis(vec3 v) { return max(v.x, max(v.y, v.z)); }
 
+vec2 rot90deg_ccw(vec2 v) {return vec2(-v.y, v.x);}
+vec2 rot90deg_cw(vec2 v)  {return vec2(v.y, -v.x);}
 
 vec3 noz(vec3 v) {
     float l = length(v);

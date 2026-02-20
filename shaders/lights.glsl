@@ -13,6 +13,13 @@ struct Geometry {
     float metallic;
 };
 
+struct Material {
+    vec3 albedo;
+    vec3 F0;
+    float roughness;
+    float metallic;
+};
+
 struct LightRay {
     vec3 dir;
     vec3 radiance;
@@ -59,6 +66,43 @@ Last chapter named "Completing the IBL reflectance"
     vec3 ambient = (diffuse + specular) * ao;
 
 */
+
+/*
+    I - incoming light
+    N - surface normal
+    R - reflected direction
+*/
+vec3 cook_torrance_BRDF(vec3 I, vec3 N, vec3 R, vec3 light_radiance, Material mat) {
+    vec3 H = normalize(R + I);
+    float NoR = maxdot(N, R);
+    float NoI = maxdot(N, I);
+    float NoH = maxdot(N, H);
+    float HoR = maxdot(H, R);
+
+
+    // Trowbridge-Reitz GGX  normal distribution function
+    float r = sq(sq(mat.roughness)); // ^4 instead of just squareing, because I heard disney and epic games said so...
+    float distribution = r / (Pi * sq(sq(NoH) * (r - 1.0) + 1.0));
+
+    // geometry overshadowing
+    float k = sq(sq(mat.roughness + 1.0)) / 8.0;
+    #define schlick_GGX(num) (num / (num * (1.0 - k) + k))
+    float geometry = schlick_GGX(NoR) * schlick_GGX(NoI); // smith's method
+    #undef schlick_GGX
+
+    mat.F0 = calc_base_reflectivity(mat.albedo, mat.metallic);
+    // fresnel schlick
+    vec3 fresnel = mat.F0 + (1.0 - mat.F0) * pow(1.0 - HoR, 5.0);
+
+
+    // cook torrance BRDF, specular term...
+    vec3 specular = (distribution * geometry * fresnel) / max(4.0 * NoR * NoI, 0.0001);
+
+    vec3 diffuse = (vec3(1.0) - fresnel) * (1.0 - mat.metallic);
+    vec3 lambert = diffuse * mat.albedo / Pi;
+
+    return (lambert + specular) * light_radiance * NoI;
+}
 
 vec3 cook_torrance_BRDF(LightRay light, Geometry g) {
     vec3 N = g.view_normal;
