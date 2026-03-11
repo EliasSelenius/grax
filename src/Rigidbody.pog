@@ -270,3 +270,38 @@ bool ray_plane_intersects(vec3 o,d,  p,n, vec3* out_point, float32* dist) {
     @out_point = o + d*@dist;
     return true;
 }
+
+float32 cross2d(vec2 a, b) return a.x*b.y - a.y*b.x;
+
+
+/*
+    line segments ab and cd
+    returns interpolation factor t_ab and t_cd
+    intersection point is:
+        lerp(t_ab, a, b)
+        or
+        lerp(t_cd, c, d)
+*/
+vec2 line_intersection(vec2 a,b, c,d) {
+    vec2 dir1 = b - a;
+    vec2 dir2 = d - c;
+
+    float32 denom = cross2d(dir1, dir2);
+
+    if denom == 0.0 return {0,0};
+
+    float32 t_ab = cross2d(c - a, dir2) / denom;
+    float32 t_cd = cross2d(c - a, dir1) / denom;
+
+    return {t_ab, t_cd};
+}
+
+bool ray_lineseg_intersection(vec2 o,d,  a,b, float32* out_dist) {
+    vec2 ts = line_intersection(o, o + d,  a,b);
+
+    if ts.y < 0.0 or ts.y > 1.0 return false;
+    if ts.x < 0.0 return false;
+
+    @out_dist = ts.x;
+    return true;
+}
