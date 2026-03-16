@@ -1,30 +1,5 @@
 
 
-struct DrawMode {
-    DepthTest depth_test;
-    Blend blend;
-    Poly front_face;
-    Poly back_face;
-    bool depth_write;
-}
-
-DrawMode drawmode_gpass = {
-    depth_test  = DepthTest.Less_Equal,
-    blend       = Blend.Overwrite,
-    front_face  = Poly.Fill,
-    back_face   = Poly.Cull,
-    depth_write = true
-};
-
-DrawMode drawmode_gpass_double_sided = {
-    depth_test  = DepthTest.Less_Equal,
-    blend       = Blend.Overwrite,
-    front_face  = Poly.Fill,
-    back_face   = Poly.Fill,
-    depth_write = true
-};
-
-
 struct InstanceData {
     mat4 model;
     vec4 uv_offset_scale;
@@ -61,9 +36,7 @@ InstanceData* batch(DrawCommand* dc, mat4 model, vec2 uv_offset, uv_scale, Mater
 }
 
 void issue_draw_command(DrawCommand* dc) {
-    set_depth_mode(dc.mode.depth_test, dc.mode.depth_write);
-    set_blend_mode(dc.mode.blend);
-    set_face_render_mode(dc.mode.front_face, dc.mode.back_face);
+    set_mode(dc.mode);
 
     update_ssbo("Instances", dc.instance_data);
     uint32 instance_count = list_length(dc.instance_data);

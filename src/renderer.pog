@@ -481,6 +481,55 @@ enum Blend {
     Add;
 }
 
+enum DepthTest {
+    Disabled;
+    Never; // GL_NEVER
+    Less; // GL_LESS
+    Equal; // GL_EQUAL
+    Less_Equal; // GL_LEQUAL
+    Greater; // GL_GREATER
+    Not_Equal; // GL_NOTEQUAL
+    Greater_Equal; // GL_GEQUAL
+    Always; // GL_ALWAYS
+}
+
+enum Poly {
+    Cull;
+    Point;
+    Line;
+    Fill;
+}
+
+struct DrawMode {
+    DepthTest depth_test;
+    Blend blend;
+    Poly front_face;
+    Poly back_face;
+    bool depth_write;
+}
+
+DrawMode drawmode_gpass = {
+    depth_test  = DepthTest.Less_Equal,
+    blend       = Blend.Overwrite,
+    front_face  = Poly.Fill,
+    back_face   = Poly.Cull,
+    depth_write = true
+};
+
+DrawMode drawmode_gpass_double_sided = {
+    depth_test  = DepthTest.Less_Equal,
+    blend       = Blend.Overwrite,
+    front_face  = Poly.Fill,
+    back_face   = Poly.Fill,
+    depth_write = true
+};
+
+void set_mode(DrawMode mode) {
+    set_depth_mode(mode.depth_test, mode.depth_write);
+    set_blend_mode(mode.blend);
+    set_face_render_mode(mode.front_face, mode.back_face);
+}
+
 void set_blend_mode(Blend blend) switch (blend) {
     case .Overwrite: glDisable(GL_BLEND); break;
     case .Lerp_Src_Alpha:
@@ -493,18 +542,6 @@ void set_blend_mode(Blend blend) switch (blend) {
         glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_ONE, GL_ONE);
         break;
-}
-
-enum DepthTest {
-    Disabled;
-    Never; // GL_NEVER
-    Less; // GL_LESS
-    Equal; // GL_EQUAL
-    Less_Equal; // GL_LEQUAL
-    Greater; // GL_GREATER
-    Not_Equal; // GL_NOTEQUAL
-    Greater_Equal; // GL_GEQUAL
-    Always; // GL_ALWAYS
 }
 
 void set_depth_mode(DepthTest dt, bool depth_write) {
@@ -522,7 +559,6 @@ void set_depth_mode(DepthTest dt, bool depth_write) {
     }
 }
 
-enum Poly { Cull; Point; Line; Fill; }
 void set_face_render_mode(Poly front, back) {
     void polymode(GLenum face, Poly mode) switch (mode) {
         case .Cull:  glEnable(GL_CULL_FACE); glCullFace(face); break;
@@ -539,6 +575,8 @@ void set_face_render_mode(Poly front, back) {
         polymode(GL_BACK, back);
     }
 }
+
+
 
 
 enum AppEventKind {
