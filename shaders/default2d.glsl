@@ -40,8 +40,12 @@ out IO_Data vert_output;
 void main() {
     InstanceData inst = instance_data[gl_InstanceID];
 
-    vec2 uv_offset = inst.uv_offset_scale.xy;
-    vec2 uv_scale  = inst.uv_offset_scale.zw;
+    vec2  uv_offset = inst.uv_offset_scale.xy;
+    vec2  uv_scale  = inst.uv_offset_scale.zw;
+    vec3  pos       = inst.pos_rot.xyz;
+    float rot       = inst.pos_rot.w;
+    vec2  scale     = inst.scale_healthprcnt.xy;
+    float health    = inst.scale_healthprcnt.z;
 
     vert_output.uv = uv_offset + a_Uv * uv_scale;
     vert_output.color = a_Color;
@@ -50,18 +54,18 @@ void main() {
     vert_output.color_additive = inst.color_additive;
     vert_output.color_outline  = inst.color_outline;
 
-    vec3  pos   = inst.pos_rot.xyz;
-    float rot   = inst.pos_rot.w;
-    vec2  scale = inst.scale_healthprcnt.xy;
-    float health = inst.scale_healthprcnt.z;
+    vert_output.pos = pos;
+
+    // pos.z = 0;
 
     vec3 v = vec3(a_Pos, 1)
         * create_mat3(pos.xy, rot, scale)
         * create_mat3_inv(u_cam_pos, u_cam_rot, vec2(u_zoom))
         * vec3(Aspect, 1, 1);
 
-    vert_output.pos = pos;
-    gl_Position = vec4(v.xy, pos.z, 1.0 + pos.z);
+    v.xy /= 1.0 + pos.z;
+
+    gl_Position = vec4(v.xy, pos.z, 1.0);
 }
 #endif
 
@@ -100,5 +104,6 @@ void main() {
 
 
     FragColor = tex_color;
+    // FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 #endif
