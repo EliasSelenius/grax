@@ -50,6 +50,8 @@ struct Shader {
     uint32 gl_handle;
     StringBuilder debug_log;
 
+    Shaderstages stages;
+
     Shader_Uniform[..] uniforms;
     Shader_Uniform_Block[..] ubos;
     Shader_Storage_Block[..] ssbos;
@@ -549,8 +551,10 @@ void bind_ssbos(Shader* s) {
     }
 }
 
-void process_glsl_source(StringBuilder* sb, char* filename) {
+Shaderstages process_glsl_source(StringBuilder* sb, char* filename) {
     char* src = fileread(filename);
+
+    Shaderstages stages = 0;
 
     sb_append(sb, "#line 1\n");
 
@@ -558,18 +562,37 @@ void process_glsl_source(StringBuilder* sb, char* filename) {
     uint32 line_num = 1;
     while @buffer {
         let line = substr_until(buffer, '\n');
+        bool omit_line = false;
 
         if starts_with(line.chars, "#include \"") {
             char* fn = buffer + 10;
             let len = substr_until(fn, '"').length - 1;
             fn[len] = 0 as char;
 
-            process_glsl_source(sb, fn);
+            stages |= process_glsl_source(sb, fn);
 
             sb_append(sb, "\n#line ");
             sb_append(sb, to_string(line_num + 1));
             sb_append(sb, "\n");
-        } else {
+
+            omit_line = true;
+
+        } else if starts_with(line.chars, "#ifdef VertexShader") {
+            stages |= .Vertex;
+        } else if starts_with(line.chars, "#ifdef TessControl") {
+            stages |= .TessControl;
+        } else if starts_with(line.chars, "#ifdef TessEval") {
+            stages |= .TessEval;
+        } else if starts_with(line.chars, "#ifdef GeometryShader") {
+            stages |= .Geometry;
+        } else if starts_with(line.chars, "#ifdef FragmentShader") {
+            stages |= .Fragment;
+        } else if starts_with(line.chars, "#ifdef Compute") {
+            stages |= .Compute;
+        }
+
+
+        if !omit_line {
             sb_append(sb, line);
         }
 
@@ -579,16 +602,24 @@ void process_glsl_source(StringBuilder* sb, char* filename) {
     }
 
     free(src);
+
+    return stages;
 }
 
-Shader load_shader(char* filename) return load_shader(filename, false, false);
-Shader load_shader(char* filename, bool tess, geom) {
+Shader load_shader(char* filename) {
+    Shader program = {};
+    program.name = make_string(filename); // TODO: we dont know the ownership of filename
+    program.gl_handle = glCreateProgram();
+    program.debug_log = sb_create(); // TODO: is it really necessary to have debug_log be a field on Shader, just make it a local...
+    sb_append(*program.debug_log, "\n\n");
 
-    StringBuilder src = sb_create();
-    process_glsl_source(*src, filename);
+    shader_init(*program);
 
-    char* get_shader_source(bool incl, char* def_IO, shader_type, src) {
-        if !incl return null;
+    return program;
+}
+
+void shader_init(Shader* program) {
+    char* get_shader_source(char* def_IO, shader_type, src) {
         let sb = temp_builder();
         // NOTE: layout(binding) requires "#version 420" or later
         // NOTE: ssbo requires "#version 430 core"
@@ -605,34 +636,6 @@ Shader load_shader(char* filename, bool tess, geom) {
         return sb.content;
     }
 
-    let vs = get_shader_source(true, "out", "VertexShader", src.content);
-    let tc = get_shader_source(tess, null,  "TessControl", src.content);
-    let te = get_shader_source(tess, null,  "TessEval", src.content);
-    let gs = get_shader_source(geom, null,  "GeometryShader", src.content);
-    let fs = get_shader_source(true, "in",  "FragmentShader", src.content);
-
-    // TODO: what is the ownership of filename?
-    Shader s = create_shader(make_string(filename), vs, tc, te, gs, fs);
-
-    sb_free(src);
-    return s;
-}
-
-Shader load_shader(char* frag_filename, char* vert_filename) {
-    char* frag_src = fileread(frag_filename);
-    char* vert_src = fileread(vert_filename);
-
-    let s = create_shader(make_string(""), frag_src, vert_src);
-
-    free(frag_src);
-    free(vert_src);
-
-    return s;
-}
-
-Shader create_shader(string name, char* fragsrc, vertsrc) return create_shader(name, vertsrc, null, null, null, fragsrc);
-Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) {
-
     char* append_info_log(StringBuilder* sb, int32 len) {
         sb_grow(sb, len as uint32);
         char* info_log = sb.content + sb.length;
@@ -641,6 +644,7 @@ Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) 
     }
 
     uint32 make_shader(Shader* program, GLenum _type, char* code) {
+        if code == null return 0;
 
         char* get_shader_type_string(GLenum shader_type) {
             switch shader_type {
@@ -686,45 +690,35 @@ Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) 
         return shader;
     }
 
-    void cleanup_shader(Shader program, uint32 shader) {
-        glDetachShader(program.gl_handle, shader);
+    void cleanup_shader(uint32 program, shader) {
+        glDetachShader(program, shader);
         glDeleteShader(shader);
     }
 
-    Shader program = {};
-    // TODO: maybe remove possible extension from name. like .glsl
-    program.name = name; // TODO: we dont know the ownership of name
-    program.gl_handle = glCreateProgram();
-    program.debug_log = sb_create(); // TODO: is it really necessary to have debug_log be a field on Shader, just make it a local...
-    sb_append(*program.debug_log, "\n\n");
+    StringBuilder src = sb_create();
+    program.stages = process_glsl_source(*src, program.name.chars);
 
-    let fs = make_shader(*program, GL_FRAGMENT_SHADER, fs_src);
-    let vs = make_shader(*program, GL_VERTEX_SHADER, vs_src);
+    char* vs_src = program.stages & .Vertex      ? get_shader_source("out", "VertexShader",   src.content) : null;
+    char* tc_src = program.stages & .TessControl ? get_shader_source(null,  "TessControl",    src.content) : null;
+    char* te_src = program.stages & .TessEval    ? get_shader_source(null,  "TessEval",       src.content) : null;
+    char* gs_src = program.stages & .Geometry    ? get_shader_source(null,  "GeometryShader", src.content) : null;
+    char* fs_src = program.stages & .Fragment    ? get_shader_source("in",  "FragmentShader", src.content) : null;
 
-    uint32 tc;
-    uint32 te;
-    uint32 gs;
+    sb_free(src);
 
-    if tc_src and te_src {
-        tc = make_shader(*program, GL_TESS_CONTROL_SHADER, tc_src);
-        te = make_shader(*program, GL_TESS_EVALUATION_SHADER, te_src);
-    }
-
-    if gs_src {
-        gs = make_shader(*program, GL_GEOMETRY_SHADER, gs_src);
-    }
+    uint32 vs = make_shader(program, GL_VERTEX_SHADER,          vs_src);
+    uint32 tc = make_shader(program, GL_TESS_CONTROL_SHADER,    tc_src);
+    uint32 te = make_shader(program, GL_TESS_EVALUATION_SHADER, te_src);
+    uint32 gs = make_shader(program, GL_GEOMETRY_SHADER,        gs_src);
+    uint32 fs = make_shader(program, GL_FRAGMENT_SHADER,        fs_src);
 
     glLinkProgram(program.gl_handle);
 
-    cleanup_shader(program, fs);
-    cleanup_shader(program, vs);
-    if tc_src and te_src {
-        cleanup_shader(program, tc);
-        cleanup_shader(program, te);
-    }
-    if gs_src {
-        cleanup_shader(program, gs);
-    }
+    if vs  cleanup_shader(program.gl_handle, vs);
+    if tc  cleanup_shader(program.gl_handle, tc);
+    if te  cleanup_shader(program.gl_handle, te);
+    if gs  cleanup_shader(program.gl_handle, gs);
+    if fs  cleanup_shader(program.gl_handle, fs);
 
 
     int32 status;
@@ -747,19 +741,29 @@ Shader create_shader(string name, char* vs_src, tc_src, te_src, gs_src, fs_src) 
 
         glDeleteProgram(program.gl_handle);
         program.gl_handle = 0;
-        return program;
+        return;
     }
 
 
-    bind_ubos(*program);
+    bind_ubos(program);
 
     // print("\nuniforms: ", program.name, "\n");
-    introspect_shader_program(*program);
+    introspect_shader_program(program);
 
-    bind_ssbos(*program);
+    bind_ssbos(program);
 
-    print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" was successfully created.\n");
-    return program;
+    print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\"");
+    if vs_src  print(", Vertex");
+    if tc_src  print(", TessControl");
+    if te_src  print(", TessEval");
+    if gs_src  print(", Geometry");
+    if fs_src  print(", Fragment");
+    print("\n");
+
+}
+
+void shader_reload(Shader* shader) {
+    shader_init(shader);
 }
 
 void delete_shader(Shader* shader) {
