@@ -282,7 +282,15 @@ void camera_orbit_control(Camera* cam, Transform local_space) {
 }
 
 void mouse_drag_control(Transform2D* tr) {
-    if mouse(Right_Mouse) tr.pos = tr.pos - Input.mouse_delta * tr.scale;
+    if mouse(Right_Mouse) {
+
+        float32 s = sinf(tr.rot);
+        float32 c = cosf(tr.rot);
+
+        mat2 m = {c, -s, s, c};
+        tr.pos = tr.pos - Input.mouse_delta * m * tr.scale;
+    }
+
     tr.scale -= tr.scale * Input.mouse_scroll * 0.1;
 }
 
