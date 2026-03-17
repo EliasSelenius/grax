@@ -145,6 +145,32 @@ void draw_texture(
     draw_texture(batch, db, tex.gl_handle, ins);
 }
 
+Draw2D_Instance_Data make_ins_data(Sprite sp, Transform2D tr, float32 depth, vec2 pivot, scale) {
+    Draw2D_Instance_Data ins = {};
+    ins.pos = make_vec(local2world(tr, pivot*-1), depth);
+    ins.rot = tr.rot;
+    ins.scale     = sp.uv_scale * make_vec(sp.tex.width, sp.tex.height) * tr.scale * scale;
+    ins.uv_offset = sp.uv_offset;
+    ins.uv_scale  = sp.uv_scale;
+    ins.color_factor   = vec4_one;
+    ins.color_additive = vec4_zero;
+    ins.color_outline  = vec4_zero;
+    return ins;
+}
+
+Draw2D_Instance_Data make_ins_data(Transform2D tr, float32 depth, vec2 pivot, scale) {
+    Draw2D_Instance_Data ins = {};
+    ins.pos = make_vec(local2world(tr, pivot*-1), depth);
+    ins.rot = tr.rot;
+    ins.scale     = tr.scale * scale;
+    ins.uv_offset = vec2_zero;
+    ins.uv_scale  = vec2_one;
+    ins.color_factor   = vec4_one;
+    ins.color_additive = vec4_zero;
+    ins.color_outline  = vec4_zero;
+    return ins;
+}
+
 void draw_texture(
     Draw2D_Batch* batch,
     DrawBuffers db,
