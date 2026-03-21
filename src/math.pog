@@ -220,6 +220,8 @@ bool equals(ivec2 a, b) as ==   return a.x == b.x and a.y == b.y;
 bool equals(ivec3 a, b) as ==   return a.x == b.x and a.y == b.y and a.z == b.z;
 bool equals(ivec4 a, b) as ==   return a.x == b.x and a.y == b.y and a.z == b.z and a.w == b.w;
 
+
+float32 floor(float32 x) return ((x < 0) ? (x as int32 - 1) : (x as int32)) as float32;
 vec2 floor(vec2 v) { return { floorf(v.x), floorf(v.y) }; }
 vec3 floor(vec3 v) { return { floorf(v.x), floorf(v.y), floorf(v.z) }; }
 vec4 floor(vec4 v) { return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w) }; }
