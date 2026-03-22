@@ -291,3 +291,111 @@ float sdnoise(vec2 v, vec2* gradient) {
     // The result is scaled to return values in the interval [-1,1].
     return 40.0 * (n0 + n1 + n2);
 }
+
+
+
+
+float sdnoise(vec3 v, vec3* gradient) {
+    vec3 grad3(int32 hash) {
+        /*
+            Gradient directions for 3D.
+            These vectors are based on the midpoints of the 12 edges of a cube.
+            A larger array of random unit length vectors would also do the job,
+            but these 12 (including 4 repeats to make the array length a power
+            of two) work better. They are not random, they are carefully chosen
+            to represent a small, isotropic set of directions.
+        */
+
+        vec3[16] grad3lut = {
+            {  1.0,  0.0,  1.0 }, {  0.0,  1.0,  1.0 }, // 12 cube edges
+            { -1.0,  0.0,  1.0 }, {  0.0, -1.0,  1.0 },
+            {  1.0,  0.0, -1.0 }, {  0.0,  1.0, -1.0 },
+            { -1.0,  0.0, -1.0 }, {  0.0, -1.0, -1.0 },
+            {  1.0, -1.0,  0.0 }, {  1.0,  1.0,  0.0 },
+            { -1.0,  1.0,  0.0 }, { -1.0, -1.0,  0.0 },
+            {  1.0,  0.0,  1.0 }, { -1.0,  0.0,  1.0 }, // 4 repeats to make 16
+            {  0.0,  1.0, -1.0 }, {  0.0, -1.0, -1.0 }
+        };
+
+        return grad3lut[hash & 15];
+    }
+
+    const F3 = 0.333333333; // F3 = 1/3
+    const G3 = 0.166666667; // G3 = 1/6
+
+    // Skew the input space to determine which simplex cell we're in
+    float s = (v.x + v.y + v.z) * F3; // Very nice and simple skew factor for 3D
+    vec3 ijk = floor(v + make_vec3(s));
+
+    float t = (ijk.x + ijk.y + ijk.z) * G3;
+    vec3 p0 = v - ijk + make_vec3(t); // The x,y,z distances from the cell origin
+
+    /* For the 3D case, the simplex shape is a slightly irregular tetrahedron.
+     * Determine which simplex we are in. */
+    int32 i1, j1, k1; /* Offsets for second corner of simplex in (i,j,k) coords */
+    int32 i2, j2, k2; /* Offsets for third corner of simplex in (i,j,k) coords */
+
+    /* TODO: This code would benefit from a backport from the GLSL version! */
+    if p0.x>=p0.y {
+             if p0.y >= p0.z { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; } /* X Y Z order */
+        else if p0.x >= p0.z { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; } /* X Z Y order */
+        else                 { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; } /* Z X Y order */
+    } else { // p0.x < p0.y
+             if p0.y < p0.z  { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; } /* Z Y X order */
+        else if p0.x < p0.z  { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } /* Y Z X order */
+        else                 { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } /* Y X Z order */
+    }
+
+    /* A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
+     * a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
+     * a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
+     * c = 1/6.   */
+
+    vec3 p1 = p0 - {i1,j1,k1} + make_vec3(G3);     // Offsets for second corner in (x,y,z) coords
+    vec3 p2 = p0 - {i2,j2,k2} + make_vec3(G3*2.0); // Offsets for third corner in (x,y,z) coords
+    vec3 p3 = p0 -  vec3_one  + make_vec3(G3*3.0); // Offsets for last corner in (x,y,z) coords
+
+    /* Wrap the integer indices at 256, to avoid indexing perm[] out of bounds */
+    int32 ii = (ijk.x as int32) & 0xff;
+    int32 jj = (ijk.y as int32) & 0xff;
+    int32 kk = (ijk.z as int32) & 0xff;
+
+    // Calculate the contribution from the four corners
+    float t0 = max(0.5 - dot(p0,p0), 0.0);
+    float t1 = max(0.5 - dot(p1,p1), 0.0);
+    float t2 = max(0.5 - dot(p2,p2), 0.0);
+    float t3 = max(0.5 - dot(p3,p3), 0.0);
+
+    float t20=t0*t0, t40=t20*t20;
+    float t21=t1*t1, t41=t21*t21;
+    float t22=t2*t2, t42=t22*t22;
+    float t23=t3*t3, t43=t23*t23;
+
+    // Gradients at simplex corners
+    vec3 g0 = grad3(sdnoise_perm_table[ii      + sdnoise_perm_table[jj      + sdnoise_perm_table[kk]]]);
+    vec3 g1 = grad3(sdnoise_perm_table[ii + i1 + sdnoise_perm_table[jj + j1 + sdnoise_perm_table[kk + k1]]]);
+    vec3 g2 = grad3(sdnoise_perm_table[ii + i2 + sdnoise_perm_table[jj + j2 + sdnoise_perm_table[kk + k2]]]);
+    vec3 g3 = grad3(sdnoise_perm_table[ii + 1  + sdnoise_perm_table[jj + 1  + sdnoise_perm_table[kk + 1]]]);
+
+    // Noise contributions from the four simplex corners
+    float n0 = t40 * dot(g0, p0);
+    float n1 = t41 * dot(g1, p1);
+    float n2 = t42 * dot(g2, p2);
+    float n3 = t43 * dot(g3, p3);
+
+    if gradient {
+        float temp0 = t20 * t0 * dot(g0, p0);
+        float temp1 = t21 * t1 * dot(g1, p1);
+        float temp2 = t22 * t2 * dot(g2, p2);
+        float temp3 = t23 * t3 * dot(g3, p3);
+
+        vec3 ps = (temp0*p0 + temp1*p1 + temp2*p2 + temp3*p3) * -8.0;
+        vec3 gs = t40*g0 + t41*g1 + t42*g2 + t43*g3;
+
+        @gradient = (ps + gs) * 72.0; // Scale derivative to match the noise scaling
+    }
+
+    // Add contributions from each corner to get the final noise value.
+    // The result is scaled to return values in the range [-1,1]
+    return 72.0f * (n0 + n1 + n2 + n3);
+}
