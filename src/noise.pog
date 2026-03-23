@@ -1,11 +1,4 @@
 
-/*
-    Good Simplex noise implementation: https://github.com/stegu/perlin-noise/blob/master/src/sdnoise1234.c
-    Might be worth reading this: "Simplex Noise Desmystified" https://github.com/stegu/perlin-noise/blob/master/simplexnoise.pdf
-
-*/
-
-
 int32 global_seed = 0;
 
 // returns float in range [-1 .. 1]
@@ -159,6 +152,7 @@ uint8[512] sdnoise_perm_table = {
 
 /*
     sdnoise implementation adapted from: https://github.com/stegu/perlin-noise/blob/master/src/sdnoise1234.c by Stefan Gustavson
+    Might be worth reading this: "Simplex Noise Demystified" https://github.com/stegu/perlin-noise/blob/master/simplexnoise.pdf
 */
 
 float sdnoise(float x, float* dnoise_dx) {
@@ -377,12 +371,6 @@ float sdnoise(vec3 v, vec3* gradient) {
     vec3 g2 = grad3(sdnoise_perm_table[ii + i2 + sdnoise_perm_table[jj + j2 + sdnoise_perm_table[kk + k2]]]);
     vec3 g3 = grad3(sdnoise_perm_table[ii + 1  + sdnoise_perm_table[jj + 1  + sdnoise_perm_table[kk + 1]]]);
 
-    // Noise contributions from the four simplex corners
-    float n0 = t40 * dot(g0, p0);
-    float n1 = t41 * dot(g1, p1);
-    float n2 = t42 * dot(g2, p2);
-    float n3 = t43 * dot(g3, p3);
-
     if gradient {
         float temp0 = t20 * t0 * dot(g0, p0);
         float temp1 = t21 * t1 * dot(g1, p1);
@@ -394,6 +382,12 @@ float sdnoise(vec3 v, vec3* gradient) {
 
         @gradient = (ps + gs) * 72.0; // Scale derivative to match the noise scaling
     }
+
+    // Noise contributions from the four simplex corners
+    float n0 = t40 * dot(g0, p0);
+    float n1 = t41 * dot(g1, p1);
+    float n2 = t42 * dot(g2, p2);
+    float n3 = t43 * dot(g3, p3);
 
     // Add contributions from each corner to get the final noise value.
     // The result is scaled to return values in the range [-1,1]

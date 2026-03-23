@@ -739,8 +739,8 @@ void shader_init(Shader* program) {
 
         print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" failed to link. info log was generated.\n");
 
-        glDeleteProgram(program.gl_handle);
-        program.gl_handle = 0;
+        // glDeleteProgram(program.gl_handle);
+        // program.gl_handle = 0;
         return;
     }
 

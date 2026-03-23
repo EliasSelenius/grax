@@ -16,12 +16,44 @@ struct vertex2D {
 
 
 
+enum Mesh_Primitive {
+    Triangles; Lines; Quad_Patches;
+}
+
 struct Mesh {
     vertex3D[..] vertices;
     uint32[..] indices;
 
+    Mesh_Primitive primitive;
+    uint32 vao, vbo, ebo;
+    int32 elements_count;
+
     vec3 bb_min, bb_max;
     float32 max_radius;
+}
+
+void mesh_draw(Mesh* mesh) {
+    if mesh.vao == 0 {
+
+    }
+
+    GLenum oglmode(Mesh_Primitive prim) switch prim {
+        case .Triangles:    return GL_TRIANGLES;
+        case .Lines:        return GL_LINES;
+        case .Quad_Patches: return GL_PATCHES;
+        default: return 0;
+    }
+    GLenum mode = oglmode(mesh.primitive);
+
+    glBindVertexArray(mesh.vao);
+
+    if mesh.ebo {
+        glDrawElements(mode, mesh.elements_count, GL_UNSIGNED_INT, null);
+    } else {
+        glDrawArrays(mode, 0, mesh.elements_count);
+    }
+
+    glBindVertexArray(0);
 }
 
 Mesh mesh_create() {
@@ -49,6 +81,13 @@ void add_tri(Mesh* m, uint32 i0, i1, i2) {
     list_add(*m.indices, *i0);
     list_add(*m.indices, *i1);
     list_add(*m.indices, *i2);
+}
+
+void add_patch(Mesh* m, uint32 i0, i1, i2, i3) {
+    list_add(*m.indices, *i0);
+    list_add(*m.indices, *i1);
+    list_add(*m.indices, *i2);
+    list_add(*m.indices, *i3);
 }
 
 void add_tri(Mesh* m, vertex3D v0, v1, v2) {
@@ -308,19 +347,32 @@ void add_plane(Mesh* mesh, uint32 size, float32 uv_scale, mat4 matrix) {
 
     for uint32 xi: 0 .. vsize  for uint32 yi: 0 .. vsize {
         vertex3D v = {};
-        v.pos = { (xi - half_size), 0, (yi - half_size) };
+        v.pos    = {xi, 0, yi} - {half_size, 0, half_size};
         v.normal = vec3_unit_y;
-        v.uv = { xi as float32 / size * uv_scale, yi as float32 / size * uv_scale };
+        v.uv     = {xi, yi} / size * uv_scale;
 
-        v.pos = transform_point(v.pos, matrix);
+        v.pos    = transform_point(v.pos, matrix);
         v.normal = transform_dir(v.normal, matrix);
 
         add_vert(mesh, v);
+    }
 
-        if xi < size and yi < size {
-            uint32 vi = start_index + xi * vsize + yi;
-            add_tri(mesh, vi, vi + 1, vi + vsize + 1);
-            add_tri(mesh, vi, vi + vsize + 1, vi + vsize);
+    for uint32 xi: 0 .. size  for uint32 yi: 0 .. size {
+        uint32 vi = start_index + xi * vsize + yi;
+        uint32 i0 = vi;
+        uint32 i1 = vi + 1;
+        uint32 i2 = vi + vsize;
+        uint32 i3 = vi + vsize + 1;
+
+        switch (mesh.primitive) {
+            case .Triangles:
+            add_tri(mesh, i0, i1, i3);
+            add_tri(mesh, i0, i3, i2);
+            break;
+
+            case .Quad_Patches:
+            add_patch(mesh, i0,i1,i2,i3);
+            break;
         }
     }
 }
