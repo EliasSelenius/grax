@@ -69,18 +69,20 @@ void main() {
     // vec3 ambient = vec3(1, 0, 0);
 
     // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
-    FragColor = calc_dir_light(dirlight_direction, dirlight_radiance, g) + ambient;
+    vec3 light = calc_dir_light(dirlight_direction, dirlight_radiance, g) + ambient;
 
 
     vec3 wpos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
-    if (wpos.y < 0 && false) { // water
-        float b = 0.005;
-        FragColor = mix(FragColor, vec3(0.1, 0.4, 0.7), 1 - exp(-length(view_pos)*b));
+    if (wpos.y < 0 && true) { // water
 
-        float max_depth = 200;
-        float light_atten = 1.0 - clamp(-wpos.y, 0, max_depth) / max_depth;
+        float dist = ray_plane_intersects(wpos, dirlight_direction, vec3(0.0), vec3(0.0, -1.0, 0.0));
+        float max_dist = 100;
+        float sun_atten = exp(-dist / max_dist);
 
-        FragColor *= light_atten;
+        float view_dist = length(view_pos);
+        float view_atten = exp(-view_dist / max_dist);
+        vec3 color_blue = vec3(0.1, 0.4, 0.7);
+        light = mix(color_blue, light, view_atten) * sun_atten;
 
     } else { // atmosphere
 
@@ -89,15 +91,13 @@ void main() {
                              vec3(1.0, 0.9, 0.7), // yellow
                              pow(sun_amount, 8.0));
 
-        float b = 0.0005;
-        FragColor = mix(FragColor, fog_color, 1 - exp(-length(view_pos)*b));
+        float view_dist = length(view_pos);
+        float max_dist = 2000;
+        light = mix(light, fog_color, 1 - exp(-view_dist / max_dist));
 
-
-        // float b = 0.0005;
-        // FragColor = mix(FragColor, vec3(0.5, 0.6, 0.7), 1 - exp(-length(view_pos)*b));
     }
 
-
+    FragColor = light;
 
     if (false) { // sky
         vec3 sky_dir = reflect(normalize(g.view_pos), view_normal);

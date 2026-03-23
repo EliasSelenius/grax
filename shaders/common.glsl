@@ -112,4 +112,43 @@ vec3 normal_from_sampler(sampler2D sam, vec2 uv, vec3 surface_normal) {
     return normal_from_sampler(sam, uv, vec2(0.0), vec2(1.0), surface_normal);
 }
 
+
+
+
+
+// https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+float ray_plane_intersects(vec3 o, vec3 d, vec3 p, vec3 n) {
+    float enumerator = dot(p - o, n);
+    float denominator = dot(d, n);
+    return enumerator / denominator;
+
+    // if (denominator == 0.0)  return false; // line and plane are parallel
+    // if  (enumerator == 0.0)  return false; // line is contained in plane
+
+    // dist = enumerator / denominator;
+    // if (dist < 0.0) return false; // ray points in opposite direction of plane
+    // return true;
+}
+
+
+
+float calc_mie_phase(vec3 sun, vec3 sky) {
+    float fCos = dot(sun, -sky);
+    // float g = -0.95;
+    float g = -0.995;
+    float g2 = g*g;
+    float MiePhase = 1.5 * ((1.0 - g2) / (2.0 + g2)) * (1.0 + fCos*fCos) / pow(1.0 + g2 - 2.0*g*fCos, 1.5);
+    return MiePhase;
+}
+
+vec3 skybox_light(vec3 sun_dir, vec3 sun_color, vec3 sky_dir, vec3 sky_color) {
+    float mie = calc_mie_phase(sun_dir, sky_dir);
+    vec3 sky = sky_color + sun_color * mie;
+
+    float e = 0.1;
+    float t = smoothstep(-e, e, dot(sky_dir, vec3(0,1,0)));
+
+    return sky*t;
+}
+
 #endif
