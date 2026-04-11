@@ -1,6 +1,5 @@
 
 
-Shader default3d_shader;
 Shader default2d_shader;
 
 Shader ui_shader;
@@ -11,6 +10,19 @@ UBO* application_ubo;
 Texture2D white_texture;
 Texture2D CascadiaMono_texture;
 
+struct Grax_Shaders {
+    Shader* gpass;
+    Shader* hdr2ldr;
+    Shader* dirlight;
+    Shader* skybox;
+}
+
+Grax_Shaders Shaders = {
+    gpass     = alloc_shader(),
+    hdr2ldr   = alloc_shader(),
+    dirlight  = alloc_shader(),
+    skybox    = alloc_shader()
+};
 
 
 Application app = {
@@ -108,17 +120,49 @@ bool grax_loop() {
         vec2 start = app.top_left + {glyph_height/4.0, -glyph_height/2.0};
         vec2 pos = start;
 
-        int32 num_ext = 0;
-        glGetIntegerv(GL_NUM_EXTENSIONS, *num_ext);
-        for 0 .. num_ext {
-            let exts = glGetStringi(GL_EXTENSIONS, it) as char*;
-            pos = draw_text(pos, glyph_height, make_string(exts), White);
-            pos.x = start.x;
-            pos.y -= glyph_height;
-        }
+        // int32 num_ext = 0;
+        // glGetIntegerv(GL_NUM_EXTENSIONS, *num_ext);
+        // for 0 .. num_ext {
+        //     let exts = glGetStringi(GL_EXTENSIONS, it) as char*;
+        //     pos = draw_text(pos, glyph_height, make_string(exts), White);
+        //     pos.x = start.x;
+        //     pos.y -= glyph_height;
+        // }
 
         draw_opengl_debug_log();
         measure_frametime();
+
+        ivec2 count_lines_and_columns(string str) {
+            int32 max_col = 0, col = 0, row = 0;
+            for 0 .. str.length {
+                if str.chars[it] == '\n' {
+                    row++;
+                    if col > max_col   max_col = col;
+                    col = 0;
+                } else  col++;
+            }
+
+            return {max_col, row};
+        }
+
+        for 0 .. list_length(shader_manager.shaders) {
+            Shader* shader = shader_manager.shaders[it];
+            string log = shader.log_program;
+            if log.chars {
+                vec2 rc = make_vec(count_lines_and_columns(log));
+
+                UI_Rect rect_log = {
+                    size = rc*{0.5, 1}*glyph_height
+                };
+
+                Color color = Black;
+
+                vec2 pos = text_start_pos(rect_log, -1, 1, glyph_height, log);
+                pos = draw_text(pos, glyph_height, shader.name, color);
+                pos = draw_text(pos, glyph_height, log, color);
+            }
+        }
+
     }
 
     { // update application UBO
@@ -187,7 +231,6 @@ void grax_init() {
     { // load assets:
         // TODO: the "../grax/" here is a hack!
 
-        default3d_shader = load_shader("../grax/shaders/default3d.glsl");
         default2d_shader = load_shader("../grax/shaders/default2d.glsl");
 
         gizmo_points_shader = load_shader("../grax/shaders/gizmo_points3D.glsl");

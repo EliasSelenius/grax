@@ -1,6 +1,22 @@
 
 
-// struct Shader_Manager {}
+struct Shader_Manager {
+    Shader*[..] shaders;
+    Shader* active_shader;
+}
+
+Shader_Manager shader_manager;
+
+Shader* alloc_shader() {
+    Shader* shader = calloc(sizeof Shader, 1);
+
+    if shader_manager.shaders == null {
+        shader_manager.shaders = list_create(sizeof Shader*);
+    }
+
+    list_add(*shader_manager.shaders, *shader);
+    return shader;
+}
 
 enum Shaderstages {
     Vertex      = 0b000001;
@@ -11,7 +27,6 @@ enum Shaderstages {
     Compute     = 0b100000;
 }
 
-Shader* active_shader;
 UBO*[..] uniform_buffer_objects = list_create(sizeof UBO*);
 SSBO*[..] shader_storage_buffer_objects = list_create(sizeof SSBO*);
 
@@ -50,6 +65,14 @@ struct Shader {
     uint32 gl_handle;
     StringBuilder debug_log;
 
+    string log_program;
+    string log_vertex;
+    string log_tess_control;
+    string log_tess_eval;
+    string log_geometry;
+    string log_fragment;
+    string log_compute;
+
     Shaderstages stages;
 
     Shader_Uniform[..] uniforms;
@@ -61,7 +84,7 @@ struct Shader {
 }
 
 void use(Shader* s) {
-    active_shader = s;
+    shader_manager.active_shader = s;
     glUseProgram(s.gl_handle);
 }
 
@@ -720,6 +743,8 @@ void shader_init(Shader* program) {
     if gs  cleanup_shader(program.gl_handle, gs);
     if fs  cleanup_shader(program.gl_handle, fs);
 
+    update_shader_program_info_log(program);
+
 
     int32 status;
     glGetProgramiv(program.gl_handle, GL_LINK_STATUS, *status);
@@ -743,7 +768,6 @@ void shader_init(Shader* program) {
         // program.gl_handle = 0;
         return;
     }
-
 
     bind_ubos(program);
 
@@ -770,6 +794,13 @@ void delete_shader(Shader* shader) {
     glDeleteProgram(shader.gl_handle);
     sb_free(shader.debug_log);
 
+    if shader.log_program.chars       free(shader.log_program.chars);
+    if shader.log_vertex.chars        free(shader.log_vertex.chars);
+    if shader.log_tess_control.chars  free(shader.log_tess_control.chars);
+    if shader.log_tess_eval.chars     free(shader.log_tess_eval.chars);
+    if shader.log_geometry.chars      free(shader.log_geometry.chars);
+    if shader.log_fragment.chars      free(shader.log_fragment.chars);
+    if shader.log_compute.chars       free(shader.log_compute.chars);
 
     if shader.uniforms != null {
 
@@ -788,22 +819,36 @@ void delete_shader(Shader* shader) {
 
 }
 
-void set_uniform(char* name, int32   x)          glUniform1i (glGetUniformLocation(active_shader.gl_handle, name), x);
-void set_uniform(char* name, int32   x, y)       glUniform2i (glGetUniformLocation(active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, int32   x, y, z)    glUniform3i (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, int32   x, y, z, w) glUniform4i (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, uint32  x)          glUniform1ui(glGetUniformLocation(active_shader.gl_handle, name), x);
-void set_uniform(char* name, uint32  x, y)       glUniform2ui(glGetUniformLocation(active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, uint32  x, y, z)    glUniform3ui(glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, uint32  x, y, z, w) glUniform4ui(glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, float32 x)          glUniform1f (glGetUniformLocation(active_shader.gl_handle, name), x);
-void set_uniform(char* name, float32 x, y)       glUniform2f (glGetUniformLocation(active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, float32 x, y, z)    glUniform3f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, float32 x, y, z, w) glUniform4f (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, float64 x)          glUniform1d (glGetUniformLocation(active_shader.gl_handle, name), x);
-void set_uniform(char* name, float64 x, y)       glUniform2d (glGetUniformLocation(active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, float64 x, y, z)    glUniform3d (glGetUniformLocation(active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, float64 x, y, z, w) glUniform4d (glGetUniformLocation(active_shader.gl_handle, name), x, y, z, w);
+void update_shader_program_info_log(Shader* shader) {
+    int32 log_length = 0;
+    glGetProgramiv(shader.gl_handle, GL_INFO_LOG_LENGTH, *log_length);
+
+    if log_length {
+        shader.log_program.chars = realloc(shader.log_program.chars, log_length);
+        shader.log_program.length = log_length - 1; // log_length contains zero termination
+
+        glGetProgramInfoLog(shader.gl_handle, log_length, null, shader.log_program.chars);
+    } else {
+        shader.log_program = {};
+    }
+}
+
+void set_uniform(char* name, int32   x)          glUniform1i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
+void set_uniform(char* name, int32   x, y)       glUniform2i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
+void set_uniform(char* name, int32   x, y, z)    glUniform3i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
+void set_uniform(char* name, int32   x, y, z, w) glUniform4i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
+void set_uniform(char* name, uint32  x)          glUniform1ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
+void set_uniform(char* name, uint32  x, y)       glUniform2ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
+void set_uniform(char* name, uint32  x, y, z)    glUniform3ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
+void set_uniform(char* name, uint32  x, y, z, w) glUniform4ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
+void set_uniform(char* name, float32 x)          glUniform1f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
+void set_uniform(char* name, float32 x, y)       glUniform2f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
+void set_uniform(char* name, float32 x, y, z)    glUniform3f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
+void set_uniform(char* name, float32 x, y, z, w) glUniform4f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
+void set_uniform(char* name, float64 x)          glUniform1d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
+void set_uniform(char* name, float64 x, y)       glUniform2d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
+void set_uniform(char* name, float64 x, y, z)    glUniform3d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
+void set_uniform(char* name, float64 x, y, z, w) glUniform4d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
 
 void set_uniform(char* name, vec2 v)  set_uniform(name, v.x, v.y);
 void set_uniform(char* name, vec3 v)  set_uniform(name, v.x, v.y, v.z);
@@ -812,25 +857,25 @@ void set_uniform(char* name, ivec2 v) set_uniform(name, v.x, v.y);
 void set_uniform(char* name, ivec3 v) set_uniform(name, v.x, v.y, v.z);
 void set_uniform(char* name, ivec4 v) set_uniform(name, v.x, v.y, v.z, v.w);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform1dv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform1fv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform1iv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform1uiv(glGetUniformLocation(active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform1dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform1fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform1iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform1uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform2dv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform2fv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform2iv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform2uiv(glGetUniformLocation(active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform2dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform2fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform2iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform2uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform3dv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform3fv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform3iv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform3uiv(glGetUniformLocation(active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform3dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform3fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform3iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform3uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform4dv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform4fv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform4iv (glGetUniformLocation(active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform4uiv(glGetUniformLocation(active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform4dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform4fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform4iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform4uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
 
 
 

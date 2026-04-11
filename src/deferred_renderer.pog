@@ -50,11 +50,6 @@ struct Material_PBR {
 }
 
 struct DeferredRenderer {
-    Shader shader_geometry;
-    Shader shader_hdr2ldr;
-    Shader shader_dirlight;
-    Shader shader_skybox;
-
     Framebuffer fbo_geometry;
     Framebuffer fbo_hdr;
 
@@ -74,10 +69,10 @@ struct DeferredRenderer {
 DeferredRenderer deferred_renderer_init() {
     DeferredRenderer dr = {};
 
-    dr.shader_geometry = load_shader("../grax/shaders/gpass.glsl");
-    dr.shader_hdr2ldr  = load_shader("../grax/shaders/hdr2ldr.glsl");
-    dr.shader_dirlight = load_shader("../grax/shaders/dirlight.glsl");
-    dr.shader_skybox   = load_shader("../grax/shaders/skybox.glsl");
+    @Shaders.gpass    = load_shader("../grax/shaders/gpass.glsl");
+    @Shaders.hdr2ldr  = load_shader("../grax/shaders/hdr2ldr.glsl");
+    @Shaders.dirlight = load_shader("../grax/shaders/dirlight.glsl");
+    @Shaders.skybox   = load_shader("../grax/shaders/skybox.glsl");
 
     //                          pos/metallic  normal/roughness  albedo
     TextureFormat[] g_attachments   = { .rgba16f, .rgba16f, .rgb8 };
@@ -166,7 +161,7 @@ void begin_geometry_pass(DeferredRenderer* dr, Camera cam) {
     clear_color(Black);
     clear_depth();
 
-    use(*dr.shader_geometry);
+    use(Shaders.gpass);
 }
 
 void draw_geometry(DeferredRenderer* dr, DrawBuffers db, Material_PBR mat, mat4 model) draw_geometry(dr, db, mat, *white_texture, model);
@@ -264,7 +259,7 @@ void begin_light_pass(DeferredRenderer* dr) {
     clear_color(Black);
 
     { // SKYBOX
-        use(*dr.shader_skybox);
+        use(Shaders.skybox);
         draw_elements(dr.db_inverted_box);
     }
 
@@ -273,7 +268,7 @@ void begin_light_pass(DeferredRenderer* dr) {
 
     for uint32 it : 0 .. dr.fbo_geometry.attachments.length  bind_texture2D(dr.fbo_geometry.attachments[it].gl_handle, it);
 
-    use(*dr.shader_dirlight);
+    use(Shaders.dirlight);
     set_uniform("dirlight_direction", normalize(dr.sun_dir));
     set_uniform("dirlight_radiance",  dr.sun_radiance);
     set_uniform("dirlight_ambient_factor", dr.sun_ambient_factor);
@@ -284,7 +279,7 @@ void begin_light_pass(DeferredRenderer* dr) {
 
 void end_frame(DeferredRenderer* dr) {
     bind_default_framebuffer();
-    use(*dr.shader_hdr2ldr);
+    use(Shaders.hdr2ldr);
     disable_depth_test();
     disable_blending();
     bind_texture2D(dr.fbo_hdr.attachments[0].gl_handle, 0);

@@ -211,6 +211,8 @@ void audio_init(Wav_File* wav) {
 
 void audio_loop(vec3 listener_pos, float32 volume) {
 
+    if audio.render_client == null return;
+
     // int64 latency;
     // GetStreamLatency(audio.client, *latency);
     // print(latency, "\n");
