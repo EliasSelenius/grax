@@ -18,6 +18,19 @@ Shader* alloc_shader() {
     return shader;
 }
 
+Shader* alloc_shader(char* filename) {
+    let sh = alloc_shader();
+    sh.name = make_string(filename);
+    return sh;
+}
+
+Shader load_shader(char* filename) {
+    Shader program = {};
+    program.name = make_string(filename); // TODO: we dont know the ownership of filename
+    shader_init(*program);
+    return program;
+}
+
 enum Shaderstages {
     Vertex      = 0b000001;
     TessControl = 0b000010;
@@ -63,7 +76,6 @@ struct Named_Binding_Point {
 struct Shader {
     string name;
     uint32 gl_handle;
-    StringBuilder debug_log;
 
     string log_program;
     string log_vertex;
@@ -84,6 +96,10 @@ struct Shader {
 }
 
 void use(Shader* s) {
+    if s.gl_handle == 0 {
+        shader_init(s);
+    }
+
     shader_manager.active_shader = s;
     glUseProgram(s.gl_handle);
 }
@@ -629,18 +645,6 @@ Shaderstages process_glsl_source(StringBuilder* sb, char* filename) {
     return stages;
 }
 
-Shader load_shader(char* filename) {
-    Shader program = {};
-    program.name = make_string(filename); // TODO: we dont know the ownership of filename
-    program.gl_handle = glCreateProgram();
-    program.debug_log = sb_create(); // TODO: is it really necessary to have debug_log be a field on Shader, just make it a local...
-    sb_append(*program.debug_log, "\n\n");
-
-    shader_init(*program);
-
-    return program;
-}
-
 void shader_init(Shader* program) {
     char* get_shader_source(char* def_IO, shader_type, src) {
         let sb = temp_builder();
@@ -689,24 +693,24 @@ void shader_init(Shader* program) {
         GLint success = 0;
         glGetShaderiv(shader, GL_COMPILE_STATUS, *success);
         if success == 0 {
-            let sb = *program.debug_log;
+            // let sb = *program.debug_log;
 
-            let shader_type = get_shader_type_string(_type);
-            sb_append(sb, shader_type);
-            sb_append(sb, " info log:\n");
+            // let shader_type = get_shader_type_string(_type);
+            // sb_append(sb, shader_type);
+            // sb_append(sb, " info log:\n");
 
-            GLint info_log_len = 0;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, *info_log_len);
-            char* info_log = append_info_log(sb, info_log_len);
-            glGetShaderInfoLog(shader, info_log_len, null, info_log);
-            sb_append(sb, "\n\n");
+            // GLint info_log_len = 0;
+            // glGetShaderiv(shader, GL_INFO_LOG_LENGTH, *info_log_len);
+            // char* info_log = append_info_log(sb, info_log_len);
+            // glGetShaderInfoLog(shader, info_log_len, null, info_log);
+            // sb_append(sb, "\n\n");
 
-            sb_append(sb, shader_type);
-            sb_append(sb, " source code:\n");
-            sb_append(sb, code);
-            sb_append(sb, "\n///////////////////////////END_OF_CODE///////////////////////////\n\n\n\n");
+            // sb_append(sb, shader_type);
+            // sb_append(sb, " source code:\n");
+            // sb_append(sb, code);
+            // sb_append(sb, "\n///////////////////////////END_OF_CODE///////////////////////////\n\n\n\n");
 
-            print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" ", shader_type, " shader failed to compile. info log was generated.\n");
+            // print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" ", shader_type, " shader failed to compile. info log was generated.\n");
         }
 
         glAttachShader(program.gl_handle, shader);
@@ -726,14 +730,20 @@ void shader_init(Shader* program) {
     char* te_src = program.stages & .TessEval    ? get_shader_source(null,  "TessEval",       src.content) : null;
     char* gs_src = program.stages & .Geometry    ? get_shader_source(null,  "GeometryShader", src.content) : null;
     char* fs_src = program.stages & .Fragment    ? get_shader_source("in",  "FragmentShader", src.content) : null;
+    char* cs_src = program.stages & .Compute     ? get_shader_source(null,  "Compute",        src.content) : null;
 
     sb_free(src);
+
+    if program.gl_handle == 0 {
+        program.gl_handle = glCreateProgram();
+    }
 
     uint32 vs = make_shader(program, GL_VERTEX_SHADER,          vs_src);
     uint32 tc = make_shader(program, GL_TESS_CONTROL_SHADER,    tc_src);
     uint32 te = make_shader(program, GL_TESS_EVALUATION_SHADER, te_src);
     uint32 gs = make_shader(program, GL_GEOMETRY_SHADER,        gs_src);
     uint32 fs = make_shader(program, GL_FRAGMENT_SHADER,        fs_src);
+    uint32 cs = make_shader(program, GL_COMPUTE_SHADER,         cs_src);
 
     glLinkProgram(program.gl_handle);
 
@@ -742,6 +752,7 @@ void shader_init(Shader* program) {
     if te  cleanup_shader(program.gl_handle, te);
     if gs  cleanup_shader(program.gl_handle, gs);
     if fs  cleanup_shader(program.gl_handle, fs);
+    if cs  cleanup_shader(program.gl_handle, cs);
 
     update_shader_program_info_log(program);
 
@@ -749,23 +760,7 @@ void shader_init(Shader* program) {
     int32 status;
     glGetProgramiv(program.gl_handle, GL_LINK_STATUS, *status);
     if status == 0 {
-        let sb = *program.debug_log;
-        sb_append(sb, "ShaderProgram \"");
-        sb_append(sb, program.name);
-        sb_append(sb, "\" info log:\n");
-
-        int32 info_log_len;
-        glGetProgramiv(program.gl_handle, GL_INFO_LOG_LENGTH, *info_log_len);
-        char* log = append_info_log(sb, info_log_len);
-        glGetProgramInfoLog(program.gl_handle, info_log_len, null, log);
-
-        let log_file = concat("shader_debug_log_", trim(substr_until(substr_to_end(program.name, '/'), '.'), 1), ".txt");
-        filewrite(log_file, program.debug_log.content);
-
-        print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" failed to link. info log was generated.\n");
-
-        // glDeleteProgram(program.gl_handle);
-        // program.gl_handle = 0;
+        print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" failed to link.\n");
         return;
     }
 
@@ -782,6 +777,7 @@ void shader_init(Shader* program) {
     if te_src  print(", TessEval");
     if gs_src  print(", Geometry");
     if fs_src  print(", Fragment");
+    if cs_src  print(", Compute");
     print("\n");
 
 }
@@ -792,7 +788,6 @@ void shader_reload(Shader* shader) {
 
 void delete_shader(Shader* shader) {
     glDeleteProgram(shader.gl_handle);
-    sb_free(shader.debug_log);
 
     if shader.log_program.chars       free(shader.log_program.chars);
     if shader.log_vertex.chars        free(shader.log_vertex.chars);
