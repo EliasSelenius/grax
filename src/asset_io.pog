@@ -108,7 +108,17 @@ Image load_bitmap(char* filename) {
     return image;
 }
 
+void linearize_color_space(Image image) {
+    for 0 .. image.width * image.height {
+        vec4 color = color_to_vec4(image.pixels[it]);
 
+        color.x = pow(color.x, 2.2);
+        color.y = pow(color.y, 2.2);
+        color.z = pow(color.z, 2.2);
+
+        image.pixels[it] = rgba(color);
+    }
+}
 
 /*
     since we only care about the boundingbox, we could try a different flood fill

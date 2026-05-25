@@ -173,6 +173,7 @@ void delete(with Framebuffer fr) { print("[ERROR]: delete(fbo) is not implemente
 
 Texture2D load_texture2D(char* name) {
     let image = load_bitmap(name);
+    linearize_color_space(image);
     let tex = create_texture2D(image);
     set_filter(tex, TextureFilter.nearest);
 
