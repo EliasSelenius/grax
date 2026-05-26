@@ -19,33 +19,24 @@ layout(binding = 1) uniform sampler2D g_buffer_normal;
 layout(binding = 2) uniform sampler2D g_buffer_albedo;
 
 
-float oct_noise(vec3 dir) {
-    float value = 0;
-    for (int i = 1; i <= 8; i++) {
-        float f = pow(2, i);
-        value += noise(dir * f);
-    }
-
-    return value;
-}
-
-vec3 skybox_color(vec3 dir) {
-    // return vec3(
-    //     noise(vec3(0)    + dir * sin(Time*0.005) * 30),
-    //     noise(vec3(100)  + dir * sin(Time*0.005 + 100) * 30),
-    //     noise(vec3(1000) + dir * sin(Time*0.005 + 1000) * 30));
-
-    return vec3(oct_noise(dir), 0.0, oct_noise(vec3(100) + dir * 10));
-
-    // return (dir);
-}
-
-
 #include "../grax/shaders/scq.glsl"
 
 
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 out vec3 FragColor;
+
+
+vec3 apply_fog(vec3 light, vec3 view_pos, vec3 unlit_fog, vec3 lit_fog) {
+    vec3 V = normalize(view_pos);
+    vec3 I = normalize(mat3(camera.view) * dirlight_direction);
+
+    float sun_amount = maxdot(V, I);
+    vec3 fog_color = mix(unlit_fog, lit_fog, pow(sun_amount, 8.0));
+
+    float view_dist = length(view_pos);
+    float max_dist = 2000;
+    return mix(light, fog_color, 1 - exp(-view_dist / max_dist));
+}
 
 void main() {
     vec2 uv = gl_FragCoord.xy / ViewportSize;
@@ -66,14 +57,11 @@ void main() {
 
 
     vec3 ambient = albedo * dirlight_radiance * dirlight_ambient_factor;
-    // vec3 ambient = vec3(1, 0, 0);
-
-    // FragColor = calc_point_light(vec3(-30, 10, 0), vec3(40, 0, 0), g);
-    vec3 light = calc_dir_light(dirlight_direction, dirlight_radiance, g) + ambient;
+    vec3 light = ambient + calc_dir_light(dirlight_direction, dirlight_radiance, g);
 
 
     vec3 wpos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
-    if (wpos.y < 0 && true) { // water
+    if (wpos.y < 0 && false) { // water
 
         float dist = ray_plane_intersects(wpos, dirlight_direction, vec3(0.0), vec3(0.0, -1.0, 0.0));
         float max_dist = 100;
@@ -86,23 +74,11 @@ void main() {
 
     } else { // atmosphere
 
-        float sun_amount = maxdot(normalize(view_pos), normalize(mat3(camera.view) * dirlight_direction));
-        vec3 fog_color = mix(vec3(0.5, 0.6, 0.7), // blue
-                             vec3(1.0, 0.9, 0.7), // yellow
-                             pow(sun_amount, 8.0));
-
-        float view_dist = length(view_pos);
-        float max_dist = 2000;
-        light = mix(light, fog_color, 1 - exp(-view_dist / max_dist));
-
+        vec3 blueish    = vec3(0.5, 0.6, 0.7);
+        vec3 yellowish  = vec3(1.0, 0.9, 0.7);
+        // light = apply_fog(light, view_pos, blueish, yellowish);
     }
 
     FragColor = light;
-
-    if (false) { // sky
-        vec3 sky_dir = reflect(normalize(g.view_pos), view_normal);
-        vec3 sky = skybox_color(mat3(inverse(camera.view)) * sky_dir);
-        FragColor += max(sky, vec3(0.0));
-    }
 }
 #endif

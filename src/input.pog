@@ -38,6 +38,7 @@ float32 input_axis(int32 a, b) {
     return res;
 }
 
+float key_axis(Key neg, pos) return key_down(pos) - key_down(neg);
 
 bool key_down(Key key) return glfwGetKey(app.main_window, key as int32) == GLFW_PRESS;
 bool key_pressed(Key key)  return  key_down(key) and Input.keyboard_changed[key];
