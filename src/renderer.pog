@@ -155,7 +155,7 @@ bool grax_loop() {
                     size = rc*{0.5, 1}*glyph_height
                 };
 
-                Color color = Black;
+                Color color = White;
 
                 vec2 pos = text_start_pos(rect_log, -1, 1, glyph_height, log);
                 pos = draw_text(pos, glyph_height, shader.name, color);

@@ -235,11 +235,54 @@ void draw_elements_lines(with DrawBuffers db) {
 
 
 
-void update_buffer(uint32 buffer, void[..] list) update_buffer(buffer, list_length(list) * list_stride(list), list as void*);
-void update_buffer(uint32 buffer, uint32 size, void* data) {
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+void update_buffer(uint32 buffer, void[..] list) {
+    uint32 size = list_length(list) * list_stride(list);
+    ogl_buffer_init(buffer, size, list as void*);
+}
+
+void update_buffer(uint32 buffer, size, void* data) {
+    ogl_buffer_init(buffer, size, data);
+}
+
+
+uint32 ogl_buffer_generate()
+    return ogl_buffer_generate(0);
+
+uint32 ogl_buffer_generate(uint32 size) {
+    uint32 buffer_id = 0;
+    glGenBuffers(1, *buffer_id);
+    if size != 0  ogl_buffer_init(buffer_id, size, null);
+    return buffer_id;
+}
+
+void ogl_buffer_init(uint32 buffer_id, size, void* data) {
+    GLenum target = GL_ARRAY_BUFFER;
+    glBindBuffer(target, buffer_id);
+    glBufferData(target, size, data, GL_STATIC_DRAW);
+    glBindBuffer(target, 0);
+}
+
+void* ogl_buffer_ptr(uint32 buffer_id) {
+    GLenum target = GL_ARRAY_BUFFER;
+    void* ptr = null;
+
+    glBindBuffer(target, buffer_id);
+    glGetBufferPointerv(target, GL_BUFFER_MAP_POINTER, *ptr);
+    if ptr == null   ptr = glMapBuffer(target, GL_READ_WRITE);
+    glBindBuffer(target, 0);
+
+    return ptr;
+}
+
+uint32 ogl_buffer_size(uint32 buffer_id) {
+    GLenum target = GL_ARRAY_BUFFER;
+    uint32 size = 0;
+
+    glBindBuffer(target, buffer_id);
+    glGetBufferParameteriv(target, GL_BUFFER_SIZE, *size);
+    glBindBuffer(target, 0);
+
+    return size;
 }
 
 

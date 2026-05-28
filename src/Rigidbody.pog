@@ -271,6 +271,15 @@ bool ray_plane_intersects(vec3 o,d,  p,n, vec3* out_point, float32* dist) {
     return true;
 }
 
+vec2 ray_aabb_intersects(vec3 o,d,  l,h) {
+    vec3 t_low  = (l - o) / d;
+    vec3 t_high = (h - o) / d;
+    vec3 t_close = min(t_low, t_high);
+    vec3 t_far   = max(t_low, t_high);
+
+    return make_vec(max_axis(t_close), min_axis(t_far));
+}
+
 float32 cross2d(vec2 a, b) return a.x*b.y - a.y*b.x;
 
 

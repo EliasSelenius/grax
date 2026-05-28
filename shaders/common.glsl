@@ -130,6 +130,24 @@ float ray_plane_intersects(vec3 o, vec3 d, vec3 p, vec3 n) {
     // return true;
 }
 
+vec2 ray_aabb_intersects(vec3 o, vec3 r, vec3 l, vec3 h) {
+    vec3 t_low  = (l - o) / r;
+    vec3 t_high = (h - o) / r;
+    vec3 t_close = min(t_low, t_high);
+    vec3 t_far   = max(t_low, t_high);
+
+    return vec2(max_axis(t_close), min_axis(t_far));
+}
+
+bool ray_sphere_intersects(vec3 o, vec3 d, vec3 c, float radius, inout float dist) {
+    float delta = sq(dot(d, o - c)) - (sq(length(o - c)) - sq(radius));
+
+    dist = -dot(d, o - c) - sqrt(delta);
+
+    return delta >= 0 && dist >= 0;
+}
+
+
 
 
 float calc_mie_phase(vec3 sun, vec3 sky) {

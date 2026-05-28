@@ -105,39 +105,17 @@ vec3 cook_torrance_BRDF(vec3 I, vec3 N, vec3 R, vec3 light_radiance, Material ma
 }
 
 vec3 cook_torrance_BRDF(LightRay light, Geometry g) {
+    vec3 I = light.dir;
     vec3 N = g.view_normal;
-    vec3 V = normalize(-g.view_pos);
-    vec3 L = light.dir;
-    vec3 H = normalize(V + L);
+    vec3 R = normalize(-g.view_pos);
 
-    float NoV = maxdot(N, V);
-    float NoL = maxdot(N, L);
-    float NoH = maxdot(N, H);
-    float HoV = maxdot(H, V);
+    Material material;
+    material.albedo    = g.albedo;
+    material.F0        = g.F0;
+    material.roughness = g.roughness;
+    material.metallic  = g.metallic;
 
-
-    // Trowbridge-Reitz GGX  normal distribution function
-    float r = sq(sq(g.roughness)); // ^4 instead of just squareing, because I heard disney and epic games said so...
-    float distribution = r / (Pi * sq(sq(NoH) * (r - 1.0) + 1.0));
-
-    // geometry overshadowing
-    float k = sq(sq(g.roughness + 1.0)) / 8.0;
-    #define schlick_GGX(num) (num / (num * (1.0 - k) + k))
-    float geometry = schlick_GGX(NoV) * schlick_GGX(NoL); // smith's method
-    #undef schlick_GGX
-
-    g.F0 = calc_base_reflectivity(g.albedo, g.metallic);
-    // fresnel schlick
-    vec3 fresnel = g.F0 + (1.0 - g.F0) * pow(1.0 - HoV, 5.0);
-
-
-    // cook torrance BRDF, specular term...
-    vec3 specular = (distribution * geometry * fresnel) / max(4.0 * NoV * NoL, 0.0001);
-
-    vec3 diffuse = (vec3(1.0) - fresnel) * (1.0 - g.metallic);
-    vec3 lambert = diffuse * g.albedo / Pi;
-
-    return (lambert + specular) * light.radiance * NoL;
+    return cook_torrance_BRDF(I, N, R, light.radiance, material);
 }
 
 vec3 calc_point_light(vec3 pos, vec3 color, Geometry g) {
