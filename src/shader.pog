@@ -3,9 +3,14 @@
 struct Shader_Manager {
     Shader*[..] shaders;
     Shader* active_shader;
+
+    UBO*[..]  uniform_buffers;
+    SSBO*[..] storage_buffers;
+
 }
 
 Shader_Manager shader_manager;
+
 
 Shader* alloc_shader() {
     Shader* shader = calloc(sizeof Shader, 1);
@@ -40,9 +45,6 @@ enum Shaderstages {
     Compute     = 0b100000;
 }
 
-UBO*[..] uniform_buffer_objects = list_create(sizeof UBO*);
-SSBO*[..] shader_storage_buffer_objects = list_create(sizeof SSBO*);
-
 struct UBO {
     string name;
     uint32 binding_point;
@@ -57,20 +59,74 @@ struct SSBO {
 
 void update_ssbo(char* name, void* data, uint32 size) {
     let ssbo = get_ssbo(name);
-    update_buffer(ssbo.buffer_id, size, data);
+
+    if ssbo.buffer_id == 0 {
+        uint32 buffer_id = ogl_buffer_generate();
+        bind_buffer(ssbo, buffer_id);
+    }
+
+    ogl_buffer_init(ssbo.buffer_id, size, data);
 }
 
 void update_ssbo(char* name, void[..] list) {
     update_ssbo(name, list as void*, list_length(list) * list_stride(list));
 }
 
-Named_Binding_Point*[..] ssbo_binding_points = list_create(sizeof Named_Binding_Point*);
-Named_Binding_Point*[..]  ubo_binding_points = list_create(sizeof Named_Binding_Point*);
+UBO* get_ubo(char* name) { return get_ubo(make_string(name)); }
+UBO* get_ubo(string name) {
+    if shader_manager.uniform_buffers == null {
+        shader_manager.uniform_buffers = list_create(sizeof UBO*);
+    }
 
-struct Named_Binding_Point {
-    string name;
-    uint32 binding_point;
-    uint32 buffer_id;
+    uint32 len = list_length(shader_manager.uniform_buffers);
+    for 0 .. len {
+        UBO* ubo = shader_manager.uniform_buffers[it];
+        if string_equals(name, ubo.name) return ubo;
+    }
+
+    UBO* ubo = malloc(sizeof UBO);
+    @ubo = {};
+    ubo.binding_point = len;
+    ubo.name = alloc_string_copy(name);
+
+    // TODO: this is retarded...
+    uint32 buffer_id = ogl_buffer_generate();
+    bind_buffer(ubo, buffer_id);
+
+    list_add(*shader_manager.uniform_buffers, *ubo);
+    return ubo;
+}
+
+SSBO* get_ssbo(char* name) return get_ssbo(make_string(name));
+SSBO* get_ssbo(string name) {
+    if shader_manager.storage_buffers == null {
+        shader_manager.storage_buffers = list_create(sizeof SSBO*);
+    }
+
+    uint32 len = list_length(shader_manager.storage_buffers);
+    for 0 .. len {
+        SSBO* ssbo = shader_manager.storage_buffers[it];
+        if string_equals(name, ssbo.name) return ssbo;
+    }
+
+    SSBO* ssbo = malloc(sizeof SSBO);
+    @ssbo = {};
+    ssbo.binding_point = len;
+    ssbo.name = alloc_string_copy(name);
+    list_add(*shader_manager.storage_buffers, *ssbo);
+    return ssbo;
+}
+
+void bind_buffer(SSBO* ssbo, uint32 buffer_id) {
+    GLenum target = GL_SHADER_STORAGE_BUFFER;
+    glBindBufferBase(target, ssbo.binding_point, buffer_id);
+    ssbo.buffer_id = buffer_id;
+}
+
+void bind_buffer(UBO* ubo, uint32 buffer_id) {
+    GLenum target = GL_UNIFORM_BUFFER;
+    glBindBufferBase(target, ubo.binding_point, buffer_id);
+    ubo.buffer_id = buffer_id;
 }
 
 struct Shader {
@@ -108,7 +164,19 @@ void dispatch_compute(uint32 x, y, z) {
     glDispatchCompute(x, y, z);
 }
 
-// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, buffer)
+void shader_bind_buffers(Shader* shader) {
+    for 0 .. list_length(shader.ssbos) {
+        let info = shader.ssbos[it];
+        let ssbo = get_ssbo(info.name);
+        glShaderStorageBlockBinding(shader.gl_handle, it, ssbo.binding_point);
+    }
+
+    for 0 .. list_length(shader.ubos) {
+        let info = shader.ubos[it];
+        let ubo  = get_ubo(info.name);
+        glUniformBlockBinding(shader.gl_handle, it, ubo.binding_point);
+    }
+}
 
 
 /*
@@ -364,7 +432,10 @@ struct Shader_Storage_Block {
     int32[] active_variables;
 }
 
-void introspect_shader_program(Shader* program) {
+void shader_introspect(Shader* program) {
+
+    shader_free_introspection_data(program);
+
     {
         int32 num_res = 0;
         glGetProgramInterfaceiv(program.gl_handle, GL_UNIFORM, GL_ACTIVE_RESOURCES, *num_res);
@@ -501,95 +572,6 @@ void introspect_shader_program(Shader* program) {
     }
 }
 
-UBO* get_ubo(char* name) { return get_ubo(make_string(name)); }
-UBO* get_ubo(string name) {
-
-    uint32 len = list_length(uniform_buffer_objects);
-    for 0 .. len {
-        UBO* ubo = uniform_buffer_objects[it];
-        if string_equals(name, ubo.name) return ubo;
-    }
-
-    UBO* ubo = malloc(sizeof UBO);
-    ubo.binding_point = len;
-    ubo.name = alloc_string_copy(name);
-
-    glGenBuffers(1, *ubo.buffer_id);
-    glBindBufferBase(GL_UNIFORM_BUFFER, ubo.binding_point, ubo.buffer_id);
-
-    list_add(*uniform_buffer_objects, *ubo);
-
-    return uniform_buffer_objects[len];
-}
-
-SSBO* get_ssbo(char* name) return get_ssbo(make_string(name));
-SSBO* get_ssbo(string name) {
-
-    uint32 len = list_length(shader_storage_buffer_objects);
-    for 0 .. len {
-        SSBO* ssbo = shader_storage_buffer_objects[it];
-        if string_equals(name, ssbo.name) return ssbo;
-    }
-
-    SSBO* ssbo = malloc(sizeof SSBO);
-    ssbo.binding_point = len;
-    ssbo.name = alloc_string_copy(name);
-
-    glGenBuffers(1, *ssbo.buffer_id);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo.binding_point, ssbo.buffer_id);
-
-    list_add(*shader_storage_buffer_objects, *ssbo);
-
-    return shader_storage_buffer_objects[len];
-}
-
-Named_Binding_Point* get_named_binding_point(string name, GLenum target, Named_Binding_Point*[..]* list) {
-    uint32 len = list_length(@list);
-    for 0 .. len {
-        let bp = (@list)[it];
-        if string_equals(name, bp.name) return bp;
-    }
-
-    Named_Binding_Point* bp = malloc(sizeof Named_Binding_Point);
-    bp.binding_point = len;
-    bp.name = alloc_string_copy(name);
-
-    glGenBuffers(1, *bp.buffer_id);
-    glBindBufferBase(target, bp.binding_point, bp.buffer_id);
-
-    list_add(list, *bp);
-
-    return (@list)[len];
-}
-
-void bind_ubos(with Shader* s) {
-    int32 num_ubos;
-    int32 max_name_len;
-    glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCKS, *num_ubos);
-    glGetProgramiv(s.gl_handle, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, *max_name_len);
-
-    char* ubo_name = malloc(max_name_len as uint64); // TODO: might want to do stack allocation for this
-
-    for 0 .. num_ubos {
-        int32 name_len;
-        glGetActiveUniformBlockName(s.gl_handle, it, max_name_len, *name_len, ubo_name);
-        // uint32 ubo_index = glGetUniformBlockIndex(s.gl_handle, ubo_name);
-        uint32 ubo_index = it;
-        UBO* ubo = get_ubo(make_string(ubo_name));
-        glUniformBlockBinding(s.gl_handle, ubo_index, ubo.binding_point);
-    }
-
-    free(ubo_name);
-}
-
-void bind_ssbos(Shader* s) {
-    for 0 .. list_length(s.ssbos) {
-        let info = s.ssbos[it];
-        let ssbo = get_ssbo(info.name);
-        glShaderStorageBlockBinding(s.gl_handle, it, ssbo.binding_point);
-    }
-}
-
 Shaderstages process_glsl_source(StringBuilder* sb, char* filename) {
     char* src = fileread(filename);
 
@@ -670,7 +652,7 @@ void shader_init(Shader* program) {
         return info_log;
     }
 
-    uint32 make_shader(Shader* program, GLenum _type, char* code) {
+    uint32 make_shader(Shader* program, GLenum _type, string* log, char* code) {
         if code == null return 0;
 
         char* get_shader_type_string(GLenum shader_type) {
@@ -693,33 +675,14 @@ void shader_init(Shader* program) {
         GLint success = 0;
         glGetShaderiv(shader, GL_COMPILE_STATUS, *success);
         if success == 0 {
-            // let sb = *program.debug_log;
-
-            // let shader_type = get_shader_type_string(_type);
-            // sb_append(sb, shader_type);
-            // sb_append(sb, " info log:\n");
-
-            // GLint info_log_len = 0;
-            // glGetShaderiv(shader, GL_INFO_LOG_LENGTH, *info_log_len);
-            // char* info_log = append_info_log(sb, info_log_len);
-            // glGetShaderInfoLog(shader, info_log_len, null, info_log);
-            // sb_append(sb, "\n\n");
-
-            // sb_append(sb, shader_type);
-            // sb_append(sb, " source code:\n");
-            // sb_append(sb, code);
-            // sb_append(sb, "\n///////////////////////////END_OF_CODE///////////////////////////\n\n\n\n");
-
-            // print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" ", shader_type, " shader failed to compile. info log was generated.\n");
+            let shader_type = get_shader_type_string(_type);
+            print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\" ", shader_type, " shader failed to compile. info log was generated.\n");
         }
+
+        update_shader_stage_info_log(shader, log);
 
         glAttachShader(program.gl_handle, shader);
         return shader;
-    }
-
-    void cleanup_shader(uint32 program, shader) {
-        glDetachShader(program, shader);
-        glDeleteShader(shader);
     }
 
     StringBuilder src = sb_create();
@@ -738,14 +701,20 @@ void shader_init(Shader* program) {
         program.gl_handle = glCreateProgram();
     }
 
-    uint32 vs = make_shader(program, GL_VERTEX_SHADER,          vs_src);
-    uint32 tc = make_shader(program, GL_TESS_CONTROL_SHADER,    tc_src);
-    uint32 te = make_shader(program, GL_TESS_EVALUATION_SHADER, te_src);
-    uint32 gs = make_shader(program, GL_GEOMETRY_SHADER,        gs_src);
-    uint32 fs = make_shader(program, GL_FRAGMENT_SHADER,        fs_src);
-    uint32 cs = make_shader(program, GL_COMPUTE_SHADER,         cs_src);
+    uint32 vs = make_shader(program, GL_VERTEX_SHADER,          *program.log_vertex,          vs_src);
+    uint32 tc = make_shader(program, GL_TESS_CONTROL_SHADER,    *program.log_tess_control,    tc_src);
+    uint32 te = make_shader(program, GL_TESS_EVALUATION_SHADER, *program.log_tess_eval,       te_src);
+    uint32 gs = make_shader(program, GL_GEOMETRY_SHADER,        *program.log_geometry,        gs_src);
+    uint32 fs = make_shader(program, GL_FRAGMENT_SHADER,        *program.log_fragment,        fs_src);
+    uint32 cs = make_shader(program, GL_COMPUTE_SHADER,         *program.log_compute,         cs_src);
 
     glLinkProgram(program.gl_handle);
+
+
+    void cleanup_shader(uint32 program, shader) {
+        glDetachShader(program, shader);
+        glDeleteShader(shader);
+    }
 
     if vs  cleanup_shader(program.gl_handle, vs);
     if tc  cleanup_shader(program.gl_handle, tc);
@@ -764,12 +733,8 @@ void shader_init(Shader* program) {
         return;
     }
 
-    bind_ubos(program);
-
-    // print("\nuniforms: ", program.name, "\n");
-    introspect_shader_program(program);
-
-    bind_ssbos(program);
+    shader_introspect(program);
+    shader_bind_buffers(program);
 
     print("[INFO]: ShaderProgram ", program.gl_handle, " \"", program.name, "\"");
     if vs_src  print(", Vertex");
@@ -779,7 +744,6 @@ void shader_init(Shader* program) {
     if fs_src  print(", Fragment");
     if cs_src  print(", Compute");
     print("\n");
-
 }
 
 void shader_reload(Shader* shader) {
@@ -797,6 +761,10 @@ void delete_shader(Shader* shader) {
     if shader.log_fragment.chars      free(shader.log_fragment.chars);
     if shader.log_compute.chars       free(shader.log_compute.chars);
 
+    shader_free_introspection_data(shader);
+}
+
+void shader_free_introspection_data(Shader* shader) {
     if shader.uniforms != null {
 
         for 0 .. list_length(shader.uniforms) free(shader.uniforms[it].name.chars);
@@ -811,7 +779,21 @@ void delete_shader(Shader* shader) {
         shader.ubos = null;
         shader.ssbos = null;
     }
+}
 
+void update_shader_stage_info_log(uint32 shader_stage_id, string* log) {
+    int32 log_length = 0;
+    glGetShaderiv(shader_stage_id, GL_INFO_LOG_LENGTH, *log_length);
+
+    if log_length {
+        log.chars = realloc(log.chars, log_length);
+        log.length = log_length - 1; // log_length contains zero termination
+
+        glGetShaderInfoLog(shader_stage_id, log_length, null, log.chars);
+    } else {
+        if log.chars free(log.chars);
+        @log = {};
+    }
 }
 
 void update_shader_program_info_log(Shader* shader) {
@@ -824,6 +806,7 @@ void update_shader_program_info_log(Shader* shader) {
 
         glGetProgramInfoLog(shader.gl_handle, log_length, null, shader.log_program.chars);
     } else {
+        if shader.log_program.chars free(shader.log_program.chars);
         shader.log_program = {};
     }
 }

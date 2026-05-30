@@ -246,12 +246,13 @@ void update_buffer(uint32 buffer, size, void* data) {
 
 
 uint32 ogl_buffer_generate()
-    return ogl_buffer_generate(0);
-
-uint32 ogl_buffer_generate(uint32 size) {
+    return ogl_buffer_generate(0, null);
+uint32 ogl_buffer_generate(uint32 size)
+    return ogl_buffer_generate(size, null);
+uint32 ogl_buffer_generate(uint32 size, void* data) {
     uint32 buffer_id = 0;
     glGenBuffers(1, *buffer_id);
-    if size != 0  ogl_buffer_init(buffer_id, size, null);
+    if size != 0  ogl_buffer_init(buffer_id, size, data);
     return buffer_id;
 }
 

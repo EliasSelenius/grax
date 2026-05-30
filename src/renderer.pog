@@ -326,6 +326,10 @@ void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severi
     list_add(*opengl_log, *entry);
 
     print("[opengl_debug_callback]: (msg_id: ", id, ") ", get_debug_source(source), " ", get_debug_type_string(_type), " (severity: ", get_debug_severity(severity), "): ", message, "\n");
+
+    if _type == GL_DEBUG_TYPE_ERROR {
+        debug_break();
+    }
 }
 
 void draw_opengl_debug_log() {
