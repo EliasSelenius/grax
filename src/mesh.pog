@@ -245,14 +245,9 @@ void update_buffer(uint32 buffer, size, void* data) {
 }
 
 
-uint32 ogl_buffer_generate()
-    return ogl_buffer_generate(0, null);
-uint32 ogl_buffer_generate(uint32 size)
-    return ogl_buffer_generate(size, null);
-uint32 ogl_buffer_generate(uint32 size, void* data) {
+uint32 ogl_buffer_generate() {
     uint32 buffer_id = 0;
     glGenBuffers(1, *buffer_id);
-    if size != 0  ogl_buffer_init(buffer_id, size, data);
     return buffer_id;
 }
 
@@ -263,16 +258,26 @@ void ogl_buffer_init(uint32 buffer_id, size, void* data) {
     glBindBuffer(target, 0);
 }
 
-void* ogl_buffer_ptr(uint32 buffer_id) {
+void* ogl_buffer_persistent_storage(uint32 buffer_id, int64 size, void* data) {
     GLenum target = GL_ARRAY_BUFFER;
-    void* ptr = null;
+
+    GLbitfield flags = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT; // NOTE: we dont use GL_MAP_COHERENT_BIT here
 
     glBindBuffer(target, buffer_id);
-    glGetBufferPointerv(target, GL_BUFFER_MAP_POINTER, *ptr);
-    if ptr == null   ptr = glMapBuffer(target, GL_READ_WRITE);
-    glBindBuffer(target, 0);
+    glBufferStorage(target, size, data, flags);
 
+    int64 offset = 0;
+    void* ptr = glMapBufferRange(target, offset, size, flags);
+
+    glBindBuffer(target, 0);
     return ptr;
+}
+
+void ogl_buffer_flush(uint32 buffer_id, int64 offset, size) {
+    GLenum target = GL_ARRAY_BUFFER;
+    glBindBuffer(target, buffer_id);
+    glFlushMappedBufferRange(target, offset, size);
+    glBindBuffer(target, 0);
 }
 
 uint32 ogl_buffer_size(uint32 buffer_id) {
