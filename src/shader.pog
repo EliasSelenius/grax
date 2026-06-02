@@ -164,6 +164,10 @@ void dispatch_compute(uint32 x, y, z) {
     glDispatchCompute(x, y, z);
 }
 
+void dispatch_compute(ivec3 size) {
+    glDispatchCompute(size.x, size.y, size.z);
+}
+
 void shader_bind_buffers(Shader* shader) {
     for 0 .. list_length(shader.ssbos) {
         let info = shader.ssbos[it];
