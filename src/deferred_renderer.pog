@@ -69,11 +69,6 @@ struct DeferredRenderer {
 DeferredRenderer deferred_renderer_init() {
     DeferredRenderer dr = {};
 
-    @Shaders.gpass    = load_shader("../grax/shaders/gpass.glsl");
-    @Shaders.hdr2ldr  = load_shader("../grax/shaders/hdr2ldr.glsl");
-    @Shaders.dirlight = load_shader("../grax/shaders/dirlight.glsl");
-    @Shaders.skybox   = load_shader("../grax/shaders/skybox.glsl");
-
     //                          pos/metallic  normal/roughness  albedo
     TextureFormat[] g_attachments   = { .rgba16f, .rgba16f, .rgb8 };
     TextureFormat[] hdr_attachments = { .rgb16f };
@@ -112,6 +107,7 @@ void draw_screen_quad() {
     static GLuint dummy_vao = 0;
     if dummy_vao == 0   glGenVertexArrays(1, *dummy_vao);
 
+    set_face_render_mode(Poly.Fill, Poly.Cull);
     glBindVertexArray(dummy_vao); // I don't know dude....
     glDrawArrays(GL_TRIANGLES, 0, 6); // this call causes GL_INVALID_OPERATION without the dummy_vao
 

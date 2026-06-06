@@ -49,8 +49,6 @@ struct GizmoPoint {
 
 Color gizmo_current_color = White;
 
-Shader gizmo_points_shader;
-
 Batch_Of_Points gizmo_points_batch;
 
 GizmoPoint[..] gizmo_line_segments;
@@ -70,7 +68,7 @@ void gizmo_setup() {
 }
 
 void gizmo_dispatch() {
-    use(*gizmo_points_shader);
+    use(Shaders.gizmo_points);
 
     disable_depth_test();
     // enable_depth_test();

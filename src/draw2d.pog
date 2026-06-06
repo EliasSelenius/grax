@@ -222,7 +222,7 @@ void dispatch_sprites(Draw2D_Batch* batch, Transform2D cam) {
 
 void dispatch_sprites(Transform2D cam) {
 
-    use(*default2d_shader);
+    use(Shaders.default2d);
     enable_depth_test();
 
     glDepthMask(true);

@@ -54,10 +54,10 @@ RenderLayer create_layer() {
     layer.text = create_trianglebatch();
     layer.geometry = create_trianglebatch();
 
-    layer.text.shader = *ui_shader;
+    layer.text.shader = Shaders.ui;
     layer.text.texture = CascadiaMono_texture;
 
-    layer.geometry.shader = *ui_shader;
+    layer.geometry.shader = Shaders.ui;
     layer.geometry.texture = white_texture;
 
     layer.blend_mode = .src_alpha;

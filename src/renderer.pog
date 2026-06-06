@@ -1,9 +1,5 @@
 
 
-Shader default2d_shader;
-
-Shader ui_shader;
-
 UBO* camera_ubo;
 UBO* application_ubo;
 
@@ -15,13 +11,19 @@ struct Grax_Shaders {
     Shader* hdr2ldr;
     Shader* dirlight;
     Shader* skybox;
+    Shader* default2d;
+    Shader* gizmo_points;
+    Shader* ui;
 }
 
 Grax_Shaders Shaders = {
-    gpass     = alloc_shader(),
-    hdr2ldr   = alloc_shader(),
-    dirlight  = alloc_shader(),
-    skybox    = alloc_shader()
+    gpass        = alloc_shader("../grax/shaders/gpass.glsl"),
+    hdr2ldr      = alloc_shader("../grax/shaders/hdr2ldr.glsl"),
+    dirlight     = alloc_shader("../grax/shaders/dirlight.glsl"),
+    skybox       = alloc_shader("../grax/shaders/skybox.glsl"),
+    default2d    = alloc_shader("../grax/shaders/default2d.glsl"),
+    gizmo_points = alloc_shader("../grax/shaders/gizmo_points3D.glsl"),
+    ui           = alloc_shader("../grax/shaders/ui.glsl"),
 };
 
 
@@ -231,11 +233,6 @@ void grax_init() {
     { // load assets:
         // TODO: the "../grax/" here is a hack!
 
-        default2d_shader = load_shader("../grax/shaders/default2d.glsl");
-
-        gizmo_points_shader = load_shader("../grax/shaders/gizmo_points3D.glsl");
-
-        ui_shader = load_shader("../grax/shaders/ui.glsl");
         CascadiaMono_texture = load_texture2D("../grax/CascadiaMono.bmp");
         set_filter(CascadiaMono_texture, TextureFilter.linear);
         // = load_texture2D("../grax/tinyfont.bmp");
@@ -524,20 +521,20 @@ void clear_depth(float64 depth) { set_clear_depth(depth); glClear(GL_DEPTH_BUFFE
 
 enum Blend {
     Overwrite;
-    Lerp_Src_Alpha;
+    Src_Alpha;
     Add;
 }
 
 enum DepthTest {
     Disabled;
-    Never; // GL_NEVER
-    Less; // GL_LESS
-    Equal; // GL_EQUAL
-    Less_Equal; // GL_LEQUAL
-    Greater; // GL_GREATER
-    Not_Equal; // GL_NOTEQUAL
+    Never;         // GL_NEVER
+    Less;          // GL_LESS
+    Equal;         // GL_EQUAL
+    Less_Equal;    // GL_LEQUAL
+    Greater;       // GL_GREATER
+    Not_Equal;     // GL_NOTEQUAL
     Greater_Equal; // GL_GEQUAL
-    Always; // GL_ALWAYS
+    Always;        // GL_ALWAYS
 }
 
 enum Poly {
@@ -579,7 +576,7 @@ void set_mode(DrawMode mode) {
 
 void set_blend_mode(Blend blend) switch (blend) {
     case .Overwrite: glDisable(GL_BLEND); break;
-    case .Lerp_Src_Alpha:
+    case .Src_Alpha:
         glEnable(GL_BLEND);
         glBlendEquation(GL_FUNC_ADD);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
