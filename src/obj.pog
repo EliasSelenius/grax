@@ -178,9 +178,19 @@ vertex3D make_vert(OBJ_Data obj, OBJ_VertexIndices ind) {
 }
 
 
-Mesh obj_to_mesh(OBJ_Data obj) return obj_to_mesh(obj, list_length(obj.indices), 0);
+Mesh obj_to_mesh(OBJ_Data obj)
+    return obj_to_mesh(obj, list_length(obj.indices), 0);
+
 Mesh obj_to_mesh(OBJ_Data obj, uint32 ind_len, index_offset) {
     Mesh mesh = mesh_create();
+    obj_to_mesh(obj, *mesh, ind_len, index_offset);
+    return mesh;
+}
+
+void obj_to_mesh(OBJ_Data obj, Mesh* mesh)
+    obj_to_mesh(obj, mesh, list_length(obj.indices), 0);
+
+void obj_to_mesh(OBJ_Data obj, Mesh* mesh, uint32 ind_len, index_offset) {
 
     uint32 vlen = list_length(obj.vertices);
     uint32 tlen = list_length(obj.texture_coords);
@@ -207,7 +217,7 @@ Mesh obj_to_mesh(OBJ_Data obj, uint32 ind_len, index_offset) {
         let e = index_lookup[hash];
         if e.item {
             if obj_index_equals(a, e.key) {
-                add_ind(*mesh, e.item - 1);
+                add_ind(mesh, e.item - 1);
                 continue;
             }
 
@@ -215,11 +225,11 @@ Mesh obj_to_mesh(OBJ_Data obj, uint32 ind_len, index_offset) {
         }
 
         uint32 ind = list_length(mesh.vertices);
-        add_ind(*mesh, ind);
+        add_ind(mesh, ind);
         index_lookup[hash] = { a, ind + 1 };
 
         vertex3D v = make_vert(obj, a);
-        add_vert(*mesh, v);
+        add_vert(mesh, v);
     }
 
     free(index_lookup);
@@ -227,8 +237,6 @@ Mesh obj_to_mesh(OBJ_Data obj, uint32 ind_len, index_offset) {
     uint32 v_count = list_length(mesh.vertices);
     print("[INFO]: obj file \"", obj.file_name.chars, "\" converted to mesh with ", v_count, " vertices.\n");
     print("    There were ", collision_count, " collisions\n");
-
-    return mesh;
 }
 
 Mesh obj_to_flatshaded_mesh(OBJ_Data obj) {

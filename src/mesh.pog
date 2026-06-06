@@ -20,47 +20,228 @@ enum Mesh_Primitive {
     Triangles; Lines; Quad_Patches;
 }
 
+GLenum ogl_mode(Mesh_Primitive prim) switch prim {
+    case .Triangles:    return GL_TRIANGLES;
+    case .Lines:        return GL_LINES;
+    case .Quad_Patches: return GL_PATCHES;
+    default: return 0;
+}
+
 struct Mesh {
     vertex3D[..] vertices;
     uint32[..] indices;
 
+    VAO* vao;
+    uint32 vao_index_start;
+    uint32 vao_index_count;
+    uint32 vao_vertex_base;
+
+    string name;
+
     Mesh_Primitive primitive;
-    uint32 vao, vbo, ebo;
-    int32 elements_count;
+    Poly front_face, back_face;
 
     vec3 bb_min, bb_max;
     float32 max_radius;
 }
 
+struct Draw_Call {
+    Draw_Elements_Indirect_Command* cmd_buffer;
+    uint32 cmd_buffer_id;
+    uint32 drawcount;
+}
+
+struct VAO {
+    Mesh*[..] meshes;
+    Mesh_Primitive primitive;
+
+    Vertex_Attrib_Type[] attributes;
+
+    uint32 gl_handle;
+    uint32 vertex_buffer_id;
+    uint32 index_buffer_id;
+
+    bool resync;
+}
+
+void mesh_ensure_vao(Mesh* this_mesh) {
+    VAO* vao = get_vao(vertex3D_attribs, this_mesh.primitive);
+
+    uint32 total_index_count = 0;
+    uint32 total_vertex_count = 0;
+
+    for 0 .. list_length(vao.meshes) {
+        Mesh* mesh = vao.meshes[it];
+        if mesh == this_mesh   return;
+
+        uint32 index_start = total_index_count;
+        uint32 vertex_base = total_vertex_count;
+
+        total_index_count  += list_length(mesh.indices);
+        total_vertex_count += list_length(mesh.vertices);
+    }
+
+    list_add(*vao.meshes, *this_mesh);
+    this_mesh.vao = vao;
+    this_mesh.vao_index_start = total_index_count;
+    this_mesh.vao_index_count = list_length(this_mesh.indices);
+    this_mesh.vao_vertex_base = total_vertex_count;
+
+    vao.resync = true;
+}
+
+VAO* get_vao(Vertex_Attrib_Type[] attributes, Mesh_Primitive primitive) {
+    static VAO*[..] vaos = list_create(sizeof VAO*);
+
+    for 0 .. list_length(vaos) {
+        VAO* vao = vaos[it];
+        if vao.attributes.data == attributes.data
+        if vao.attributes.length == attributes.length
+        if vao.primitive == primitive
+            return vao;
+    }
+
+    VAO* vao = malloc(sizeof VAO);
+    list_add(*vaos, *vao);
+    @vao = {};
+
+    vao.meshes = list_create(sizeof Mesh*);
+
+    vao.attributes = attributes;
+    vao.primitive  = primitive;
+
+    vao.vertex_buffer_id = ogl_buffer_generate();
+    vao.index_buffer_id  = ogl_buffer_generate();
+    vao.gl_handle = make_vao(vao.vertex_buffer_id, vao.index_buffer_id, vao.attributes);
+    vao.resync = true;
+
+    return vao;
+}
+
+void vao_sync(VAO* vao) {
+    vertex3D[..] vertices = list_create(sizeof vertex3D);
+    uint32[..]   indices  = list_create(sizeof uint32);
+
+    // TODO: mesh could have changed as well, so lets update the mesh parameters here:
+    //       vao_index_start
+    //       vao_index_count
+    //       vao_vertex_base
+
+    for 0 .. list_length(vao.meshes) {
+        Mesh* mesh = vao.meshes[it];
+
+        for 0 .. list_length(mesh.vertices) list_add(*vertices, *mesh.vertices[it]);
+        for 0 .. list_length(mesh.indices)  list_add(*indices,  *mesh.indices[it]);
+    }
+
+    ogl_buffer_init(vao.vertex_buffer_id, list_stride(vertices) * list_length(vertices), vertices as void*);
+    ogl_buffer_init(vao.index_buffer_id,  list_stride(indices)  * list_length(indices),  indices  as void*);
+
+    list_delete(vertices);
+    list_delete(indices);
+
+    vao.resync = false;
+}
+
+void dispatch_draw_call(VAO* vao, Draw_Call* draw_call) {
+    GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
+
+    glBindBuffer(indirect_target, draw_call.cmd_buffer_id);
+    glBindVertexArray(vao.gl_handle);
+    GLenum mode = ogl_mode(vao.primitive);
+
+    void* indirect = null;
+    int32 stride = 0; // sizeof Draw_Elements_Indirect_Command;
+    glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, indirect, draw_call.drawcount, stride);
+
+    // glMultiDrawArraysIndirect(GLenum mode, void* indirect, int32 drawcount, int32 stride);
+
+    glBindVertexArray(0);
+    glBindBuffer(indirect_target, 0);
+}
+
+uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
+    uint32 vao = 0;
+
+    glGenVertexArrays(1, *vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER,         vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+    uint32 bytesize = vertex_bytesize(attribs);
+    init_vertex_layout(bytesize as int32, attribs);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    return vao;
+}
+
+
+
+/*
+    Draw_Elements_Indirect_Command cmd;
+    for 0 .. cmd.count {
+        vertices[cmd.base_vertex + indices[cmd.first_index + it]]
+    }
+*/
+
+struct Draw_Elements_Indirect_Command {
+    uint32 count;           // number of indices
+    uint32 instance_count;  // number of instances, useful to set it to zero to disable rendering
+    uint32 first_index;     // offset into ebo
+    int32  base_vertex;
+    uint32 base_instance;
+}
+
+struct Draw_Arrays_Indirect_Command {
+    uint32 count;
+    uint32 instance_count;
+    uint32 first;
+    uint32 base_instance;
+}
+
+
 void mesh_draw(Mesh* mesh) {
-    if mesh.vao == 0 {
-
+    if mesh.vao == null {
+        mesh_ensure_vao(mesh);
     }
 
-    GLenum oglmode(Mesh_Primitive prim) switch prim {
-        case .Triangles:    return GL_TRIANGLES;
-        case .Lines:        return GL_LINES;
-        case .Quad_Patches: return GL_PATCHES;
-        default: return 0;
-    }
-    GLenum mode = oglmode(mesh.primitive);
+    if mesh.vao.resync  vao_sync(mesh.vao);
 
-    glBindVertexArray(mesh.vao);
+    glBindVertexArray(mesh.vao.gl_handle);
 
-    if mesh.ebo {
-        glDrawElements(mode, mesh.elements_count, GL_UNSIGNED_INT, null);
-    } else {
-        glDrawArrays(mode, 0, mesh.elements_count);
-    }
+    set_face_render_mode(mesh.front_face, mesh.back_face);
+
+    GLenum mode = ogl_mode(mesh.primitive);
+    glDrawElementsInstancedBaseVertexBaseInstance(
+        mode, mesh.vao_index_count, GL_UNSIGNED_INT,
+        (mesh.vao_index_start * sizeof uint32) as void*,
+        1, mesh.vao_vertex_base, 0);
 
     glBindVertexArray(0);
 }
+
 
 Mesh mesh_create() {
     Mesh m = {};
     m.vertices = list_create(sizeof vertex3D);
     m.indices  = list_create(sizeof uint32);
+    m.front_face = .Fill;
+    m.back_face  = .Cull;
+    m.primitive  = .Triangles;
     return m;
+}
+
+Mesh* mesh_alloc() {
+    Mesh* mesh = malloc(sizeof Mesh);
+    @mesh = {};
+    mesh.vertices = list_create(sizeof vertex3D);
+    mesh.indices  = list_create(sizeof uint32);
+    mesh.front_face = .Fill;
+    mesh.back_face  = .Cull;
+    mesh.primitive  = .Triangles;
+    return mesh;
 }
 
 void mesh_free(Mesh m) {
@@ -125,6 +306,15 @@ struct Vertex_Attribute_Info {
     bool normalized;
 }
 
+uint32 vertex_bytesize(Vertex_Attrib_Type[] attribs) {
+    uint32 bytes = 0;
+    for 0 .. attribs.length {
+        let info = get_vertex_attribute_info(attribs[it]);
+        bytes += info.bytesize;
+    }
+    return bytes;
+}
+
 Vertex_Attribute_Info get_vertex_attribute_info(Vertex_Attrib_Type datatype) {
     switch datatype {
         case .float32: return { _type = GL_FLOAT,         count = 1, bytesize = 4,  normalized = false };
@@ -141,7 +331,7 @@ uint32 set_vertex_attribute_pointer(uint32 index, Vertex_Attrib_Type datatype, i
     let info = get_vertex_attribute_info(datatype);
 
     glEnableVertexAttribArray(index);
-    glVertexAttribPointer(index, info.count, info._type, info.normalized, stride, offset);
+    glVertexAttribPointer(index, info.count, info._type, info.normalized, stride, offset as void*);
     glVertexAttribDivisor(index, divisor);
 
     return info.bytesize;
@@ -181,7 +371,7 @@ DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs,
     glBindVertexArray(db.vao);
 
     glGenBuffers(1, *db.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER , db.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, db.vbo);
     glGenBuffers(1, *db.ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
 
@@ -273,6 +463,42 @@ void* ogl_buffer_persistent_storage(uint32 buffer_id, int64 size, void* data) {
     return ptr;
 }
 
+// struct Persistently_Mapped_GPU_Buffer {
+//     void* ptr;
+//     uint32 buffer_id;
+//     uint32 size;
+// }
+
+// Persistently_Mapped_GPU_Buffer* get_mapped_buffer(void* ptr, uint32 size) {
+//     static Persistently_Mapped_GPU_Buffer[..] gpu_buffers = list_create(sizeof Persistently_Mapped_GPU_Buffer);
+
+//     Persistently_Mapped_GPU_Buffer* buf = null;
+//     if ptr == null goto new;
+
+//     for 0 .. list_length(gpu_buffers) {
+//         buf = *gpu_buffers[it];
+//         if buf.ptr == ptr {
+//             if buf.size > size;
+//             buf.ptr = ogl_buffer_persistent_storage(buf.buffer_id, size, null);
+//         }
+//     }
+
+//     new: buf = list_add(*gpu_buffers);
+//     buf.buffer_id = ogl_buffer_generate();
+//     buf.ptr = ogl_buffer_persistent_storage(buf.buffer_id, size, null);
+//     buf.size = size;
+//     return buf;
+// }
+
+// void* gpu_malloc(uint32 size) {
+//     return get_mapped_buffer(null, size).ptr;
+// }
+
+// void* gpu_realloc(void* ptr, uint32 size) {
+//     let buf = get_mapped_buffer(ptr, size);
+// }
+
+
 void ogl_buffer_flush(uint32 buffer_id, int64 offset, size) {
     GLenum target = GL_ARRAY_BUFFER;
     glBindBuffer(target, buffer_id);
@@ -282,13 +508,13 @@ void ogl_buffer_flush(uint32 buffer_id, int64 offset, size) {
 
 uint32 ogl_buffer_size(uint32 buffer_id) {
     GLenum target = GL_ARRAY_BUFFER;
-    uint32 size = 0;
+    int32 size = 0;
 
     glBindBuffer(target, buffer_id);
     glGetBufferParameteriv(target, GL_BUFFER_SIZE, *size);
     glBindBuffer(target, 0);
 
-    return size;
+    return size as uint32;
 }
 
 
@@ -325,6 +551,10 @@ void calc_bounds(Mesh* mesh) {
 }
 
 void gen_normals(Mesh mesh) {
+    gen_normals(*mesh)
+}
+
+void gen_normals(Mesh* mesh) {
     // set normals to zero
     for 0 .. list_length(mesh.vertices)  mesh.vertices[it].normal = {0, 0, 0};
 
