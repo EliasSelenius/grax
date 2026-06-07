@@ -42,7 +42,7 @@ struct Mesh {
     Poly front_face, back_face;
 
     vec3 bb_min, bb_max;
-    float32 max_radius;
+    float max_radius;
 }
 
 struct VAO {
@@ -179,8 +179,10 @@ struct Draw_Arrays_Indirect_Command {
     uint32 base_instance;
 }
 
+void mesh_draw(Mesh* mesh)
+    mesh_draw(mesh, false);
 
-void mesh_draw(Mesh* mesh) {
+void mesh_draw(Mesh* mesh, bool wireframe) {
     if mesh.vao == null {
         mesh_ensure_vao(mesh);
     }
@@ -189,7 +191,8 @@ void mesh_draw(Mesh* mesh) {
 
     glBindVertexArray(mesh.vao.gl_handle);
 
-    set_face_render_mode(mesh.front_face, mesh.back_face);
+    if wireframe set_face_render_mode(Poly.Line, Poly.Line);
+    else set_face_render_mode(mesh.front_face, mesh.back_face);
 
     GLenum mode = ogl_mode(mesh.primitive);
     glDrawElementsInstancedBaseVertexBaseInstance(
