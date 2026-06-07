@@ -45,12 +45,6 @@ struct Mesh {
     float32 max_radius;
 }
 
-struct Draw_Call {
-    Draw_Elements_Indirect_Command* cmd_buffer;
-    uint32 cmd_buffer_id;
-    uint32 drawcount;
-}
-
 struct VAO {
     Mesh*[..] meshes;
     Mesh_Primitive primitive;
@@ -67,26 +61,13 @@ struct VAO {
 void mesh_ensure_vao(Mesh* this_mesh) {
     VAO* vao = get_vao(vertex3D_attribs, this_mesh.primitive);
 
-    uint32 total_index_count = 0;
-    uint32 total_vertex_count = 0;
-
     for 0 .. list_length(vao.meshes) {
         Mesh* mesh = vao.meshes[it];
         if mesh == this_mesh   return;
-
-        uint32 index_start = total_index_count;
-        uint32 vertex_base = total_vertex_count;
-
-        total_index_count  += list_length(mesh.indices);
-        total_vertex_count += list_length(mesh.vertices);
     }
 
     list_add(*vao.meshes, *this_mesh);
     this_mesh.vao = vao;
-    this_mesh.vao_index_start = total_index_count;
-    this_mesh.vao_index_count = list_length(this_mesh.indices);
-    this_mesh.vao_vertex_base = total_vertex_count;
-
     vao.resync = true;
 }
 
@@ -122,16 +103,24 @@ void vao_sync(VAO* vao) {
     vertex3D[..] vertices = list_create(sizeof vertex3D);
     uint32[..]   indices  = list_create(sizeof uint32);
 
-    // TODO: mesh could have changed as well, so lets update the mesh parameters here:
-    //       vao_index_start
-    //       vao_index_count
-    //       vao_vertex_base
+    uint32 total_index_count = 0;
+    uint32 total_vertex_count = 0;
 
     for 0 .. list_length(vao.meshes) {
         Mesh* mesh = vao.meshes[it];
 
-        for 0 .. list_length(mesh.vertices) list_add(*vertices, *mesh.vertices[it]);
-        for 0 .. list_length(mesh.indices)  list_add(*indices,  *mesh.indices[it]);
+        uint32 index_count  = list_length(mesh.indices);
+        uint32 vertex_count = list_length(mesh.vertices);
+
+        mesh.vao_index_start = total_index_count;
+        mesh.vao_index_count = index_count;
+        mesh.vao_vertex_base = total_vertex_count;
+
+        total_index_count  += index_count;
+        total_vertex_count += vertex_count;
+
+        for 0 .. vertex_count   list_add(*vertices, *mesh.vertices[it]);
+        for 0 .. index_count    list_add(*indices,  *mesh.indices[it]);
     }
 
     ogl_buffer_init(vao.vertex_buffer_id, list_stride(vertices) * list_length(vertices), vertices as void*);
@@ -141,23 +130,6 @@ void vao_sync(VAO* vao) {
     list_delete(indices);
 
     vao.resync = false;
-}
-
-void dispatch_draw_call(VAO* vao, Draw_Call* draw_call) {
-    GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
-
-    glBindBuffer(indirect_target, draw_call.cmd_buffer_id);
-    glBindVertexArray(vao.gl_handle);
-    GLenum mode = ogl_mode(vao.primitive);
-
-    void* indirect = null;
-    int32 stride = 0; // sizeof Draw_Elements_Indirect_Command;
-    glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, indirect, draw_call.drawcount, stride);
-
-    // glMultiDrawArraysIndirect(GLenum mode, void* indirect, int32 drawcount, int32 stride);
-
-    glBindVertexArray(0);
-    glBindBuffer(indirect_target, 0);
 }
 
 uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
@@ -178,6 +150,12 @@ uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
 }
 
 
+
+struct Draw_Call {
+    Draw_Elements_Indirect_Command* cmd_buffer;
+    uint32 cmd_buffer_id;
+    uint32 drawcount;
+}
 
 /*
     Draw_Elements_Indirect_Command cmd;
@@ -222,6 +200,28 @@ void mesh_draw(Mesh* mesh) {
     glBindVertexArray(0);
 }
 
+void dispatch_draw_call(VAO* vao, Draw_Call* draw_call) {
+    GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
+
+    glBindBuffer(indirect_target, draw_call.cmd_buffer_id);
+    glBindVertexArray(vao.gl_handle);
+    GLenum mode = ogl_mode(vao.primitive);
+
+    void* indirect = null;
+    int32 stride = 0; // sizeof Draw_Elements_Indirect_Command;
+    glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, indirect, draw_call.drawcount, stride);
+
+    // glMultiDrawArraysIndirect(GLenum mode, void* indirect, int32 drawcount, int32 stride);
+
+    glBindVertexArray(0);
+    glBindBuffer(indirect_target, 0);
+}
+
+void begin_batch() {
+
+}
+
+// void end_batch
 
 Mesh mesh_create() {
     Mesh m = {};
@@ -365,7 +365,7 @@ DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs,
                                 uint32 elements_count, uint32* ebo_data) // TODO: glBufferData hint should be an argument here
 {
     DrawBuffers db = {};
-    db.elements_count = elements_count;
+    db.elements_count = elements_count as int32;
 
     glGenVertexArrays(1, *db.vao);
     glBindVertexArray(db.vao);
@@ -401,7 +401,7 @@ void update_vertices(with DrawBuffers* db, uint32 vbo_bytes, void* vertices) upd
 
 void update_indices(with DrawBuffers* db, uint32[] indices) update_indices(db, indices.length, indices.data);
 void update_indices(with DrawBuffers* db, uint32 count, uint32* indices) {
-    db.elements_count = count;
+    db.elements_count = count as int32;
     update_buffer(db.ebo, count * sizeof uint32, indices);
 }
 
@@ -551,7 +551,7 @@ void calc_bounds(Mesh* mesh) {
 }
 
 void gen_normals(Mesh mesh) {
-    gen_normals(*mesh)
+    gen_normals(*mesh);
 }
 
 void gen_normals(Mesh* mesh) {

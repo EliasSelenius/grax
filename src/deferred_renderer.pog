@@ -110,6 +110,7 @@ void draw_screen_quad() {
     set_face_render_mode(Poly.Fill, Poly.Cull);
     glBindVertexArray(dummy_vao); // I don't know dude....
     glDrawArrays(GL_TRIANGLES, 0, 6); // this call causes GL_INVALID_OPERATION without the dummy_vao
+    glBindVertexArray(0);
 
     // TODO: perhaps the GL_INVALID_OPERATION is caused by there not being any vertex attribute layout info,
     // combined with there not being any vao, GL decides the best thing to do is throw an error.
