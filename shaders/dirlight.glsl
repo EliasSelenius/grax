@@ -4,11 +4,14 @@
 #include "../grax/shaders/noise.glsl"
 #include "../grax/shaders/app.glsl"
 
+#include "shaders/wave.glsl"
 
 IO FragData {
     vec2 uv;
 } v2f;
 
+
+uniform uint u_fog_enabled = 0;
 
 uniform vec3 dirlight_direction;
 uniform vec3 dirlight_radiance;
@@ -60,24 +63,38 @@ void main() {
     vec3 light = ambient + calc_dir_light(dirlight_direction, dirlight_radiance, g);
 
 
-    vec3 wpos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
-    if (wpos.y < 0 && false) { // water
+    if (u_fog_enabled != 0) {
+        vec3 wpos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
+        if (wpos.y < 0) { // water
 
-        float dist = ray_plane_intersects(wpos, dirlight_direction, vec3(0.0), vec3(0.0, -1.0, 0.0));
-        float max_dist = 100;
-        float sun_atten = exp(-dist / max_dist);
+            vec3 dir = dirlight_direction;
+            float dist = ray_plane_intersects(wpos, dir, vec3(0.0), vec3(0.0, -1.0, 0.0));
+            vec3 water_plane_pos = wpos + dir*dist;
 
-        float view_dist = length(view_pos);
-        float view_atten = exp(-view_dist / max_dist);
-        vec3 color_blue = vec3(0.1, 0.4, 0.7);
-        light = mix(color_blue, light, view_atten) * sun_atten;
+            vec2 coord = water_plane_pos.xz;
+            float depth = 10000.0; // -wpos.y;
+            vec3 water_offset = vec3(0, 0, 0);
+            vec3 normal = vec3(0, 1, 0);
+            ocean(coord, depth, Time, water_offset, normal);
 
-    } else { // atmosphere
+            dist += dot(dir, water_offset)*2.0;
 
-        vec3 blueish    = vec3(0.5, 0.6, 0.7);
-        vec3 yellowish  = vec3(1.0, 0.9, 0.7);
-        // light = apply_fog(light, view_pos, blueish, yellowish);
+            float max_dist = 100;
+            float sun_atten = exp(-dist / max_dist);
+
+            float view_dist = length(view_pos);
+            float view_atten = exp(-view_dist / max_dist);
+            vec3 color_blue = vec3(0.1, 0.4, 0.7);
+            light = mix(color_blue, light, view_atten) * sun_atten;
+
+        } else { // atmosphere
+
+            vec3 blueish    = vec3(0.5, 0.6, 0.7);
+            vec3 yellowish  = vec3(1.0, 0.9, 0.7);
+            light = apply_fog(light, view_pos, blueish, yellowish);
+        }
     }
+
 
     FragColor = light;
 }

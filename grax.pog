@@ -11,6 +11,7 @@ include "../plang/common/glfw3.pog";
 include "../plang/common/string.pog";
 include "../plang/common/windows.pog"; // TODO: windows specific api
 
+include "../pog/modules/System/files.pog";
 
 // the "../grax" part here is a temp solution until properly implemented relative paths (the paths are not relative to file)
 include "../grax/src/renderer.pog";
