@@ -123,8 +123,8 @@ void vao_sync(VAO* vao) {
         for 0 .. index_count    list_add(*indices,  *mesh.indices[it]);
     }
 
-    ogl_buffer_init(vao.vertex_buffer_id, list_stride(vertices) * list_length(vertices), vertices as void*);
-    ogl_buffer_init(vao.index_buffer_id,  list_stride(indices)  * list_length(indices),  indices  as void*);
+    ogl_buffer_init(vao.vertex_buffer_id, vertices);
+    ogl_buffer_init(vao.index_buffer_id,  indices);
 
     list_delete(vertices);
     list_delete(indices);
@@ -152,10 +152,139 @@ uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
 
 
 struct Draw_Call {
-    Draw_Elements_Indirect_Command* cmd_buffer;
+    Draw_Elements_Indirect_Command[..] commands;
+    InstanceData[..] instance_data;
+
+    VAO* vao;
+
     uint32 cmd_buffer_id;
-    uint32 drawcount;
 }
+
+struct Draw_Batch {
+    Draw_Call[..] draw_calls;
+
+    Draw_Entry[..] entries;
+}
+
+struct Draw_Entry {
+    Mesh* mesh;
+    InstanceData[..] instance_data;
+}
+
+Draw_Call* get_draw_call(Draw_Batch* batch, VAO* vao) {
+    if batch.draw_calls == null   batch.draw_calls = list_create(sizeof Draw_Call);
+
+    for 0 .. list_length(batch.draw_calls) {
+        Draw_Call* call = *batch.draw_calls[it];
+        if call.vao == vao return call;
+    }
+
+    Draw_Call* call = list_add(*batch.draw_calls);
+    call.vao = vao;
+    call.commands      = list_create(sizeof Draw_Elements_Indirect_Command);
+    call.instance_data = list_create(sizeof InstanceData);
+    call.cmd_buffer_id = ogl_buffer_generate();
+
+    return call;
+}
+
+void clear_batch(Draw_Batch* batch) {
+    for 0 .. list_length(batch.draw_calls) {
+        Draw_Call* call = *batch.draw_calls[it];
+        list_clear(call.commands);
+        list_clear(call.instance_data);
+    }
+
+    for 0 .. list_length(batch.entries) {
+        Draw_Entry* entry = *batch.entries[it];
+        list_clear(entry.instance_data);
+    }
+}
+
+void _dispatch(Draw_Batch* batch) {
+    uint32 entry_count = list_length(batch.entries);
+
+    for 0 .. entry_count {
+        Draw_Entry* entry = *batch.entries[it];
+        if entry.mesh.vao == null  mesh_ensure_vao(entry.mesh);
+    }
+
+    for 0 .. entry_count {
+        Draw_Entry* entry = *batch.entries[it];
+        if entry.mesh.vao.resync   vao_sync(entry.mesh.vao);
+    }
+
+    for 0 .. entry_count {
+        Draw_Entry* entry = *batch.entries[it];
+
+        Draw_Call* call = get_draw_call(batch, entry.mesh.vao);
+        Draw_Elements_Indirect_Command* command = list_add(*call.commands);
+        command.count          = entry.mesh.vao_index_count;
+        command.first_index    = entry.mesh.vao_index_start;
+        command.base_vertex    = entry.mesh.vao_vertex_base;
+
+        command.instance_count = list_length(entry.instance_data);
+        command.base_instance  = list_length(call.instance_data);
+
+        for 0 .. list_length(entry.instance_data)   list_add(*call.instance_data, *entry.instance_data[it]);
+    }
+
+    uint32 draw_call_count = list_length(batch.draw_calls);
+    for 0 .. draw_call_count {
+        Draw_Call* call = *batch.draw_calls[it];
+        dispatch_draw_call(call);
+    }
+
+    clear_batch(batch);
+}
+
+void dispatch_draw_call(Draw_Call* draw_call) {
+    uint32 drawcount = list_length(draw_call.commands);
+    GLenum mode = ogl_mode(draw_call.vao.primitive);
+    uint32 byte_offset = 0;
+    int32  stride      = 0; // sizeof Draw_Elements_Indirect_Command;
+    GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
+
+
+    // uint32 total_instance_count = 0;
+    // for 0 .. drawcount {
+    //     let cmd = *draw_call.commands[it];
+    //     cmd.base_instance = total_instance_count;
+    //     total_instance_count += cmd.instance_count;
+    // }
+
+    update_ssbo("Instances", draw_call.instance_data);
+
+    ogl_buffer_init(draw_call.cmd_buffer_id, draw_call.commands);
+    glBindBuffer(indirect_target, draw_call.cmd_buffer_id);
+
+    glBindVertexArray(draw_call.vao.gl_handle);
+    glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, byte_offset as void*, drawcount, stride);
+    glBindVertexArray(0);
+
+    glBindBuffer(indirect_target, 0);
+}
+
+void add_instance(Draw_Batch* batch, Mesh* mesh, InstanceData data) {
+    if batch.entries == null  batch.entries = list_create(sizeof Draw_Entry);
+
+    Draw_Entry* entry = null;
+    for 0 .. list_length(batch.entries) {
+        if batch.entries[it].mesh == mesh {
+            entry = *batch.entries[it];
+            break;
+        }
+    }
+
+    if entry == null {
+        entry = list_add(*batch.entries);
+        entry.mesh = mesh;
+        entry.instance_data = list_create(sizeof InstanceData);
+    }
+
+    list_add(*entry.instance_data, *data);
+}
+
 
 /*
     Draw_Elements_Indirect_Command cmd;
@@ -169,7 +298,7 @@ struct Draw_Elements_Indirect_Command {
     uint32 instance_count;  // number of instances, useful to set it to zero to disable rendering
     uint32 first_index;     // offset into ebo
     int32  base_vertex;
-    uint32 base_instance;
+    uint32 base_instance;   // gl_InstanceID is unaffected by this
 }
 
 struct Draw_Arrays_Indirect_Command {
@@ -183,11 +312,8 @@ void mesh_draw(Mesh* mesh)
     mesh_draw(mesh, false);
 
 void mesh_draw(Mesh* mesh, bool wireframe) {
-    if mesh.vao == null {
-        mesh_ensure_vao(mesh);
-    }
-
-    if mesh.vao.resync  vao_sync(mesh.vao);
+    if mesh.vao == null  mesh_ensure_vao(mesh);
+    if mesh.vao.resync   vao_sync(mesh.vao);
 
     glBindVertexArray(mesh.vao.gl_handle);
 
@@ -203,28 +329,18 @@ void mesh_draw(Mesh* mesh, bool wireframe) {
     glBindVertexArray(0);
 }
 
-void dispatch_draw_call(VAO* vao, Draw_Call* draw_call) {
-    GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
+Draw_Batch current_batch;
 
-    glBindBuffer(indirect_target, draw_call.cmd_buffer_id);
-    glBindVertexArray(vao.gl_handle);
-    GLenum mode = ogl_mode(vao.primitive);
-
-    void* indirect = null;
-    int32 stride = 0; // sizeof Draw_Elements_Indirect_Command;
-    glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, indirect, draw_call.drawcount, stride);
-
-    // glMultiDrawArraysIndirect(GLenum mode, void* indirect, int32 drawcount, int32 stride);
-
-    glBindVertexArray(0);
-    glBindBuffer(indirect_target, 0);
+void mesh_batch(Mesh* mesh, InstanceData data) {
+    add_instance(*current_batch, mesh, data);
 }
 
-void begin_batch() {
-
+void batch_begin() {
 }
 
-// void end_batch
+void batch_end() {
+    _dispatch(*current_batch);
+}
 
 Mesh mesh_create() {
     Mesh m = {};
@@ -449,6 +565,10 @@ void ogl_buffer_init(uint32 buffer_id, size, void* data) {
     glBindBuffer(target, buffer_id);
     glBufferData(target, size, data, GL_STATIC_DRAW);
     glBindBuffer(target, 0);
+}
+
+void ogl_buffer_init(uint32 buffer_id, void[..] list) {
+    ogl_buffer_init(buffer_id, list_stride(list) * list_length(list), list as void*);
 }
 
 void* ogl_buffer_persistent_storage(uint32 buffer_id, int64 size, void* data) {

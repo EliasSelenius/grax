@@ -71,9 +71,9 @@ void main() {
             float dist = ray_plane_intersects(wpos, dir, vec3(0.0), vec3(0.0, -1.0, 0.0));
             vec3 water_plane_pos = wpos + dir*dist;
 
+            vec3 water_offset = vec3(0, 0, 0);
             vec2 coord = water_plane_pos.xz;
             float depth = 10000.0; // -wpos.y;
-            vec3 water_offset = vec3(0, 0, 0);
             vec3 normal = vec3(0, 1, 0);
             ocean(coord, depth, Time, water_offset, normal);
 
