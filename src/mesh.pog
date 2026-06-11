@@ -54,6 +54,7 @@ struct VAO {
     uint32 gl_handle;
     uint32 vertex_buffer_id;
     uint32 index_buffer_id;
+    uint32 per_instance_buffer_id;
 
     bool resync;
 }
@@ -91,9 +92,19 @@ VAO* get_vao(Vertex_Attrib_Type[] attributes, Mesh_Primitive primitive) {
     vao.attributes = attributes;
     vao.primitive  = primitive;
 
-    vao.vertex_buffer_id = ogl_buffer_generate();
-    vao.index_buffer_id  = ogl_buffer_generate();
-    vao.gl_handle = make_vao(vao.vertex_buffer_id, vao.index_buffer_id, vao.attributes);
+    Vertex_Attrib_Type[] per_inst_attribs = { .uint };
+
+    vao.vertex_buffer_id       = ogl_buffer_generate();
+    vao.index_buffer_id        = ogl_buffer_generate();
+    vao.per_instance_buffer_id = ogl_buffer_generate();
+
+    vao.gl_handle = make_vao(
+        vao.vertex_buffer_id,
+        vao.index_buffer_id,
+        vao.per_instance_buffer_id,
+        vao.attributes,
+        per_inst_attribs);
+
     vao.resync = true;
 
     return vao;
@@ -133,6 +144,11 @@ void vao_sync(VAO* vao) {
 }
 
 uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
+    Vertex_Attrib_Type[] per_instance_attribs = {};
+    return make_vao(vbo, ebo, 0, attribs, per_instance_attribs);
+}
+
+uint32 make_vao(uint32 vbo, ebo, instance_buffer, Vertex_Attrib_Type[] attribs, per_instance_attribs) {
     uint32 vao = 0;
 
     glGenVertexArrays(1, *vao);
@@ -142,6 +158,13 @@ uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
 
     uint32 bytesize = vertex_bytesize(attribs);
     init_vertex_layout(bytesize as int32, attribs);
+
+    if instance_buffer and per_instance_attribs.length != 0 {
+        glBindBuffer(GL_ARRAY_BUFFER, instance_buffer);
+        uint32 base_index = attribs.length;
+        uint32 divisor = 1;
+        init_vertex_layout(base_index, divisor, vertex_bytesize(per_instance_attribs) as int32, per_instance_attribs);
+    }
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -214,6 +237,7 @@ void _dispatch(Draw_Batch* batch) {
         if entry.mesh.vao.resync   vao_sync(entry.mesh.vao);
     }
 
+
     for 0 .. entry_count {
         Draw_Entry* entry = *batch.entries[it];
 
@@ -223,10 +247,12 @@ void _dispatch(Draw_Batch* batch) {
         command.first_index    = entry.mesh.vao_index_start;
         command.base_vertex    = entry.mesh.vao_vertex_base;
 
-        command.instance_count = list_length(entry.instance_data);
+        uint32 inst_count = list_length(entry.instance_data);
+
+        command.instance_count = inst_count;
         command.base_instance  = list_length(call.instance_data);
 
-        for 0 .. list_length(entry.instance_data)   list_add(*call.instance_data, *entry.instance_data[it]);
+        for 0 .. inst_count   list_add(*call.instance_data, *entry.instance_data[it]);
     }
 
     uint32 draw_call_count = list_length(batch.draw_calls);
@@ -245,6 +271,12 @@ void dispatch_draw_call(Draw_Call* draw_call) {
     int32  stride      = 0; // sizeof Draw_Elements_Indirect_Command;
     GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
 
+    uint32 inst_count = list_length(draw_call.instance_data);
+    uint32 per_inst_buffer = draw_call.vao.per_instance_buffer_id;
+    ogl_buffer_init(per_inst_buffer, inst_count * sizeof uint32, null);
+    uint32* buffer = ogl_buffer_map(per_inst_buffer, OGL_Access.writeonly);
+    for uint32 it: 0 .. inst_count   buffer[it] = it;
+    ogl_buffer_unmap();
 
     // uint32 total_instance_count = 0;
     // for 0 .. drawcount {
@@ -416,6 +448,8 @@ struct DrawBuffers {
 enum Vertex_Attrib_Type {
     vec2; vec3; vec4;
     color; float32;
+    int; uint;
+    double;
 }
 
 struct Vertex_Attribute_Info {
@@ -441,6 +475,9 @@ Vertex_Attribute_Info get_vertex_attribute_info(Vertex_Attrib_Type datatype) {
         case .vec3:    return { _type = GL_FLOAT,         count = 3, bytesize = 12, normalized = false };
         case .vec4:    return { _type = GL_FLOAT,         count = 4, bytesize = 16, normalized = false };
         case .color:   return { _type = GL_UNSIGNED_BYTE, count = 4, bytesize = 4,  normalized = true  };
+        case .int:     return { _type = GL_INT,           count = 1, bytesize = 4,  normalized = false };
+        case .uint:    return { _type = GL_UNSIGNED_INT,  count = 1, bytesize = 4,  normalized = false };
+        case .double:  return { _type = GL_DOUBLE,        count = 1, bytesize = 8,  normalized = false };
     }
 
     return {};
@@ -450,8 +487,32 @@ uint32 set_vertex_attribute_pointer(uint32 index, Vertex_Attrib_Type datatype, i
     let info = get_vertex_attribute_info(datatype);
 
     glEnableVertexAttribArray(index);
-    glVertexAttribPointer(index, info.count, info._type, info.normalized, stride, offset as void*);
+
+    switch (datatype) {
+        case .vec2:
+        case .vec3:
+        case .vec4:
+        case .color:
+        case .float32:
+            glVertexAttribPointer(index, info.count, info._type, info.normalized, stride, offset as void*);
+            break;
+
+        case .int:
+        case .uint:
+            glVertexAttribIPointer(index, info.count, info._type, stride, offset as void*);
+            break;
+
+        case .double:
+            glVertexAttribLPointer(index, info.count, info._type, stride, offset as void*);
+            break;
+
+        default: break;
+    }
+
     glVertexAttribDivisor(index, divisor);
+
+
+    // glVertexBindingDivisor(index, divisor);
 
     return info.bytesize;
 }
@@ -569,6 +630,24 @@ void ogl_buffer_init(uint32 buffer_id, size, void* data) {
 
 void ogl_buffer_init(uint32 buffer_id, void[..] list) {
     ogl_buffer_init(buffer_id, list_stride(list) * list_length(list), list as void*);
+}
+
+enum OGL_Access {
+    readonly = GL_READ_ONLY;
+    writeonly = GL_WRITE_ONLY;
+    read_write = GL_READ_WRITE;
+}
+
+void* ogl_buffer_map(uint32 buffer_id, OGL_Access access) {
+    GLenum target = GL_ARRAY_BUFFER;
+    glBindBuffer(target, buffer_id);
+    return glMapBuffer(target, access);
+}
+
+void ogl_buffer_unmap() {
+    GLenum target = GL_ARRAY_BUFFER;
+    glUnmapBuffer(target);
+    glBindBuffer(target, 0);
 }
 
 void* ogl_buffer_persistent_storage(uint32 buffer_id, int64 size, void* data) {

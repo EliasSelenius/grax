@@ -9,7 +9,7 @@
     vec3 world_normal;\
     vec3 view_normal;\
     vec2 uv;\
-    flat int instance_id;\
+    flat uint instance_id;\
 }\
 
 struct InstanceData {
@@ -41,10 +41,12 @@ layout (location = 0) in vec3 a_Pos;
 layout (location = 1) in vec3 a_Normal;
 layout (location = 2) in vec2 a_Uv;
 
+layout (location = 3) in uint a_Instance_Index;
+
 out IO_Data vert_output;
 
 void main() {
-    InstanceData data = instances[gl_InstanceID];
+    InstanceData data = instances[a_Instance_Index];
 
     mat4 model = data.model;
     mat4 view_model = camera.view * model;
@@ -58,7 +60,7 @@ void main() {
     vert_output.world_normal = mat3(model) * a_Normal;
     vert_output.view_normal = mat3(view_model) * a_Normal;
     vert_output.uv = uv_offset + a_Uv * uv_scale;
-    vert_output.instance_id = gl_InstanceID;
+    vert_output.instance_id = a_Instance_Index;
 
     gl_Position = camera.projection * view_pos;
 }

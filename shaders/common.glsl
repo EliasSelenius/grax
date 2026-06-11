@@ -169,4 +169,14 @@ vec3 skybox_light(vec3 sun_dir, vec3 sun_color, vec3 sky_dir, vec3 sky_color) {
     return sky*t;
 }
 
+
+struct Draw_Elements_Indirect_Command {
+    uint count;           // number of indices
+    uint instance_count;  // number of instances, useful to set it to zero to disable rendering
+    uint first_index;     // offset into ebo
+    int  base_vertex;
+    uint base_instance;   // gl_InstanceID is unaffected by this. It only controls per instance attributes
+};
+
+
 #endif
