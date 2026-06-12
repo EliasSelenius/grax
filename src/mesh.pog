@@ -180,6 +180,8 @@ struct Draw_Call {
 
     VAO* vao;
 
+    Poly front_face, back_face;
+
     uint32 cmd_buffer_id;
 }
 
@@ -194,16 +196,21 @@ struct Draw_Entry {
     InstanceData[..] instance_data;
 }
 
-Draw_Call* get_draw_call(Draw_Batch* batch, VAO* vao) {
+Draw_Call* get_draw_call(Draw_Batch* batch, VAO* vao, Poly front_face, back_face) {
     if batch.draw_calls == null   batch.draw_calls = list_create(sizeof Draw_Call);
 
     for 0 .. list_length(batch.draw_calls) {
         Draw_Call* call = *batch.draw_calls[it];
-        if call.vao == vao return call;
+        if call.vao        == vao
+        if call.front_face == front_face
+        if call.back_face  == back_face
+            return call;
     }
 
     Draw_Call* call = list_add(*batch.draw_calls);
     call.vao = vao;
+    call.front_face = front_face;
+    call.back_face  = back_face;
     call.commands      = list_create(sizeof Draw_Elements_Indirect_Command);
     call.instance_data = list_create(sizeof InstanceData);
     call.cmd_buffer_id = ogl_buffer_generate();
@@ -241,7 +248,7 @@ void _dispatch(Draw_Batch* batch) {
     for 0 .. entry_count {
         Draw_Entry* entry = *batch.entries[it];
 
-        Draw_Call* call = get_draw_call(batch, entry.mesh.vao);
+        Draw_Call* call = get_draw_call(batch, entry.mesh.vao, entry.mesh.front_face, entry.mesh.back_face);
         Draw_Elements_Indirect_Command* command = list_add(*call.commands);
         command.count          = entry.mesh.vao_index_count;
         command.first_index    = entry.mesh.vao_index_start;
@@ -272,6 +279,8 @@ void dispatch_draw_call(Draw_Call* draw_call) {
     GLenum indirect_target = GL_DRAW_INDIRECT_BUFFER;
 
     uint32 inst_count = list_length(draw_call.instance_data);
+    if inst_count == 0 return;
+
     uint32 per_inst_buffer = draw_call.vao.per_instance_buffer_id;
     ogl_buffer_init(per_inst_buffer, inst_count * sizeof uint32, null);
     uint32* buffer = ogl_buffer_map(per_inst_buffer, OGL_Access.writeonly);
@@ -289,6 +298,8 @@ void dispatch_draw_call(Draw_Call* draw_call) {
 
     ogl_buffer_init(draw_call.cmd_buffer_id, draw_call.commands);
     glBindBuffer(indirect_target, draw_call.cmd_buffer_id);
+
+    set_face_render_mode(draw_call.front_face, draw_call.back_face);
 
     glBindVertexArray(draw_call.vao.gl_handle);
     glMultiDrawElementsIndirect(mode, GL_UNSIGNED_INT, byte_offset as void*, drawcount, stride);
@@ -798,13 +809,13 @@ void flip_indices(Mesh mesh, uint32 base, uint32 len) {
     // for uint32 i = 0, i < len, i += 3 {}
 }
 
-void set_origin(Mesh mesh, vec3 origin) {
+void set_origin(Mesh* mesh, vec3 origin) {
     for 0 .. list_length(mesh.vertices) {
         mesh.vertices[it].pos = mesh.vertices[it].pos - origin;
     }
 }
 
-vec3 avg_vertex_pos(Mesh mesh) {
+vec3 avg_vertex_pos(Mesh* mesh) {
     vec3 avg = vec3_zero;
     uint32 len = list_length(mesh.vertices);
     for 0 .. len {
