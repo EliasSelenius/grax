@@ -11,7 +11,9 @@ include "../plang/common/glfw3.pog";
 include "../plang/common/string.pog";
 include "../plang/common/windows.pog"; // TODO: windows specific api
 
-include "../pog/modules/System/files.pog";
+include "../pog/modules/files.pog";
+include "../pog/modules/json.pog";
+
 
 // the "../grax" part here is a temp solution until properly implemented relative paths (the paths are not relative to file)
 include "../grax/src/renderer.pog";
@@ -32,3 +34,5 @@ include "../grax/src/deferred_renderer.pog";
 include "../grax/src/draw2d.pog";
 include "../grax/src/wav.pog";
 include "../grax/src/audio.pog";
+include "../grax/src/gltf.pog";
+

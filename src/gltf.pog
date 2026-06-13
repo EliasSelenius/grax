@@ -1,0 +1,91 @@
+
+struct glTF_File {
+    uint32 scene;
+    glTF_Scene[] scenes;
+    glTF_Node[] nodes;
+}
+
+struct glTF_Scene {
+    uint32[] nodes;
+}
+
+struct glTF_Node {
+    mat4 local_transform;
+    uint32[] children;
+    uint32 mesh;
+    uint32 camera;
+}
+
+struct glTF_BufferView {
+    uint32 buffer;
+    uint32 byte_offset;
+    uint32 byte_length;
+    uint32 byte_stride;
+    GLenum buffer_target;
+}
+
+struct glTF_Accessor {
+    uint32 buffer_view;
+    uint32 byte_offset;
+    string _type; // "VEC2"
+    GLenum component_type;
+    uint32 count;
+    // min; // pff
+    // max; // pff
+}
+
+struct glTF_Mesh {
+    glTF_Mesh_Primitives[] primitives;
+}
+
+struct glTF_Mesh_Attributes {
+    string name;
+    uint32 accessor;
+}
+
+struct glTF_Mesh_Primitives {
+    GLenum mode; // GL_TRIANGLES
+    uint32 indices;
+    uint32 material;
+    glTF_Mesh_Attributes[] attributes;
+}
+
+
+void gltf_load(char* file_name) {
+    byte[] bytes = read_binary_file(file_name);
+
+    struct Header {
+        uint32 magic;
+        uint32 version;
+        uint32 length;
+    }
+
+    struct Chunk {
+        uint32 length;
+        char[4] chunk_type; // "JSON" "BIN"
+    }
+
+    Header* header = bytes.data;
+
+    Chunk* chunk_json;
+    Chunk* chunk_binary;
+
+    print("glTF file: ", file_name, "\n");
+    print("header: ", @header, "\n");
+
+
+    Chunk* chunk = (header+1) as Chunk*;
+    while chunk as uint64 - header as uint64 < bytes.length {
+        printf("    chunk: %u \"%.4s\"\n", chunk.length, chunk.chunk_type);
+
+        if string_equals("JSON", {chars=chunk.chunk_type, length=4} as string) {
+            printf("        JSON: %.*s\n", chunk.length, (chunk+1) as char*);
+            chunk_json = chunk;
+        }
+
+        chunk = ((chunk+1) as uint64 + chunk.length) as Chunk*;
+    }
+
+    json_parse((chunk_json+1) as char*);
+
+}
