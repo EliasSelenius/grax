@@ -4,7 +4,11 @@
 #include "../grax/shaders/noise.glsl"
 #include "../grax/shaders/app.glsl"
 
-#include "shaders/wave.glsl"
+// #define WATER
+
+#ifdef WATER
+// #include "shaders/wave.glsl"
+#endif
 
 IO FragData {
     vec2 uv;
@@ -71,6 +75,7 @@ void main() {
             float dist = ray_plane_intersects(wpos, dir, vec3(0.0), vec3(0.0, -1.0, 0.0));
             vec3 water_plane_pos = wpos + dir*dist;
 
+            #ifdef WATER
             vec3 water_offset = vec3(0, 0, 0);
             vec2 coord = water_plane_pos.xz;
             float depth = 10000.0; // -wpos.y;
@@ -78,6 +83,7 @@ void main() {
             ocean(coord, depth, Time, water_offset, normal);
 
             dist += dot(dir, water_offset)*2.0;
+            #endif
 
             float max_dist = 100;
             float sun_atten = exp(-dist / max_dist);

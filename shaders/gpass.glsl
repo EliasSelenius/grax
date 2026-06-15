@@ -1,6 +1,5 @@
 
-#extension GL_ARB_bindless_texture : require
-
+#include "../grax/shaders/prelude.glsl"
 #include "../grax/shaders/camera.glsl"
 
 
@@ -41,12 +40,11 @@ layout (location = 0) in vec3 a_Pos;
 layout (location = 1) in vec3 a_Normal;
 layout (location = 2) in vec2 a_Uv;
 
-layout (location = 3) in uint a_Instance_Index;
-
 out IO_Data vert_output;
 
 void main() {
-    InstanceData data = instances[a_Instance_Index];
+    uint instance_id = uint(gl_BaseInstanceARB) + uint(gl_InstanceID);
+    InstanceData data = instances[instance_id];
 
     mat4 model = data.model;
     mat4 view_model = camera.view * model;
@@ -60,7 +58,7 @@ void main() {
     vert_output.world_normal = mat3(model) * a_Normal;
     vert_output.view_normal = mat3(view_model) * a_Normal;
     vert_output.uv = uv_offset + a_Uv * uv_scale;
-    vert_output.instance_id = a_Instance_Index;
+    vert_output.instance_id = instance_id;
 
     gl_Position = camera.projection * view_pos;
 }

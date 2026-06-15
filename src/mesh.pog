@@ -54,7 +54,6 @@ struct VAO {
     uint32 gl_handle;
     uint32 vertex_buffer_id;
     uint32 index_buffer_id;
-    uint32 per_instance_buffer_id;
 
     bool resync;
 }
@@ -92,18 +91,13 @@ VAO* get_vao(Vertex_Attrib_Type[] attributes, Mesh_Primitive primitive) {
     vao.attributes = attributes;
     vao.primitive  = primitive;
 
-    Vertex_Attrib_Type[] per_inst_attribs = { .uint };
-
-    vao.vertex_buffer_id       = ogl_buffer_generate();
-    vao.index_buffer_id        = ogl_buffer_generate();
-    vao.per_instance_buffer_id = ogl_buffer_generate();
+    vao.vertex_buffer_id  = ogl_buffer_generate();
+    vao.index_buffer_id   = ogl_buffer_generate();
 
     vao.gl_handle = make_vao(
         vao.vertex_buffer_id,
         vao.index_buffer_id,
-        vao.per_instance_buffer_id,
-        vao.attributes,
-        per_inst_attribs);
+        vao.attributes);
 
     vao.resync = true;
 
@@ -231,7 +225,7 @@ void clear_batch(Draw_Batch* batch) {
     }
 }
 
-void _dispatch(Draw_Batch* batch) {
+void batch_dispatch(Draw_Batch* batch) {
     uint32 entry_count = list_length(batch.entries);
 
     for 0 .. entry_count {
@@ -281,19 +275,6 @@ void dispatch_draw_call(Draw_Call* draw_call) {
     uint32 inst_count = list_length(draw_call.instance_data);
     if inst_count == 0 return;
 
-    uint32 per_inst_buffer = draw_call.vao.per_instance_buffer_id;
-    ogl_buffer_init(per_inst_buffer, inst_count * sizeof uint32, null);
-    uint32* buffer = ogl_buffer_map(per_inst_buffer, OGL_Access.writeonly);
-    for uint32 it: 0 .. inst_count   buffer[it] = it;
-    ogl_buffer_unmap();
-
-    // uint32 total_instance_count = 0;
-    // for 0 .. drawcount {
-    //     let cmd = *draw_call.commands[it];
-    //     cmd.base_instance = total_instance_count;
-    //     total_instance_count += cmd.instance_count;
-    // }
-
     update_ssbo("Instances", draw_call.instance_data);
 
     ogl_buffer_init(draw_call.cmd_buffer_id, draw_call.commands);
@@ -308,7 +289,7 @@ void dispatch_draw_call(Draw_Call* draw_call) {
     glBindBuffer(indirect_target, 0);
 }
 
-void add_instance(Draw_Batch* batch, Mesh* mesh, InstanceData data) {
+void batch_add_instance(Draw_Batch* batch, Mesh* mesh, InstanceData data) {
     if batch.entries == null  batch.entries = list_create(sizeof Draw_Entry);
 
     Draw_Entry* entry = null;
@@ -375,14 +356,14 @@ void mesh_draw(Mesh* mesh, bool wireframe) {
 Draw_Batch current_batch;
 
 void mesh_batch(Mesh* mesh, InstanceData data) {
-    add_instance(*current_batch, mesh, data);
+    batch_add_instance(*current_batch, mesh, data);
 }
 
 void batch_begin() {
 }
 
 void batch_end() {
-    _dispatch(*current_batch);
+    batch_dispatch(*current_batch);
 }
 
 Mesh mesh_create() {
