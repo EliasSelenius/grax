@@ -62,7 +62,7 @@ void update_ssbo(char* name, void* data, uint32 size) {
 
     if ssbo.buffer_id == 0 {
         uint32 buffer_id = ogl_buffer_generate();
-        bind_buffer(ssbo, buffer_id);
+        bind_ssbo_buffer(ssbo, buffer_id);
     }
 
     ogl_buffer_init(ssbo.buffer_id, size, data);
@@ -117,7 +117,7 @@ SSBO* get_ssbo(string name) {
     return ssbo;
 }
 
-void bind_buffer(SSBO* ssbo, uint32 buffer_id) {
+void bind_ssbo_buffer(SSBO* ssbo, uint32 buffer_id) {
     GLenum target = GL_SHADER_STORAGE_BUFFER;
     glBindBufferBase(target, ssbo.binding_point, buffer_id);
     ssbo.buffer_id = buffer_id;

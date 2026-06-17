@@ -95,8 +95,11 @@ void main() {
 
         } else { // atmosphere
 
-            vec3 blueish    = vec3(0.5, 0.6, 0.7);
-            vec3 yellowish  = vec3(1.0, 0.9, 0.7);
+            vec3 blueish    = vec3(0.5, 0.6, 1);
+            vec3 yellowish  = vec3(1.0, 0.9, 0.5);
+
+            // vec3 blueish    = vec3(0,0,1);
+            // vec3 yellowish  = vec3(1,0,0);
             light = apply_fog(light, view_pos, blueish, yellowish);
         }
     }
