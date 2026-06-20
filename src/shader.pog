@@ -130,6 +130,8 @@ void bind_buffer(UBO* ubo, uint32 buffer_id) {
 }
 
 struct Shader {
+    Arena* arena;
+
     string name;
     uint32 gl_handle;
 
@@ -143,9 +145,9 @@ struct Shader {
 
     Shaderstages stages;
 
-    Shader_Uniform[..] uniforms;
-    Shader_Uniform_Block[..] ubos;
-    Shader_Storage_Block[..] ssbos;
+    Shader_Uniform[]       uniforms;
+    Shader_Uniform_Block[] uniform_blocks;
+    Shader_Storage_Block[] storage_blocks;
 
     // TODO: implement introspection: https://www.khronos.org/opengl/wiki/Program_Introspection#Interface_query
     // TODO: glValidateProgram might produce some insightfull info
@@ -169,58 +171,18 @@ void dispatch_compute(ivec3 size) {
 }
 
 void shader_bind_buffers(Shader* shader) {
-    for 0 .. list_length(shader.ssbos) {
-        let info = shader.ssbos[it];
+    for 0 .. shader.storage_blocks.length {
+        let info = shader.storage_blocks[it];
         let ssbo = get_ssbo(info.name);
         glShaderStorageBlockBinding(shader.gl_handle, it, ssbo.binding_point);
     }
 
-    for 0 .. list_length(shader.ubos) {
-        let info = shader.ubos[it];
+    for 0 .. shader.uniform_blocks.length {
+        let info = shader.uniform_blocks[it];
         let ubo  = get_ubo(info.name);
         glUniformBlockBinding(shader.gl_handle, it, ubo.binding_point);
     }
 }
-
-
-/*
-void glGetProgramInterfaceiv(GLuint program, GLenum programInterface, GLenum pname, GLint* params);
-programInterface:
-    GL_UNIFORM
-    GL_UNIFORM_BLOCK
-    GL_ATOMIC_COUNTER_BUFFER
-    GL_PROGRAM_INPUT
-    GL_PROGRAM_OUTPUT
-
-    GL_VERTEX_SUBROUTINE
-    GL_TESS_CONTROL_SUBROUTINE
-    GL_TESS_EVALUATION_SUBROUTINE
-    GL_GEOMETRY_SUBROUTINE
-    GL_FRAGMENT_SUBROUTINE
-    GL_COMPUTE_SUBROUTINE
-
-    GL_VERTEX_SUBROUTINE_UNIFORM
-    GL_TESS_CONTROL_SUBROUTINE_UNIFORM
-    GL_TESS_EVALUATION_SUBROUTINE_UNIFORM
-    GL_GEOMETRY_SUBROUTINE_UNIFORM
-    GL_FRAGMENT_SUBROUTINE_UNIFORM
-    GL_COMPUTE_SUBROUTINE_UNIFORM
-
-    GL_TRANSFORM_FEEDBACK_VARYING
-    GL_BUFFER_VARIABLE
-    GL_SHADER_STORAGE_BLOCK
-    GL_TRANSFORM_FEEDBACK_BUFFER
-
-pname:
-    GL_ACTIVE_RESOURCES
-    GL_MAX_NAME_LENGTH
-    GL_MAX_NUM_ACTIVE_VARIABLES
-    GL_MAX_NUM_COMPATIBLE_SUBROUTINES
-
-void glGetProgramResourceName(GLuint program, GLenum programInterface, GLuint index, GLsizei bufSize, GLsizei* length, char* name);
-
-void glGetProgramResourceiv(GLuint program, GLenum programInterface, GLuint index, GLsizei propCount, const Glenum * props, GLsizei bufSize, GLsizei * length, GLint * params);
-*/
 
 /*
 GL_NAME_LENGTH                            Any except GL_ATOMIC_COUNTER_BUFFER and GL_TRANSFORM_FEEDBACK_BUFFER
@@ -353,17 +315,64 @@ GL_TRANSFORM_FEEDBACK_BUFFER
 
 */
 
-void get_program_resource(uint32 program, interface, index, GLenum[] props, void* output) {
+enum OGL_ProgramInterface {
+    uniform                             = GL_UNIFORM;
+    uniform_block                       = GL_UNIFORM_BLOCK;
+    atomic_counter_buffer               = GL_ATOMIC_COUNTER_BUFFER;
+    program_input                       = GL_PROGRAM_INPUT;
+    program_output                      = GL_PROGRAM_OUTPUT;
+
+    vertex_subroutine                   = GL_VERTEX_SUBROUTINE;
+    tess_control_subroutine             = GL_TESS_CONTROL_SUBROUTINE;
+    tess_evaluation_subroutine          = GL_TESS_EVALUATION_SUBROUTINE;
+    geometry_subroutine                 = GL_GEOMETRY_SUBROUTINE;
+    fragment_subroutine                 = GL_FRAGMENT_SUBROUTINE;
+    compute_subroutine                  = GL_COMPUTE_SUBROUTINE;
+
+    vertex_subroutine_uniform           = GL_VERTEX_SUBROUTINE_UNIFORM;
+    tess_control_subroutine_uniform     = GL_TESS_CONTROL_SUBROUTINE_UNIFORM;
+    tess_evaluation_subroutine_uniform  = GL_TESS_EVALUATION_SUBROUTINE_UNIFORM;
+    geometry_subroutine_uniform         = GL_GEOMETRY_SUBROUTINE_UNIFORM;
+    fragment_subroutine_uniform         = GL_FRAGMENT_SUBROUTINE_UNIFORM;
+    compute_subroutine_uniform          = GL_COMPUTE_SUBROUTINE_UNIFORM;
+
+    transform_feedback_varying          = GL_TRANSFORM_FEEDBACK_VARYING;
+    buffer_variable                     = GL_BUFFER_VARIABLE;
+    storage_block                       = GL_SHADER_STORAGE_BLOCK;
+    transform_feedback_buffer           = GL_TRANSFORM_FEEDBACK_BUFFER;
+}
+
+enum OGL_InterfaceParam {
+    active_resources               = GL_ACTIVE_RESOURCES;
+    max_name_length                = GL_MAX_NAME_LENGTH;
+    max_num_active_variables       = GL_MAX_NUM_ACTIVE_VARIABLES;
+    max_num_compatible_subroutines = GL_MAX_NUM_COMPATIBLE_SUBROUTINES;
+}
+
+int32 get_program_interface(uint32 program, OGL_ProgramInterface interface, OGL_InterfaceParam pname) {
+    GLint params = 0;
+    glGetProgramInterfaceiv(program, interface, pname, *params);
+    return params;
+}
+
+void get_program_resource(uint32 program, OGL_ProgramInterface interface, uint32 index, GLenum[] props, void* output) {
     glGetProgramResourceiv(program, interface, index, props.length, props.data, props.length, null, output);
 }
 
-int32 get_program_resource_prop(uint32 program, interface, index, GLenum prop) {
+int32 get_program_resource_prop(uint32 program, OGL_ProgramInterface interface, uint32 index, GLenum prop) {
     int32 res = 0;
     glGetProgramResourceiv(program, interface, index, 1, *prop, 1, null, *res);
     return res;
 }
 
-Shader_Resource_Flags get_program_resource_usedby_flags(uint32 program, interface, index) {
+string alloc_program_resource_name(Shader* program, OGL_ProgramInterface interface, uint32 index, name_length) {
+    string name = {};
+    name.chars = arena_alloc(program.arena, name_length, 1);
+    glGetProgramResourceName(program.gl_handle, interface, index, name_length, *name.length, name.chars);
+    return name;
+}
+
+Shader_Resource_Flags get_program_resource_usedby_flags(uint32 program, OGL_ProgramInterface interface, uint32 index) {
     struct Data {
         int32 used_by_vertex;
         int32 used_by_tess_control;
@@ -388,12 +397,6 @@ Shader_Resource_Flags get_program_resource_usedby_flags(uint32 program, interfac
                                 | data.used_by_fragment         << 4
                                 | data.used_by_compute          << 5;
     return flags;
-}
-
-string alloc_and_get_name(uint32 program, interface, index, name_len) {
-    string name = {chars=malloc(name_len)};
-    glGetProgramResourceName(program, interface, index, name_len, *name.length, name.chars);
-    return name;
 }
 
 enum Shader_Resource_Flags {
@@ -438,141 +441,166 @@ struct Shader_Storage_Block {
 
 void shader_introspect(Shader* program) {
 
-    shader_free_introspection_data(program);
+    GLenum[] uniform_props = {
+        GL_NAME_LENGTH,
+        GL_TYPE,
+        GL_ARRAY_SIZE,
+        GL_OFFSET,
+        GL_BLOCK_INDEX,
+        GL_ARRAY_STRIDE,
+        GL_MATRIX_STRIDE,
+        GL_IS_ROW_MAJOR,
+        GL_ATOMIC_COUNTER_BUFFER_INDEX,
+        GL_LOCATION
+    };
 
-    {
-        int32 num_res = 0;
-        glGetProgramInterfaceiv(program.gl_handle, GL_UNIFORM, GL_ACTIVE_RESOURCES, *num_res);
-
-        Shader_Uniform[..] uniforms = list_create(sizeof Shader_Uniform);
-
-        for 0 .. num_res {
-
-            GLenum[] props = { GL_NAME_LENGTH, GL_TYPE, GL_ARRAY_SIZE, GL_OFFSET, GL_BLOCK_INDEX, GL_ARRAY_STRIDE, GL_MATRIX_STRIDE, GL_IS_ROW_MAJOR, GL_ATOMIC_COUNTER_BUFFER_INDEX, GL_LOCATION };
-            struct Data {
-                int32 name_length;
-                int32 _type;
-                int32 array_size;
-                int32 offset;
-                int32 block_index;
-                int32 array_stride;
-                int32 matrix_stride;
-                int32 is_row_major;
-                int32 atomic_counter_buffer_index;
-                int32 location;
-            }
-
-            Data data = {};
-            get_program_resource(program.gl_handle, GL_UNIFORM, it, props, *data);
-
-            Shader_Uniform* uni = list_append(*uniforms);
-            uni.flags = get_program_resource_usedby_flags(program.gl_handle, GL_UNIFORM, it);
-            uni.flags |= data.is_row_major ? .is_row_major : 0;
-
-            uni.name = alloc_and_get_name(program.gl_handle, GL_UNIFORM, it, data.name_length);
-            uni.ogl_type                    = data._type;
-            uni.array_size                  = data.array_size;
-            uni.offset                      = data.offset;
-            uni.block_index                 = data.block_index;
-            uni.array_stride                = data.array_stride;
-            uni.matrix_stride               = data.matrix_stride;
-            uni.atomic_counter_buffer_index = data.atomic_counter_buffer_index;
-            uni.location                    = data.location;
-        }
-
-        program.uniforms = uniforms;
+    struct Data_Uniform_Props {
+        int32 name_length;
+        int32 _type;
+        int32 array_size;
+        int32 offset;
+        int32 block_index;
+        int32 array_stride;
+        int32 matrix_stride;
+        int32 is_row_major;
+        int32 atomic_counter_buffer_index;
+        int32 location;
     }
 
-    {
-        int32 num_res = 0;
-        glGetProgramInterfaceiv(program.gl_handle, GL_UNIFORM_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
+    GLenum[] block_props = {
+        GL_NAME_LENGTH,
+        GL_BUFFER_BINDING,
+        GL_BUFFER_DATA_SIZE,
+        GL_NUM_ACTIVE_VARIABLES
+    };
 
-        Shader_Uniform_Block[..] ubos = list_create(sizeof Shader_Uniform_Block);
-        for 0 .. num_res {
-
-            GLenum[] props = { GL_NAME_LENGTH, GL_BUFFER_BINDING, GL_BUFFER_DATA_SIZE, GL_NUM_ACTIVE_VARIABLES };
-            struct Data {
-                int32 name_length;
-                int32 buffer_binding;
-                int32 buffer_data_size;
-                int32 num_active_variables;
-            }
-
-            Data data = {};
-            get_program_resource(program.gl_handle, GL_UNIFORM_BLOCK, it, props, *data);
-
-            Shader_Uniform_Block* res = list_append(*ubos);
-            res.flags = get_program_resource_usedby_flags(program.gl_handle, GL_UNIFORM_BLOCK, it);
-            res.name = alloc_and_get_name(program.gl_handle, GL_UNIFORM_BLOCK, it, data.name_length);
-            res.buffer_binding = data.buffer_binding;
-            res.buffer_data_size = data.buffer_data_size;
-            res.active_variables.length = data.num_active_variables;
-
-            res.active_variables.data = malloc(res.active_variables.length * sizeof int32);
-            get_program_resource(program.gl_handle, GL_UNIFORM_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
-        }
-
-        program.ubos = ubos;
+    struct Data_Block_Props {
+        int32 name_length;
+        int32 buffer_binding;
+        int32 buffer_data_size;
+        int32 num_active_variables;
     }
 
-    {
-        int32 num_res = 0;
-        glGetProgramInterfaceiv(program.gl_handle, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, *num_res);
+    int32 uniform_count = get_program_interface(program.gl_handle, OGL_ProgramInterface.uniform,       OGL_InterfaceParam.active_resources);
+    int32 ubo_count     = get_program_interface(program.gl_handle, OGL_ProgramInterface.uniform_block, OGL_InterfaceParam.active_resources);
+    int32 ssbo_count    = get_program_interface(program.gl_handle, OGL_ProgramInterface.storage_block, OGL_InterfaceParam.active_resources);
 
-        Shader_Storage_Block[..] ssbos = list_create(sizeof Shader_Storage_Block);
+    program.uniforms       = arena_array(program.arena, sizeof Shader_Uniform,       uniform_count);
+    program.uniform_blocks = arena_array(program.arena, sizeof Shader_Uniform_Block, ubo_count);
+    program.storage_blocks = arena_array(program.arena, sizeof Shader_Storage_Block, ssbo_count);
 
-        for 0 .. num_res {
+    for 0 .. uniform_count {
+        OGL_ProgramInterface interface = .uniform;
 
-            GLenum[] props =  { GL_NAME_LENGTH, GL_BUFFER_BINDING, GL_BUFFER_DATA_SIZE, GL_NUM_ACTIVE_VARIABLES };
-            struct Data {
-                int32 name_length;
-                int32 buffer_binding;
-                int32 buffer_data_size;
-                int32 num_active_variables;
-            }
+        Data_Uniform_Props data = {};
+        get_program_resource(program.gl_handle, interface, it, uniform_props, *data);
 
-            Data data = {};
-            get_program_resource(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it, props, *data);
+        Shader_Uniform* uni = *program.uniforms[it];
+        uni.flags = get_program_resource_usedby_flags(program.gl_handle, interface, it);
+        uni.flags |= data.is_row_major ? .is_row_major : 0;
 
-            Shader_Storage_Block* res = list_append(*ssbos);
-            res.flags = get_program_resource_usedby_flags(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it);
-            res.name = alloc_and_get_name(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it, data.name_length);
-            res.buffer_binding = data.buffer_binding;
-            res.buffer_data_size = data.buffer_data_size;
-            res.active_variables.length = data.num_active_variables;
-
-            res.active_variables.data = malloc(res.active_variables.length * sizeof int32);
-            get_program_resource(program.gl_handle, GL_SHADER_STORAGE_BLOCK, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
-        }
-
-        program.ssbos = ssbos;
+        uni.name = alloc_program_resource_name(program, interface, it, data.name_length);
+        uni.ogl_type                    = data._type;
+        uni.array_size                  = data.array_size;
+        uni.offset                      = data.offset;
+        uni.block_index                 = data.block_index;
+        uni.array_stride                = data.array_stride;
+        uni.matrix_stride               = data.matrix_stride;
+        uni.atomic_counter_buffer_index = data.atomic_counter_buffer_index;
+        uni.location                    = data.location;
     }
 
+    for 0 .. ubo_count {
+        OGL_ProgramInterface interface = .uniform_block;
 
-    if false { // printing:
-        for 0 .. list_length(program.uniforms) {
-            let uni = program.uniforms[it];
-            // print("layout(location=", uni.location, ") ", opengl_const_to_glsl_type_name(uni.ogl_type), " ", name, ";\n");
-            print("uniform: ", uni, "\n");
-        }
+        Data_Block_Props data = {};
+        get_program_resource(program.gl_handle, interface, it, block_props, *data);
 
-        print("Listing Uniform Blocks\n");
-        for 0 .. list_length(program.ubos) {
-            let res = program.ubos[it];
-            print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
-            for 0 .. res.active_variables.length {
-                print("        ", res.active_variables[it], "\n");
-            }
-        }
+        Shader_Uniform_Block* res = *program.uniform_blocks[it];
+        res.flags = get_program_resource_usedby_flags(program.gl_handle, interface, it);
+        res.name = alloc_program_resource_name(program, interface, it, data.name_length);
+        res.buffer_binding = data.buffer_binding;
+        res.buffer_data_size = data.buffer_data_size;
 
-        print("Listing Storage Blocks\n");
-        for 0 .. list_length(program.ssbos) {
-            let res = program.ssbos[it];
-            print("    ", res.buffer_binding, " ", res.name, " flags=", res.flags, " size=", res.buffer_data_size, "B\n");
-            for 0 .. res.active_variables.length {
-                print("        ", res.active_variables[it], "\n");
-            }
+        res.active_variables = arena_array(program.arena, sizeof int32, data.num_active_variables);
+        get_program_resource(program.gl_handle, interface, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+    }
+
+    for 0 .. ssbo_count {
+        OGL_ProgramInterface interface = .storage_block;
+
+        Data_Block_Props data = {};
+        get_program_resource(program.gl_handle, interface, it, block_props, *data);
+
+        Shader_Storage_Block* res = *program.storage_blocks[it];
+        res.flags = get_program_resource_usedby_flags(program.gl_handle, interface, it);
+        res.name = alloc_program_resource_name(program, interface, it, data.name_length);
+        res.buffer_binding = data.buffer_binding;
+        res.buffer_data_size = data.buffer_data_size;
+
+        res.active_variables = arena_array(program.arena, sizeof int32, data.num_active_variables);
+        get_program_resource(program.gl_handle, interface, it, { GL_ACTIVE_VARIABLES } as GLenum[], res.active_variables.data);
+    }
+}
+
+
+// struct Shader_Uniform {
+//     Shader_Resource_Flags flags;
+//     string name;
+//     GLenum ogl_type;
+//     int32 array_size;
+//     int32 offset;
+//     int32 block_index;
+//     int32 array_stride;
+//     int32 matrix_stride;
+//     int32 atomic_counter_buffer_index;
+//     int32 location;
+// }
+
+void draw_ui_shader() {
+    static int32 shader_index = 0;
+
+    uint32 shader_count = list_length(shader_manager.shaders);
+
+    if key_down(Key.left_control) {
+        if key_pressed(Key.page_up) {
+            shader_index = (shader_count+shader_index+1) % shader_count;
+        } else if key_pressed(Key.page_down) {
+            shader_index = (shader_count+shader_index-1) % shader_count;
         }
+    }
+
+    Shader* shader = shader_manager.shaders[shader_index];
+
+    float text_size = 0.035;
+    Color color_text = Gray;
+
+    UI_Rect rect_window = rect_pp(app.bottom_left, app.top_right);
+
+    draw_text(rect_window, -1, 1, text_size*2.0, shader.name, color_text);
+
+
+    vec2 cursor = {app.left, 0.5};
+
+    for 0 .. shader.uniforms.length {
+        Shader_Uniform* uni = *shader.uniforms[it];
+        char* type_name = opengl_const_to_glsl_type_name(uni.ogl_type);
+        cursor = draw_text(cursor, text_size, type_name, color_text);
+        cursor = draw_text(cursor, text_size, " ", color_text);
+        cursor = draw_text(cursor, text_size, uni.name,  color_text);
+
+        let sb = temp_builder();
+        if uni.array_size != -1                   {sb_append(sb, " array_size:");                  sb_append(sb, uni.array_size);}
+        if uni.offset != -1                       {sb_append(sb, " offset:");                      sb_append(sb, uni.offset);}
+        if uni.block_index != -1                  {sb_append(sb, " block_index:");                 sb_append(sb, uni.block_index);}
+        if uni.array_stride != -1                 {sb_append(sb, " array_stride:");                sb_append(sb, uni.array_stride);}
+        if uni.matrix_stride != -1                {sb_append(sb, " matrix_stride:");               sb_append(sb, uni.matrix_stride);}
+        if uni.atomic_counter_buffer_index != -1  {sb_append(sb, " atomic_counter_buffer_index:"); sb_append(sb, uni.atomic_counter_buffer_index);}
+        if uni.location != -1                     {sb_append(sb, " location:");                    sb_append(sb, uni.location);}
+
+        cursor = draw_text(cursor, text_size, to_string(sb), color_text);
+        cursor = draw_text(cursor, text_size, "\n", color_text);
+        cursor.x = app.left;
     }
 }
 
@@ -649,13 +677,6 @@ void shader_init(Shader* program) {
         return sb.content;
     }
 
-    char* append_info_log(StringBuilder* sb, int32 len) {
-        sb_grow(sb, len as uint32);
-        char* info_log = sb.content + sb.length;
-        sb.length += len as uint32 - 1; // GL_INFO_LOG_LENGTH includes zero terminator
-        return info_log;
-    }
-
     uint32 make_shader(Shader* program, GLenum _type, string* log, char* code) {
         if code == null return 0;
 
@@ -700,6 +721,9 @@ void shader_init(Shader* program) {
     char* cs_src = program.stages & .Compute     ? get_shader_source(null,  "Compute",        src.content) : null;
 
     sb_free(src);
+
+    if program.arena  arena_reset(program.arena);
+    else              program.arena = arena_create();
 
     if program.gl_handle == 0 {
         program.gl_handle = glCreateProgram();
@@ -765,24 +789,8 @@ void delete_shader(Shader* shader) {
     if shader.log_fragment.chars      free(shader.log_fragment.chars);
     if shader.log_compute.chars       free(shader.log_compute.chars);
 
-    shader_free_introspection_data(shader);
-}
-
-void shader_free_introspection_data(Shader* shader) {
-    if shader.uniforms != null {
-
-        for 0 .. list_length(shader.uniforms) free(shader.uniforms[it].name.chars);
-        for 0 .. list_length(shader.ubos)     free(shader.ubos[it].name.chars);
-        for 0 .. list_length(shader.ssbos)    free(shader.ssbos[it].name.chars);
-
-        list_delete(shader.uniforms);
-        list_delete(shader.ubos);
-        list_delete(shader.ssbos);
-
-        shader.uniforms = null;
-        shader.ubos = null;
-        shader.ssbos = null;
-    }
+    arena_release(shader.arena);
+    shader.arena = null;
 }
 
 void update_shader_stage_info_log(uint32 shader_stage_id, string* log) {

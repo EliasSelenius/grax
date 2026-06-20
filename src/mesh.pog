@@ -191,7 +191,7 @@ Draw_Call* get_draw_call(Draw_Batch* batch, VAO* vao, Poly front_face, back_face
 
     for 0 .. list_length(batch.draw_calls) {
         Draw_Call* call = *batch.draw_calls[it];
-        if call.exhausted  == false
+        // if call.exhausted  == false
         if call.vao        == vao
         if call.front_face == front_face
         if call.back_face  == back_face

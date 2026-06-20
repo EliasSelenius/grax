@@ -48,6 +48,11 @@ struct Application {
     vec2 bottom_left;
     vec2 bottom_right;
 
+    float left;
+    float right;
+    float top;
+    float bottom;
+
     uint32 refresh_rate;
 
     // measured:
@@ -81,10 +86,16 @@ void app_update_size(uint32 w, h) {
     app.window_margin = app.width_over_height - 1.0;
 
     let m = app.window_margin;
-    app.top_left     = { -1 - m,  1 };
-    app.top_right    = {  1 + m,  1 };
-    app.bottom_left  = { -1 - m, -1 };
-    app.bottom_right = {  1 + m, -1 };
+
+    app.left   = -1 - m;
+    app.right  =  1 + m;
+    app.top    =  1;
+    app.bottom = -1;
+
+    app.top_left     = { app.left,  app.top };
+    app.top_right    = { app.right, app.top };
+    app.bottom_left  = { app.left,  app.bottom };
+    app.bottom_right = { app.right, app.bottom };
 }
 
 vec2 window_size() {
