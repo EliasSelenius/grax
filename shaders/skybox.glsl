@@ -36,7 +36,11 @@ void main() {
 
     vec3 sky_dir = normalize(frag_input.pos);
 
-    vec3 light = skybox_light(sun_dir, sun_radiance, sky_dir, u_sky_color);
+    // vec3 light = skybox_light(sun_dir, sun_radiance, sky_dir, u_sky_color);
+
+    Skybox sky = make_skybox(sun_dir);
+    vec3 light = skybox_radiance(sky_dir, sky);
+
     FragColor = vec4(light, 1.0);
 }
 #endif

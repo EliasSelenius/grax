@@ -6,6 +6,8 @@
 #define Half_Pi (Pi / 2.0)
 #define Tau (2.0 * Pi)
 
+#define Infinity (1.0 / 0.0)
+
 #define deg2rad (Pi / 180.0)
 #define rad2deg (180.0 / Pi)
 
@@ -148,6 +150,29 @@ bool ray_sphere_intersects(vec3 o, vec3 d, vec3 c, float radius, inout float dis
 }
 
 
+/*
+    r0: rayorigin
+    rd: raydirection
+    sr: sphere radius
+
+    vec2 ts = raycast_sphere(r0, rd, sr)
+    if ts.x <= ts.y then: ray hit otherwise: ray miss
+*/
+vec2 raycast_sphere(vec3 r0, vec3 rd, float sr) {
+    float a = dot(rd, rd);
+    float b = 2.0 * dot(rd, r0);
+    float c = dot(r0, r0) - (sr * sr);
+    float d = b*b - 4.0*a*c;
+
+    if (d < 0.0) return vec2(1e5, -1e5); // d < 0 -> negative squareroot -> no intersection, returning
+
+    return vec2(-b - sqrt(d), -b + sqrt(d)) / (2.0*a);
+}
+
+vec2 raycast_sphere(vec3 r0, vec3 rd, vec3 center, float sr) {
+    return raycast_sphere(r0 - center, rd, sr);
+}
+
 
 
 float calc_mie_phase(vec3 sun, vec3 sky) {
@@ -167,6 +192,133 @@ vec3 skybox_light(vec3 sun_dir, vec3 sun_color, vec3 sky_dir, vec3 sky_color) {
     float t = smoothstep(-e, e, dot(sky_dir, vec3(0,1,0)));
 
     return sky*t;
+}
+
+
+struct Skybox {
+    vec3  sun_dir;           // normalized sun direction
+    float sun_intensity;     // e.g. 22.0
+    float planet_radius;     // e.g. 6371e3
+    float atmos_radius;      // e.g. 6471e3 (planet + ~100km)
+    vec3  rlh_coff;          // e.g. vec3(5.5e-6, 13.0e-6, 22.4e-6)
+    float mie_coff;          // e.g. 21e-6
+    float rlh_height;        // e.g. 8e3
+    float mie_height;        // e.g. 1.2e3
+    float mie_g;             // asymmetry (Henyey-Greenstein), e.g. 0.758
+};
+
+Skybox make_skybox(vec3 sun_dir) {
+    Skybox sky;
+    sky.sun_dir         = normalize(sun_dir);
+    sky.sun_intensity   = 22.0;
+    sky.planet_radius   = 6371e3;
+    sky.atmos_radius    = 6471e3;
+    sky.rlh_coff        = vec3(5.5e-6, 13.0e-6, 22.4e-6);
+    sky.mie_coff        = 21e-6;
+    sky.rlh_height      = 8e3;
+    sky.mie_height      = 1200.0;
+    sky.mie_g           = 0.95;
+    return sky;
+}
+
+vec3 atmosphere(vec3 view_dir, Skybox sky) {
+    const int Primary_Ray_Stepcount   = 16;
+    const int Secondary_Ray_Stepcount = 8;
+
+    vec3 r0 = vec3(0.0, sky.planet_radius + 2.0, 0.0); // eye slightly above ground
+
+    sky.sun_dir = normalize(sky.sun_dir);
+    view_dir    = normalize(view_dir);
+
+    vec2 dists_atmos = raycast_sphere(r0, view_dir, sky.atmos_radius);
+    if (dists_atmos.x > dists_atmos.y) return vec3(100,0,0);
+
+    float dist_planet = raycast_sphere(r0, view_dir, sky.planet_radius).x;
+    float dist = min(dists_atmos.y, dist_planet);
+    float i_step = (dist - dists_atmos.x) / float(Primary_Ray_Stepcount);
+
+    vec3 rlh_total = vec3(0,0,0); // accumulators for Rayleigh and Mie scattering.
+    vec3 mie_total = vec3(0,0,0);
+
+    float i_optical_depth_rlh = 0.0; // optical depth accumulators for the primary ray.
+    float i_optical_depth_mie = 0.0;
+
+    for (int i = 0; i < Primary_Ray_Stepcount; i++) {
+        vec3 pos = r0 + view_dir * (i_step*i + i_step * 0.5);
+
+        float j_optical_depth_rlh = 0.0; // optical depth accumulators for the secondary ray.
+        float j_optical_depth_mie = 0.0;
+
+        float j_step = raycast_sphere(pos, sky.sun_dir, sky.atmos_radius).y / float(Secondary_Ray_Stepcount);
+        for (int j = 0; j < Secondary_Ray_Stepcount; j++) {
+            float t = j_step*j  +  j_step*0.5;
+            float height = length(pos + sky.sun_dir * t) - sky.planet_radius;
+            j_optical_depth_rlh += exp(-max(0.0, height / sky.rlh_height)) * j_step;
+            j_optical_depth_mie += exp(-max(0.0, height / sky.mie_height)) * j_step;
+        }
+
+        // Calculate the optical depth of the Rayleigh and Mie scattering for this step.
+        float height = length(pos) - sky.planet_radius;
+        float rlh_od_step = exp(-max(0.0, height / sky.rlh_height)) * i_step;
+        float mie_od_step = exp(-max(0.0, height / sky.mie_height)) * i_step;
+
+        i_optical_depth_rlh += rlh_od_step;
+        i_optical_depth_mie += mie_od_step;
+
+        vec3 optical_depth  = sky.mie_coff * (i_optical_depth_mie + j_optical_depth_mie)
+                            + sky.rlh_coff * (i_optical_depth_rlh + j_optical_depth_rlh);
+        vec3 attn = exp(-optical_depth);
+
+        // Accumulate scattering.
+        rlh_total += rlh_od_step * attn;
+        mie_total += mie_od_step * attn;
+    }
+
+
+    float mu = dot(view_dir, sky.sun_dir);
+    float mumu = mu * mu;
+    float rlh_p = 3.0 * (1.0 + mumu) / (16.0 * Pi);
+
+    float g  = sky.mie_g;
+    float gg = g * g;
+    float mie_p = 3.0 / (8.0 * Pi) * (1.0 - gg) * (mumu + 1.0) / (pow(1.0 + gg - 2.0*mu*g, 1.5) * (2.0 + gg));
+
+    vec3 rlh_final = rlh_p * sky.rlh_coff * rlh_total;
+    vec3 mie_final = mie_p * sky.mie_coff * mie_total;
+    return sky.sun_intensity * (rlh_final + mie_final);
+}
+
+vec3 skybox_radiance(vec3 dir, Skybox sky) {
+    return atmosphere(dir, sky);
+}
+
+vec3 skybox_irradiance(vec3 normal, Skybox sky) {
+    const int Samples = 32;
+
+    normal = normalize(normal);
+    vec3 irradiance = vec3(0.0);
+
+    vec3 up    = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 right = normalize(cross(up, normal));
+         up    = cross(normal, right);
+
+    for (int i = 0; i < Samples; i++) {
+        // Simple stratified + golden ratio for better distribution
+        float u1 = (float(i) + 0.5) / Samples;
+        float u2 = fract(i * 0.6180339887);
+
+        float phi = 2.0 * Pi * u2;
+        float cos_theta = sqrt(1.0 - u1); // cosine weighted
+        float sin_theta = sqrt(u1);
+
+        vec3 dir = right  * sin_theta * cos(phi)
+                 + up     * sin_theta * sin(phi)
+                 + normal * cos_theta;
+
+        irradiance += skybox_radiance(dir, sky) * cos_theta;
+    }
+
+    return irradiance * 2.0 * Pi / Samples;
 }
 
 

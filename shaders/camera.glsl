@@ -36,7 +36,7 @@ vec3 camera_ray(vec2 ndc) {
     return ray;
 }
 
-
+// Possible optimization: https://iquilezles.org/articles/raypolys/
 float get_fragdepth_from_view_space_point(vec3 view_point) {
     vec4 clip_pos = camera.projection * vec4(view_point, 1.0);
     vec3 clip = clip_pos.xyz / clip_pos.w;

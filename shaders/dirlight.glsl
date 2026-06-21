@@ -62,23 +62,43 @@ void main() {
     g.roughness = normal_roughness.w;
     g.metallic  = pos_metallic.w;
 
+    vec3 world_pos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
 
-    vec3 ambient = albedo * dirlight_radiance * dirlight_ambient_factor;
-    vec3 light = ambient + calc_dir_light(dirlight_direction, dirlight_radiance, g);
+
+    vec3 radiance = dirlight_radiance * max(0.0, dot(dirlight_direction, vec3(0,1,0)));
+
+    vec3 ambient = albedo * radiance * dirlight_ambient_factor;
+    vec3 light = ambient + calc_dir_light(dirlight_direction, radiance, g);
+
+
+    vec3 world_pos_camera_origin = (inverse(camera.view) * vec4(view_pos, 0.0)).xyz;
+    vec3 ray_dir = normalize(world_pos_camera_origin);
+    // camera_ray();
+    Skybox sky = make_skybox(dirlight_direction);
+    // vec3 atmo = atmosphere(ray_dir, sky);
+
+    float view_dist = length(view_pos);
+    float max_dist = 2000;
+    // light = mix(light, atmo, 1 - exp(-view_dist / max_dist));
+
+    vec3 sky_irradiance = skybox_irradiance(inverse(mat3(camera.view)) * view_normal, sky);
+
+    light = max(vec3(0.0), sky_irradiance);
+
 
 
     if (u_fog_enabled != 0) {
-        vec3 wpos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
-        if (wpos.y < 0) { // water
+        if (world_pos.y < 0) { // water
 
             vec3 dir = dirlight_direction;
-            float dist = ray_plane_intersects(wpos, dir, vec3(0.0), vec3(0.0, -1.0, 0.0));
-            vec3 water_plane_pos = wpos + dir*dist;
+            float dist = ray_plane_intersects(world_pos, dir, vec3(0.0), vec3(0.0, -1.0, 0.0));
+            if (dist < 0.0) dist = Infinity;
+            vec3 water_plane_pos = world_pos + dir*dist;
 
             #ifdef WATER
             vec3 water_offset = vec3(0, 0, 0);
             vec2 coord = water_plane_pos.xz;
-            float depth = 10000.0; // -wpos.y;
+            float depth = 10000.0; // -world_pos.y;
             vec3 normal = vec3(0, 1, 0);
             ocean(coord, depth, Time, water_offset, normal);
 
@@ -95,12 +115,12 @@ void main() {
 
         } else { // atmosphere
 
-            vec3 blueish    = vec3(0.5, 0.6, 1);
-            vec3 yellowish  = vec3(1.0, 0.9, 0.5);
+            vec3 blueish    = vec3(0.3, 0.4, 0.8);
+            vec3 yellowish  = vec3(1.0, 1.0, 0.3);
 
             // vec3 blueish    = vec3(0,0,1);
             // vec3 yellowish  = vec3(1,0,0);
-            light = apply_fog(light, view_pos, blueish, yellowish);
+            // light = apply_fog(light, view_pos, blueish, yellowish);
         }
     }
 
