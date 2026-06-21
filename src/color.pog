@@ -58,13 +58,14 @@ Color lerp(float32 t, Color a, b) return {
     a.a + (b.a-a.a)*t
 };
 
-const White  = {255, 255, 255, 255} as Color;
-const Gray   = {128, 128, 128, 255} as Color;
-const Black  = {0,   0,   0,   255} as Color;
-const Red    = {255, 0,   0,   255} as Color;
-const Green  = {0,   255, 0,   255} as Color;
-const Blue   = {0,   0,   255, 255} as Color;
-const Yellow = {255, 255, 0,   255} as Color;
-const Cyan   = {0,   255, 255, 255} as Color;
-const Purple = {255, 0,   255, 255} as Color;
-const Orange = {255, 128, 0,   255} as Color;
+const White       = {255, 255, 255, 255} as Color;
+const Gray        = {128, 128, 128, 255} as Color;
+const LightGray   = {191, 191, 191, 255} as Color;
+const Black       = {0,   0,   0,   255} as Color;
+const Red         = {255, 0,   0,   255} as Color;
+const Green       = {0,   255, 0,   255} as Color;
+const Blue        = {0,   0,   255, 255} as Color;
+const Yellow      = {255, 255, 0,   255} as Color;
+const Cyan        = {0,   255, 255, 255} as Color;
+const Purple      = {255, 0,   255, 255} as Color;
+const Orange      = {255, 128, 0,   255} as Color;

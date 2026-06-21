@@ -28,6 +28,7 @@ Grax_Shaders Shaders = {
 
 
 Application app = {
+    framearena = arena_create(),
     window_width = 1600,
     window_height = 900,
     // sim_delta = 1.0 / 60.0,
@@ -36,7 +37,14 @@ Application app = {
     profiler_graph = false
 };
 
+void* talloc(uint32 size) {
+    return arena_alloc(app.framearena, size);
+}
+
 struct Application {
+
+    Arena* framearena;
+
     GLFWwindow* main_window;
     uint32 window_width, window_height;
     float32 width_over_height;
@@ -106,6 +114,8 @@ vec2 window_size() {
 }
 
 bool grax_loop() {
+
+    arena_reset(app.framearena);
 
     glfwSwapBuffers(app.main_window);
     input_state_reset();

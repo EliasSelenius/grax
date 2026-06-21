@@ -573,21 +573,41 @@ void draw_ui_shader() {
     Shader* shader = shader_manager.shaders[shader_index];
 
     float text_size = 0.035;
-    Color color_text = Gray;
+    Color color_text = LightGray;
 
     UI_Rect rect_window = rect_pp(app.bottom_left, app.top_right);
 
     draw_text(rect_window, -1, 1, text_size*2.0, shader.name, color_text);
 
 
-    vec2 cursor = {app.left, 0.5};
+    float left = app.left + text_size;
+    vec2 start_cursor = {left, 0.5};
+    vec2 cursor = start_cursor;
+    float extent = start_cursor.x;
+
+    uint32 uniform_count = 0;
 
     for 0 .. shader.uniforms.length {
         Shader_Uniform* uni = *shader.uniforms[it];
-        char* type_name = opengl_const_to_glsl_type_name(uni.ogl_type);
-        cursor = draw_text(cursor, text_size, type_name, color_text);
+        if uni.block_index != -1  continue;
+        uniform_count++;
+
+        glsl_Type glsl_type = uni.ogl_type as glsl_Type;
+
+        cursor = draw_text(cursor, text_size, "location:", color_text);
+        cursor = draw_text(cursor, text_size, to_string(uni.location), color_text);
+        cursor.x += text_size*0.5;
+
+        char* type_name = glsl_type_name(glsl_type);
+        cursor = draw_text(cursor, text_size, type_name, Purple);
         cursor = draw_text(cursor, text_size, " ", color_text);
         cursor = draw_text(cursor, text_size, uni.name,  color_text);
+
+        void* value = get_uniform(shader, uni.location, glsl_type);
+        string value_str = glsl_value_string(glsl_type, value);
+
+        cursor = draw_text(cursor, text_size, " = ", color_text);
+        cursor = draw_text(cursor, text_size, value_str, White);
 
         let sb = temp_builder();
         if uni.array_size != -1                   {sb_append(sb, " array_size:");                  sb_append(sb, uni.array_size);}
@@ -596,12 +616,18 @@ void draw_ui_shader() {
         if uni.array_stride != -1                 {sb_append(sb, " array_stride:");                sb_append(sb, uni.array_stride);}
         if uni.matrix_stride != -1                {sb_append(sb, " matrix_stride:");               sb_append(sb, uni.matrix_stride);}
         if uni.atomic_counter_buffer_index != -1  {sb_append(sb, " atomic_counter_buffer_index:"); sb_append(sb, uni.atomic_counter_buffer_index);}
-        if uni.location != -1                     {sb_append(sb, " location:");                    sb_append(sb, uni.location);}
+        // if uni.location != -1                     {sb_append(sb, " location:");                    sb_append(sb, uni.location);}
 
         cursor = draw_text(cursor, text_size, to_string(sb), color_text);
         cursor = draw_text(cursor, text_size, "\n", color_text);
-        cursor.x = app.left;
+
+        extent = max(cursor.x, extent);
+        cursor.x = left;
     }
+
+    vec2 ofs = {-text_size*0.5, text_size}*0.5;
+    UI_Rect rect_bkg = rect_pp(start_cursor + ofs, make_vec(extent, cursor.y) + ofs);
+    draw_rect(rect_bkg, opacity(Black, 0.4));
 }
 
 Shaderstages process_glsl_source(StringBuilder* sb, char* filename) {
@@ -971,7 +997,181 @@ void set_uniform(char* name, ivec4 v) set_uniform(name, v.x, v.y, v.z, v.w);
 // type proc_glProgramUniformMatrix4x3dv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLdouble* /*value*/);
 // type proc_glProgramUniformMatrix4x3fv = void(GLuint /*program*/, GLint /*location*/, GLsizei /*count*/, GLboolean /*transpose*/, /*const*/ GLfloat* /*value*/);
 
+struct glsl_Type_Info {
+    glsl_Type component_type;
+    uint32    component_count;
+}
 
+glsl_Type_Info decompose_glsl_type(glsl_Type ty) {
+    switch (ty) {
+        case .float:        return {.float,  1};
+        case .vec2:         return {.float,  2};
+        case .vec3:         return {.float,  3};
+        case .vec4:         return {.float,  4};
+        case .double:       return {.double, 1};
+        case .dvec2:        return {.double, 2};
+        case .dvec3:        return {.double, 3};
+        case .dvec4:        return {.double, 4};
+        case .int:          return {.int,    1};
+        case .ivec2:        return {.int,    2};
+        case .ivec3:        return {.int,    3};
+        case .ivec4:        return {.int,    4};
+        case .uint:         return {.uint,   1};
+        case .uvec2:        return {.uint,   2};
+        case .uvec3:        return {.uint,   3};
+        case .uvec4:        return {.uint,   4};
+        case .bool:         return {.bool,   1};
+        case .bvec2:        return {.bool,   2};
+        case .bvec3:        return {.bool,   3};
+        case .bvec4:        return {.bool,   4};
+        // case .mat2:         return {.float, 1};
+        // case .mat3:         return {.float, 1};
+        // case .mat4:         return {.float, 1};
+        // case .mat2x3:       return {.float, 1};
+        // case .mat2x4:       return {.float, 1};
+        // case .mat3x2:       return {.float, 1};
+        // case .mat3x4:       return {.float, 1};
+        // case .mat4x2:       return {.float, 1};
+        // case .mat4x3:       return {.float, 1};
+        // case .dmat2:        return {.double, 1};
+        // case .dmat3:        return {.double, 1};
+        // case .dmat4:        return {.double, 1};
+        // case .dmat2x3:      return {.double, 1};
+        // case .dmat2x4:      return {.double, 1};
+        // case .dmat3x2:      return {.double, 1};
+        // case .dmat3x4:      return {.double, 1};
+        // case .dmat4x2:      return {.double, 1};
+        // case .dmat4x3:      return {.double, 1};
+        default: return {};
+    }
+}
+
+uint32 glsl_bytesize(glsl_Type ty) {
+    uint32 bytesize(glsl_Type ty) switch (ty) {
+        case .float:  return 4;
+        case .double: return 8;
+        case .int:    return 4;
+        case .uint:   return 4;
+        default:      return 0;
+    }
+
+    glsl_Type_Info info = decompose_glsl_type(ty);
+    return bytesize(info.component_type) * info.component_count;
+}
+
+void* get_uniform(Shader* shader, int32 location, glsl_Type ty) {
+    uint32 prog = shader.gl_handle;
+
+    uint32 bytes = glsl_bytesize(ty);
+    void* value = talloc(bytes);
+
+    glsl_Type_Info info = decompose_glsl_type(ty);
+    switch (info.component_type) {
+        case .float:  glGetUniformfv (prog, location, value); break;
+        case .double: glGetUniformdv (prog, location, value); break;
+        case .int:    glGetUniformiv (prog, location, value); break;
+        case .uint:   glGetUniformuiv(prog, location, value); break;
+    }
+
+    return value;
+}
+
+void glsl_value_string(StringBuilder* sb, glsl_Type ty, void* value) {
+    glsl_Type_Info info = decompose_glsl_type(ty);
+
+    switch (info.component_type) {
+        case .float:  for 0 .. info.component_count {if it!=0 sb_append(sb, ", "); sb_append(sb, (value as float*  )[it]);} break;
+        case .double: for 0 .. info.component_count {if it!=0 sb_append(sb, ", "); sb_append(sb, (value as float64*)[it] as float);} break;
+        case .int:    for 0 .. info.component_count {if it!=0 sb_append(sb, ", "); sb_append(sb, (value as int32*  )[it]);} break;
+        case .uint:   for 0 .. info.component_count {if it!=0 sb_append(sb, ", "); sb_append(sb, (value as uint32* )[it]);} break;
+    }
+}
+
+string glsl_value_string(glsl_Type ty, void* value) {
+    let sb = temp_builder();
+    glsl_value_string(sb, ty, value);
+    return to_string(sb);
+}
+
+enum glsl_Type {
+    float                   = GL_FLOAT;
+    vec2                    = GL_FLOAT_VEC2;
+    vec3                    = GL_FLOAT_VEC3;
+    vec4                    = GL_FLOAT_VEC4;
+    double                  = GL_DOUBLE;
+    dvec2                   = GL_DOUBLE_VEC2;
+    dvec3                   = GL_DOUBLE_VEC3;
+    dvec4                   = GL_DOUBLE_VEC4;
+    int                     = GL_INT;
+    ivec2                   = GL_INT_VEC2;
+    ivec3                   = GL_INT_VEC3;
+    ivec4                   = GL_INT_VEC4;
+    uint                    = GL_UNSIGNED_INT;
+    uvec2                   = GL_UNSIGNED_INT_VEC2;
+    uvec3                   = GL_UNSIGNED_INT_VEC3;
+    uvec4                   = GL_UNSIGNED_INT_VEC4;
+    bool                    = GL_BOOL;
+    bvec2                   = GL_BOOL_VEC2;
+    bvec3                   = GL_BOOL_VEC3;
+    bvec4                   = GL_BOOL_VEC4;
+    mat2                    = GL_FLOAT_MAT2;
+    mat3                    = GL_FLOAT_MAT3;
+    mat4                    = GL_FLOAT_MAT4;
+    mat2x3                  = GL_FLOAT_MAT2x3;
+    mat2x4                  = GL_FLOAT_MAT2x4;
+    mat3x2                  = GL_FLOAT_MAT3x2;
+    mat3x4                  = GL_FLOAT_MAT3x4;
+    mat4x2                  = GL_FLOAT_MAT4x2;
+    mat4x3                  = GL_FLOAT_MAT4x3;
+    dmat2                   = GL_DOUBLE_MAT2;
+    dmat3                   = GL_DOUBLE_MAT3;
+    dmat4                   = GL_DOUBLE_MAT4;
+    dmat2x3                 = GL_DOUBLE_MAT2x3;
+    dmat2x4                 = GL_DOUBLE_MAT2x4;
+    dmat3x2                 = GL_DOUBLE_MAT3x2;
+    dmat3x4                 = GL_DOUBLE_MAT3x4;
+    dmat4x2                 = GL_DOUBLE_MAT4x2;
+    dmat4x3                 = GL_DOUBLE_MAT4x3;
+    sampler1D               = GL_SAMPLER_1D;
+    sampler2D               = GL_SAMPLER_2D;
+    sampler3D               = GL_SAMPLER_3D;
+    samplerCube             = GL_SAMPLER_CUBE;
+    sampler1DShadow         = GL_SAMPLER_1D_SHADOW;
+    sampler2DShadow         = GL_SAMPLER_2D_SHADOW;
+    sampler1DArray          = GL_SAMPLER_1D_ARRAY;
+    sampler2DArray          = GL_SAMPLER_2D_ARRAY;
+    sampler1DArrayShadow    = GL_SAMPLER_1D_ARRAY_SHADOW;
+    sampler2DArrayShadow    = GL_SAMPLER_2D_ARRAY_SHADOW;
+    sampler2DMS             = GL_SAMPLER_2D_MULTISAMPLE;
+    sampler2DMSArray        = GL_SAMPLER_2D_MULTISAMPLE_ARRAY;
+    samplerCubeShadow       = GL_SAMPLER_CUBE_SHADOW;
+    samplerBuffer           = GL_SAMPLER_BUFFER;
+    sampler2DRect           = GL_SAMPLER_2D_RECT;
+    sampler2DRectShadow     = GL_SAMPLER_2D_RECT_SHADOW;
+    isampler1D              = GL_INT_SAMPLER_1D;
+    isampler2D              = GL_INT_SAMPLER_2D;
+    isampler3D              = GL_INT_SAMPLER_3D;
+    isamplerCube            = GL_INT_SAMPLER_CUBE;
+    isampler1DArray         = GL_INT_SAMPLER_1D_ARRAY;
+    isampler2DArray         = GL_INT_SAMPLER_2D_ARRAY;
+    isampler2DMS            = GL_INT_SAMPLER_2D_MULTISAMPLE;
+    isampler2DMSArray       = GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;
+    isamplerBuffer          = GL_INT_SAMPLER_BUFFER;
+    isampler2DRect          = GL_INT_SAMPLER_2D_RECT;
+    usampler1D              = GL_UNSIGNED_INT_SAMPLER_1D;
+    usampler2D              = GL_UNSIGNED_INT_SAMPLER_2D;
+    usampler3D              = GL_UNSIGNED_INT_SAMPLER_3D;
+    usamplerCube            = GL_UNSIGNED_INT_SAMPLER_CUBE;
+    usampler1DArray         = GL_UNSIGNED_INT_SAMPLER_1D_ARRAY;
+    usampler2DArray         = GL_UNSIGNED_INT_SAMPLER_2D_ARRAY;
+    usampler2DMS            = GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE;
+    usampler2DMSArray       = GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;
+    usamplerBuffer          = GL_UNSIGNED_INT_SAMPLER_BUFFER;
+    usampler2DRect          = GL_UNSIGNED_INT_SAMPLER_2D_RECT;
+}
+
+
+char* glsl_type_name(glsl_Type ty) return opengl_const_to_glsl_type_name(ty as GLenum);
 
 char* opengl_const_to_glsl_type_name(GLenum ty) switch (ty) {
     case GL_FLOAT:                                     return "float";
@@ -986,7 +1186,7 @@ char* opengl_const_to_glsl_type_name(GLenum ty) switch (ty) {
     case GL_INT_VEC2:                                  return "ivec2";
     case GL_INT_VEC3:                                  return "ivec3";
     case GL_INT_VEC4:                                  return "ivec4";
-    case GL_UNSIGNED_INT:                              return "unsigned int";
+    case GL_UNSIGNED_INT:                              return "uint";
     case GL_UNSIGNED_INT_VEC2:                         return "uvec2";
     case GL_UNSIGNED_INT_VEC3:                         return "uvec3";
     case GL_UNSIGNED_INT_VEC4:                         return "uvec4";
@@ -1051,3 +1251,4 @@ char* opengl_const_to_glsl_type_name(GLenum ty) switch (ty) {
 
     default: return null;
 }
+
