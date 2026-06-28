@@ -67,6 +67,11 @@ Last chapter named "Completing the IBL reflectance"
 
 */
 
+float schlick_GGX(float num, float roughness) {
+    float k = sq(sq(roughness + 1.0)) / 8.0;
+    return num / (num * (1.0 - k) + k);
+}
+
 /*
     I - incoming light
     N - surface normal
@@ -85,10 +90,8 @@ vec3 cook_torrance_BRDF(vec3 I, vec3 N, vec3 R, vec3 light_radiance, Material ma
     float distribution = r / (Pi * sq(sq(NoH) * (r - 1.0) + 1.0));
 
     // geometry overshadowing
-    float k = sq(sq(mat.roughness + 1.0)) / 8.0;
-    #define schlick_GGX(num) (num / (num * (1.0 - k) + k))
-    float geometry = schlick_GGX(NoR) * schlick_GGX(NoI); // smith's method
-    #undef schlick_GGX
+    float geometry = schlick_GGX(NoR, mat.roughness) * schlick_GGX(NoI, mat.roughness); // smith's method
+
 
     mat.F0 = calc_base_reflectivity(mat.albedo, mat.metallic);
     // fresnel schlick

@@ -275,11 +275,22 @@ void begin_light_pass(DeferredRenderer* dr) {
 }
 
 void end_frame(DeferredRenderer* dr) {
-    bind_default_framebuffer();
+    // bind_default_framebuffer();
+    // use(Shaders.hdr2ldr);
+    // disable_depth_test();
+    // disable_blending();
+    // bind_texture2D(dr.fbo_hdr.attachments[0].gl_handle, 0);
+    // draw_screen_quad();
+
+
+    invoke_hdr2ldr(*dr.fbo_hdr, 0);
+}
+
+void invoke_hdr2ldr(Framebuffer* hdr, uint32 target_fbo) {
+    glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
     use(Shaders.hdr2ldr);
     disable_depth_test();
     disable_blending();
-    bind_texture2D(dr.fbo_hdr.attachments[0].gl_handle, 0);
+    bind_texture2D(hdr.attachments[0].gl_handle, 0);
     draw_screen_quad();
 }
-

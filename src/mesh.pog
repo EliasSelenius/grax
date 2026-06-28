@@ -17,12 +17,18 @@ struct vertex2D {
 
 
 enum Mesh_Primitive {
-    Triangles; Lines; Quad_Patches;
+    Triangles;
+    Lines;
+    LineStrip;
+    LineLoop;
+    Quad_Patches;
 }
 
 GLenum ogl_mode(Mesh_Primitive prim) switch prim {
     case .Triangles:    return GL_TRIANGLES;
     case .Lines:        return GL_LINES;
+    case .LineStrip:    return GL_LINE_STRIP;
+    case .LineLoop:     return GL_LINE_LOOP;
     case .Quad_Patches: return GL_PATCHES;
     default: return 0;
 }
@@ -639,7 +645,7 @@ void ogl_buffer_init(uint32 buffer_id, void[..] list) {
 enum OGL_Access {
     readonly = GL_READ_ONLY;
     writeonly = GL_WRITE_ONLY;
-    read_write = GL_READ_WRITE;
+    readwrite = GL_READ_WRITE;
 }
 
 void* ogl_buffer_map(uint32 buffer_id, OGL_Access access) {
@@ -662,7 +668,7 @@ void* ogl_buffer_persistent_storage(uint32 buffer_id, int64 size, void* data, OG
     switch access {
         case .readonly:   flags |= GL_MAP_READ_BIT; break;
         case .writeonly:  flags |= GL_MAP_WRITE_BIT; break;
-        case .read_write: flags |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT; break;
+        case .readwrite: flags |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT; break;
     }
 
     flags |= GL_MAP_COHERENT_BIT;

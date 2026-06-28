@@ -63,7 +63,7 @@ void main() {
     g.metallic  = pos_metallic.w;
 
     vec3 world_pos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
-
+    vec3 world_normal = inverse(mat3(camera.view)) * view_normal;
 
     vec3 radiance = dirlight_radiance * max(0.0, dot(dirlight_direction, vec3(0,1,0)));
 
@@ -81,9 +81,8 @@ void main() {
     float max_dist = 2000;
     // light = mix(light, atmo, 1 - exp(-view_dist / max_dist));
 
-    vec3 sky_irradiance = skybox_irradiance(inverse(mat3(camera.view)) * view_normal, sky);
-
-    light = max(vec3(0.0), sky_irradiance);
+    // vec3 sky_irradiance = skybox_irradiance(inverse(mat3(camera.view)) * view_normal, sky);
+    // light = max(vec3(0.0), sky_irradiance);
 
 
 
