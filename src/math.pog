@@ -2,24 +2,25 @@
 
 float64 sin(float64 t);
 float64 asin(float64 t);
-float32 sinf(float32 t);
-float32 asinf(float32 t);
+float sinf(float t);
+float asinf(float t);
 float64 cos(float64 t);
 float64 acos(float64 t);
-float32 cosf(float32 t);
-float32 acosf(float32 t);
+float cosf(float t);
+float acosf(float t);
 float64 tan(float64 t);
 float64 atan(float64 t);
-float32 tanf(float32 t);
-float32 atanf(float32 t);
+float tanf(float t);
+float atanf(float t);
 float64 sqrt(float64 x);
-float32 sqrtf(float32 x);
-float32 floorf(float32 x);
+float sqrtf(float x);
+float floorf(float x);
 float64 pow(float64 b, float64 e);
-float32 powf(float32 b, float32 e);
+float powf(float b, float e);
 float64 exp(float64 x);
-float32 expf(float32 x);
-
+float expf(float x);
+float fmodf(float x, y);
+float64 fmod(float64 x, y);
 
 const Pi = 3.14159265359;
 const Half_Pi = Pi / 2.0;

@@ -69,3 +69,34 @@ const Yellow      = {255, 255, 0,   255} as Color;
 const Cyan        = {0,   255, 255, 255} as Color;
 const Purple      = {255, 0,   255, 255} as Color;
 const Orange      = {255, 128, 0,   255} as Color;
+
+const Hue_Red   = 0;
+const Hue_Green = Tau/3.0;
+const Hue_Blue  = Tau*2.0/3.0;
+
+Color hsv(float h, s, v, a) {
+    if s <= 0.0 {
+        return rgb(v);
+    }
+
+    float nh = fmodf(h, Tau);
+    if nh < 0  nh += Tau;
+    nh /= Tau/6.0;
+
+    int32 i = nh as int32;
+    float f = nh - i;
+    float p = v * (1.0 - s);
+    float q = v * (1.0 - s * f);
+    float t = v * (1.0 - s * (1.0 - f));
+
+    vec3[] array = {{v,t,p},
+                    {q,v,p},
+                    {p,v,t},
+                    {p,q,v},
+                    {t,p,v},
+                    {v,p,t}};
+
+    vec3 col = array[i]*255.0 + make_vec3(0.5);
+    return {col.x as uint8, col.y as uint8, col.z as uint8, (a*255) as uint8 };
+}
+
