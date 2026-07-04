@@ -141,6 +141,10 @@ Transform2D local2world(Transform2D p, c) {
     return r;
 }
 
+vec2 get_mouse_world_coord(Transform2D cam_tr) {
+    return local2world(cam_tr, Input.mouse_pos);
+}
+
 float32 vec2_to_angle(vec2 v) {
     let a = angle(vec2_unit_y, v);
     if v.x < 0  a *= -1;
