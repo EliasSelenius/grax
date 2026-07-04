@@ -32,6 +32,7 @@ enum TextureWrapMode {
 struct Texture2D {
     uint64 texture_handle;
     uint32 width, height;
+    Color* pixels;
     uint32 gl_handle;
 }
 
@@ -176,8 +177,6 @@ Texture2D load_texture2D(char* name) {
     linearize_color_space(image);
     let tex = create_texture2D(image);
     set_filter(tex, TextureFilter.nearest);
-
-    free(image.pixels);
     return tex;
 }
 
@@ -206,8 +205,10 @@ uint32 gen_opengl_texture2D(uint32 width, height, TextureFilter filter, TextureW
 
 Texture2D create_texture2D(Image image) {
     Texture2D tex = {};
-    tex.width = image.width;
+    tex.width  = image.width;
     tex.height = image.height;
+    tex.pixels = image.pixels;
+
     glGenTextures(1, *tex.gl_handle);
     glBindTexture(GL_TEXTURE_2D, tex.gl_handle);
 

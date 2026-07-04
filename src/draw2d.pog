@@ -47,11 +47,6 @@ void init_draw2d() {
 }
 
 
-struct Spritesheet {
-    Image_Boundingbox[..] regions;
-    Texture2D texture;
-}
-
 struct Sprite {
     vec2 uv_offset;
     vec2 uv_scale;
@@ -59,23 +54,41 @@ struct Sprite {
     bool is_semi_transparent;
 }
 
-
-Sprite get_sprite(with Spritesheet* sheet, uint32 index) {
+Sprite make_sprite(Texture2D* tex, Image_Boundingbox bb) {
     Sprite s = {};
-    s.tex = *sheet.texture;
+    s.tex = tex;
 
-    let bb = sheet.regions[index];
-    ivec2 size = get_boundingbox_size(bb);
-    s.uv_scale.x = size.x / s.tex.width as float32;
-    s.uv_scale.y = size.y / s.tex.height as float32;
-    s.uv_offset.x = bb.min.x / s.tex.width as float32;
-    s.uv_offset.y = bb.min.y / s.tex.height as float32;
+    vec2 tex_size = {tex.width, tex.height};
+    vec2 size = make_vec(get_boundingbox_size(bb));
+    s.uv_scale  = size / tex_size;
+    s.uv_offset = make_vec(bb.min) / tex_size;
 
     return s;
 }
 
 Sprite make_sprite(Texture2D* tex) {
     return { uv_offset = vec2_zero, uv_scale = vec2_one, tex = tex };
+}
+
+Sprite[] spritesheet_extract_sprites(Texture2D* tex) {
+    Image image = {};
+    image.width  = tex.width;
+    image.height = tex.height;
+    image.pixels = tex.pixels;
+    let regions = get_all_regions(image);
+    uint32 sprite_len = list_length(regions);
+
+    Sprite[] sprites;
+    sprites.data = malloc(sprite_len * sizeof Sprite);
+    sprites.length = sprite_len;
+
+    for 0 .. sprite_len {
+        let bb = regions[it];
+        sprites[it] = make_sprite(tex, bb);
+    }
+
+    list_delete(regions);
+    return sprites;
 }
 
 ivec2 get_sprite_pixel_size(Sprite s) {
