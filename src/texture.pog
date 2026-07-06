@@ -8,6 +8,12 @@ struct Framebuffer {
     FramebufferAttachment[] attachments;
 }
 
+Framebuffer fbo_window() return {
+    width = app.window_width,
+    height = app.window_height,
+    gl_handle = 0
+};
+
 struct FramebufferAttachment {
     uint32 gl_handle;
     TextureFormat format;
@@ -115,8 +121,20 @@ Framebuffer create_framebuffer(uint32 w, h, TextureFormat[] color_attachments, b
     return fr;
 }
 
-void bind(with Framebuffer fr) { glBindFramebuffer(GL_FRAMEBUFFER, fr.gl_handle); }
-void bind_default_framebuffer() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
+void bind(Framebuffer fr) {
+    fbo_bind(fr.gl_handle, fr.width, fr.height);
+}
+
+void fbo_bind(Framebuffer fr) {
+    fbo_bind(fr.gl_handle, fr.width, fr.height);
+}
+
+void fbo_bind(uint32 id, width, height) {
+    glBindFramebuffer(GL_FRAMEBUFFER, id);
+    glViewport(0, 0, width, height);
+}
+
+void bind_default_framebuffer() { fbo_bind(0, app.window_width, app.window_height); }
 
 void blit(with Framebuffer dst, Framebuffer src, ivec2 dst_p1, dst_p2, src_p1, src_p2, GLbitfield mask, TextureFilter filter) {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, src.gl_handle);

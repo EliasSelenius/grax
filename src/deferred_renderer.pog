@@ -283,11 +283,11 @@ void end_frame(DeferredRenderer* dr) {
     // draw_screen_quad();
 
 
-    invoke_hdr2ldr(*dr.fbo_hdr, 0);
+    invoke_hdr2ldr(*dr.fbo_hdr, fbo_window());
 }
 
-void invoke_hdr2ldr(Framebuffer* hdr, uint32 target_fbo) {
-    glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
+void invoke_hdr2ldr(Framebuffer* hdr, Framebuffer fbo) {
+    fbo_bind(fbo);
     use(Shaders.hdr2ldr);
     disable_depth_test();
     disable_blending();
