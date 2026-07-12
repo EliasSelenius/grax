@@ -331,4 +331,18 @@ struct Draw_Elements_Indirect_Command {
 };
 
 
+uint z_order_index(uint x, uint y, uint z) {
+    uint morton = 0;
+    for (uint i = 0; i < 32; i++) {  // Enough for most practical sizes
+        morton |= ((x & (1 << i)) << (2 * i)) |
+                  ((y & (1 << i)) << (2 * i + 1)) |
+                  ((z & (1 << i)) << (2 * i + 2));
+    }
+    return morton;
+}
+
+uint z_order_index(uvec3 c) {
+    return z_order_index(c.x, c.y, c.z);
+}
+
 #endif

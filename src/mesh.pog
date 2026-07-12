@@ -289,7 +289,7 @@ bool ogl_sync_signaled(GLsync sync) {
 void ogl_sync_wait(GLsync* sync, uint64 timeout_nanosecs) {
     if @sync; else return;
 
-    GLbitfield flags = 0; // GL_SYNC_FLUSH_COMMANDS_BIT;
+    GLbitfield flags = GL_SYNC_FLUSH_COMMANDS_BIT;
     uint32 timeouts = 0;
 
     wait: GLenum wait_status = glClientWaitSync(@sync, flags, timeout_nanosecs);
@@ -662,21 +662,18 @@ void ogl_buffer_unmap() {
 
 void* ogl_buffer_persistent_storage(uint32 buffer_id, int64 size, void* data, OGL_Access access) {
     GLenum target = GL_ARRAY_BUFFER;
-
-    GLbitfield flags = GL_MAP_PERSISTENT_BIT; // NOTE: we dont use GL_MAP_COHERENT_BIT here
+    GLbitfield flags = GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 
     switch access {
         case .readonly:   flags |= GL_MAP_READ_BIT; break;
         case .writeonly:  flags |= GL_MAP_WRITE_BIT; break;
-        case .readwrite: flags |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT; break;
+        case .readwrite:  flags |= GL_MAP_READ_BIT | GL_MAP_WRITE_BIT; break;
     }
-
-    flags |= GL_MAP_COHERENT_BIT;
 
     glBindBuffer(target, buffer_id);
     glBufferStorage(target, size, data, flags);
 
-    flags |= GL_MAP_FLUSH_EXPLICIT_BIT;
+    // flags |= GL_MAP_FLUSH_EXPLICIT_BIT;
 
     int64 offset = 0;
     void* ptr = glMapBufferRange(target, offset, size, flags);

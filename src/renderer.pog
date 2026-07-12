@@ -211,6 +211,8 @@ void grax_init() {
         return;
     }
 
+    // glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+
     // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
