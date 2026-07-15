@@ -278,6 +278,20 @@ void dispatch_draw_call(Draw_Call* call) {
     call.exhausted = true;
 }
 
+void ogl_sync_fence(GLsync* fence, char* label) {
+    if @fence {
+        glDeleteSync(@fence);
+        @fence = null;
+    }
+
+    @fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+    int32 len = -1; // negative implies zero terminated string
+    glObjectPtrLabel(@fence, -1, label);
+
+    print("glFenceSync:", @fence, " ", label, "\n");
+}
+
 bool ogl_sync_signaled(GLsync sync) {
     int32 value = 0;
     int32 len = 0;
@@ -286,22 +300,37 @@ bool ogl_sync_signaled(GLsync sync) {
     return value == GL_SIGNALED;
 }
 
+string ogl_sync_label(GLsync sync) {
+    string str = {};
+    int32 len = 0;
+    glGetObjectPtrLabel(sync, 0, *len, null);
+    str.chars = talloc(len+1);
+    glGetObjectPtrLabel(sync, len+1, null, str.chars);
+    str.length = len as uint32;
+    return str;
+}
+
 void ogl_sync_wait(GLsync* sync, uint64 timeout_nanosecs) {
     if @sync; else return;
 
-    GLbitfield flags = GL_SYNC_FLUSH_COMMANDS_BIT;
-    uint32 timeouts = 0;
+    uint64 timeouts = 0;
 
-    wait: GLenum wait_status = glClientWaitSync(@sync, flags, timeout_nanosecs);
-    switch wait_status {
-        case GL_ALREADY_SIGNALED:     break;     // indicates that sync was signaled at the time that glClientWaitSync was called.
-        case GL_TIMEOUT_EXPIRED: timeouts++; goto wait; // indicates that at least timeout nanoseconds passed and sync did not become signaled.
-        case GL_CONDITION_SATISFIED:  break;     // indicates that sync was signaled before the timeout expired.
-        case GL_WAIT_FAILED:          break;     // indicates that an error occurred. Additionally, an OpenGL error will be generated.
+    GLenum wait_status = glClientWaitSync(@sync, GL_SYNC_FLUSH_COMMANDS_BIT, timeout_nanosecs);
+    while wait_status == GL_TIMEOUT_EXPIRED {
+        timeouts++;
+        wait_status = glClientWaitSync(@sync, 0, timeout_nanosecs);
     }
 
+    // switch wait_status {
+    //     case GL_ALREADY_SIGNALED:     break;   // indicates that sync was signaled at the time that glClientWaitSync was called.
+    //     case GL_TIMEOUT_EXPIRED:      break;   // indicates that at least timeout nanoseconds passed and sync did not become signaled.
+    //     case GL_CONDITION_SATISFIED:  break;   // indicates that sync was signaled before the timeout expired.
+    //     case GL_WAIT_FAILED:          break;   // indicates that an error occurred. Additionally, an OpenGL error will be generated.
+    // }
+
     if timeouts != 0 {
-        print("Sync:", @sync, " timeouts = ", timeouts, "\n");
+        string label = ogl_sync_label(@sync);
+        print("Sync:", @sync, " ", label, " timeouts = ", timeouts, "\n");
     }
 
     glDeleteSync(@sync);
