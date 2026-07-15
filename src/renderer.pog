@@ -330,13 +330,23 @@ void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severi
 
     for 0 .. list_length(opengl_log) {
         let entry = *opengl_log[it];
-        if entry.source == source and entry._type == _type and entry.id == id {
-            entry.count++;
-            return;
+        if  entry.source == source
+        and entry._type  == _type
+        and entry.id     == id {
+            // messages are uniquely identified by source, type, and id.
+            // But I dont trust all gl implementations
+            // so string compare here is a sanity check.
+            // Edit: as expected messages are NOT uniquely identified by source, type, and id.
+
+            if string_equals(entry.message, message) {
+                entry.count++;
+                return;
+            }
         }
     }
 
     OpenGL_Debug_Log_Entry entry = {};
+    entry.count    = 1;
     entry.source   = source;
     entry._type    = _type;
     entry.id       = id;
