@@ -57,7 +57,7 @@ DrawBuffers db_line_segments;
 
 void gizmo_setup() {
 
-    db_line_segments = create_draw_buffers(sizeof GizmoPoint, gizmo_point_attribs);
+    db_line_segments = create_draw_buffers(gizmo_point_attribs);
 
     gizmo_line_segments = list_create(sizeof GizmoPoint);
     gizmo_line_segments_indices = list_create(sizeof uint32);

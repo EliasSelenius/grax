@@ -61,7 +61,7 @@ void update_ssbo(char* name, void* data, uint32 size) {
     let ssbo = get_ssbo(name);
 
     if ssbo.buffer_id == 0 {
-        uint32 buffer_id = ogl_buffer_generate();
+        uint32 buffer_id = ogl_buffer_generate(name);
         bind_ssbo_buffer(ssbo, buffer_id);
     }
 
@@ -90,7 +90,7 @@ UBO* get_ubo(string name) {
     ubo.name = alloc_string_copy(name);
 
     // TODO: this is retarded...
-    uint32 buffer_id = ogl_buffer_generate();
+    uint32 buffer_id = ogl_buffer_generate(ubo.name);
     bind_buffer(ubo, buffer_id);
 
     list_add(*shader_manager.uniform_buffers, *ubo);
@@ -753,6 +753,7 @@ void shader_init(Shader* program) {
 
     if program.gl_handle == 0 {
         program.gl_handle = glCreateProgram();
+        glObjectLabel(GL_PROGRAM, program.gl_handle, program.name.length as GLsizei, program.name.chars);
     }
 
     uint32 vs = make_shader(program, GL_VERTEX_SHADER,          *program.log_vertex,          vs_src);

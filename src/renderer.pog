@@ -152,39 +152,39 @@ bool grax_loop() {
         //     pos.y -= glyph_height;
         // }
 
-        draw_opengl_debug_log();
+        // draw_opengl_debug_log();
         measure_frametime();
 
-        ivec2 count_lines_and_columns(string str) {
-            int32 max_col = 0, col = 0, row = 0;
-            for 0 .. str.length {
-                if str.chars[it] == '\n' {
-                    row++;
-                    if col > max_col   max_col = col;
-                    col = 0;
-                } else  col++;
-            }
+        // ivec2 count_lines_and_columns(string str) {
+        //     int32 max_col = 0, col = 0, row = 0;
+        //     for 0 .. str.length {
+        //         if str.chars[it] == '\n' {
+        //             row++;
+        //             if col > max_col   max_col = col;
+        //             col = 0;
+        //         } else  col++;
+        //     }
 
-            return {max_col, row};
-        }
+        //     return {max_col, row};
+        // }
 
-        for 0 .. list_length(shader_manager.shaders) {
-            Shader* shader = shader_manager.shaders[it];
-            string log = shader.log_program;
-            if log.chars {
-                vec2 rc = make_vec(count_lines_and_columns(log));
+        // for 0 .. list_length(shader_manager.shaders) {
+        //     Shader* shader = shader_manager.shaders[it];
+        //     string log = shader.log_program;
+        //     if log.chars {
+        //         vec2 rc = make_vec(count_lines_and_columns(log));
 
-                UI_Rect rect_log = {
-                    size = rc*{0.5, 1}*glyph_height
-                };
+        //         UI_Rect rect_log = {
+        //             size = rc*{0.5, 1}*glyph_height
+        //         };
 
-                Color color = White;
+        //         Color color = White;
 
-                vec2 pos = text_start_pos(rect_log, -1, 1, glyph_height, log);
-                pos = draw_text(pos, glyph_height, shader.name, color);
-                pos = draw_text(pos, glyph_height, log, color);
-            }
-        }
+        //         vec2 pos = text_start_pos(rect_log, -1, 1, glyph_height, log);
+        //         pos = draw_text(pos, glyph_height, shader.name, color);
+        //         pos = draw_text(pos, glyph_height, log, color);
+        //     }
+        // }
 
     }
 
@@ -383,48 +383,6 @@ void draw_opengl_debug_log() {
 }
 
 
-void measure_frametime() {
-    const sample_count = 60*3;
-    static float32* samples = calloc(1, sample_count * sizeof float32);
-    static uint32 sample_index = 0;
-
-    samples[sample_index++ % sample_count] = app.frame_time as float32;
-
-    float32 dt_min = 99999999999999999999.0;
-    float32 dt_max = 0;
-    float32 dt_avg = 0;
-
-    for 0 .. sample_count {
-        let dt = samples[it];
-        dt_min = min(dt_min, dt);
-        dt_max = max(dt_max, dt);
-        dt_avg += dt;
-    }
-
-    dt_avg /= sample_count;
-
-    float32 column_width = 2.0 / sample_count;
-    for 0 .. sample_count {
-        let dt = samples[it];
-        vec2 size = { column_width, dt / (3.0*dt_avg) };
-        vec2 pos = make_vec(column_width/2 + size.x * it - 1, size.y/2.0 - 1);
-        draw_rect(pos, size, opacity(White, 0.3));
-    }
-
-    void dl(float32 dt, dt_avg, Color color) {
-        let micro_sec = round(dt * 1000_000) as uint64;
-        vec2 size = { 2, 0.005 };
-        vec2 pos  = { 0, dt / (3.0*dt_avg) - 1 };
-        draw_rect(pos, size, color);
-        const text_height = 0.05;
-        draw_text(pos + make_vec(1 + text_height/2.0, 0), text_height, to_string(micro_sec), color);
-    }
-
-    dl(dt_max, dt_avg, Red);
-    dl(dt_min, dt_avg, Blue);
-    dl(dt_avg, dt_avg, Green);
-    // dl(app.frame_time as float32, dt_avg, Yellow);
-}
 
 struct GLFW_MonitorInfo {
     char* name;
@@ -725,7 +683,7 @@ void register_glfw_callbacks(GLFWwindow* window) {
             } break;
             case GLFW_REPEAT: {
                 event.kind = .key_repeat;
-                app.on_event(event); 
+                app.on_event(event);
             } break;
             case GLFW_RELEASE: {
                 event.kind = .key_release;

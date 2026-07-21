@@ -35,4 +35,4 @@ include "../grax/src/draw2d.pog";
 include "../grax/src/wav.pog";
 include "../grax/src/audio.pog";
 include "../grax/src/gltf.pog";
-
+include "../grax/src/profiler.pog";

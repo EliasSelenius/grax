@@ -1,0 +1,180 @@
+
+/*
+
+    targets:
+        GL_TIMESTAMP
+        GL_SAMPLES_PASSED
+        GL_ANY_SAMPLES_PASSED
+        GL_ANY_SAMPLES_PASSED_CONSERVATIVE
+        GL_PRIMITIVES_GENERATED
+        GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN
+        GL_TIME_ELAPSED
+
+    glGetQuery pname:
+        GL_CURRENT_QUERY
+        GL_QUERY_COUNTER_BITS
+
+    glGetQueryObject pname:
+        GL_QUERY_RESULT
+        GL_QUERY_RESULT_NO_WAIT​
+        GL_QUERY_RESULT_AVAILABLE
+
+    void glGetQueryiv(GLenum target, GLenum pname, GLint* params);
+    void glGetQueryIndexediv(GLenum target, GLuint index, GLenum pname, GLint* params);
+
+    void glGenQueries(GLsizei n, GLuint* ids);
+    void glDeleteQueries(GLsizei n, const GLuint* ids);
+    GLboolean glIsQuery(GLuint id);
+
+    void glObjectLabel(GL_QUERY, GLuint name, GLsizei length, const GLchar* label);
+
+    void glGetQueryObjectui64v(GLuint id, GLenum pname, GLuint64* params);
+    void glGetQueryObjecti64v(GLuint id, GLenum pname, GLint64* params);
+    void glGetQueryObjectuiv(GLuint id, GLenum pname, GLuint* params);
+    void glGetQueryObjectiv(GLuint id, GLenum pname, GLint* params);
+
+    void glQueryCounter(GLuint id, GLenum target);
+
+    void glBeginQuery(GLenum target, GLuint id);
+    void glBeginQueryIndexed(GLenum target, GLuint index, GLuint id);
+    void glEndQuery(GLenum target);
+    void glEndQueryIndexed(GLenum target, GLuint index);
+
+    void glGetQueryBufferObjectuiv  (GLuint id, GLuint buffer, GLenum pname, GLintptr offset);
+    void glGetQueryBufferObjectui64v(GLuint id, GLuint buffer, GLenum pname, GLintptr offset);
+    void glGetQueryBufferObjecti64v (GLuint id, GLuint buffer, GLenum pname, GLintptr offset);
+    void glGetQueryBufferObjectiv   (GLuint id, GLuint buffer, GLenum pname, GLintptr offset);
+
+*/
+
+
+uint32 ogl_query_current(GLenum target) {
+    uint32 params = 0;
+    glGetQueryiv(target, GL_CURRENT_QUERY, *params);
+    return params;
+}
+
+int32 ogl_query_bits(GLenum target) {
+    int32 params = 0;
+    glGetQueryiv(target, GL_QUERY_COUNTER_BITS, *params);
+    return params;
+}
+
+
+bool ogl_query_result_available(GLuint id) {
+    GLuint params = GL_FALSE;
+    glGetQueryObjectuiv(id, GL_QUERY_RESULT_AVAILABLE, *params);
+    return params == GL_TRUE;
+}
+
+uint64 ogl_query_result_nowait(GLuint id) {
+    GLuint64 params = 0;
+    glGetQueryObjectui64v(id, GL_QUERY_RESULT_NO_WAIT​, *params);
+    return params;
+}
+
+uint64 ogl_query_result(GLuint id) {
+    GLuint64 params = 0;
+    glGetQueryObjectui64v(id, GL_QUERY_RESULT, *params);
+    return params;
+}
+
+
+struct GPU_Profiler {
+    Frame_Timestamps frame_timestamps
+
+    Frame_GPU_Timestamp[60*3] timestamps;
+}
+
+void profiler_begin_frame() {
+    
+}
+
+void profiler_timestamp() {
+    
+}
+
+struct Frame_GPU_Timestamp {
+
+}
+
+struct Frame_Timestamps {
+    GLuint* queries;
+    uint32 query_count;
+
+    uint32 timestamp_count;
+}
+
+Frame_Timestamps frame_timestamps = {};
+
+void ogl_query_timestamp(uint32* q) {
+    if !glIsQuery(@q) {
+        glGenQueries(1, q);
+    }
+
+    glQueryCounter(id, GL_TIMESTAMP);
+}
+
+void ogl_query_timestamp(char* label) {
+
+    if fts.timestamp_count == fts.query_count {
+        fts.query_count += 1;
+        fts.queries = realloc(fts.query_count * sizeof GLuint);
+        glGenQueries(1, fts.queries + fts.timestamp_count);
+    }
+
+    GLuint id = fts.queries[fts.timestamp_count++];
+    GLsizei length = -1; // null-terminated
+    glObjectLabel(GL_QUERY, id, length, label);
+    glQueryCounter(id, GL_TIMESTAMP);
+}
+
+
+
+void measure_frametime() {
+    UI_Rect rect_total;
+
+    const sample_count = 60*3;
+    static float32* samples = calloc(1, sample_count * sizeof float32);
+    static uint32 sample_index = 0;
+
+    samples[sample_index++ % sample_count] = app.frame_time as float32;
+
+    float32 dt_min = 99999999999999999999.0;
+    float32 dt_max = 0;
+    float32 dt_avg = 0;
+
+    for 0 .. sample_count {
+        let dt = samples[it];
+        dt_min = min(dt_min, dt);
+        dt_max = max(dt_max, dt);
+        dt_avg += dt;
+    }
+
+    dt_avg /= sample_count;
+
+    // rect_total.size.x
+
+    float32 column_width = 2.0 / sample_count;
+    for 0 .. sample_count {
+        let dt = samples[it];
+        vec2 size = { column_width, dt / (3.0*dt_avg) };
+        vec2 pos = make_vec(column_width/2 + size.x * it - 1, size.y/2.0 - 1);
+        draw_rect(pos, size, opacity(White, 0.3));
+    }
+
+    void dl(float32 dt, dt_avg, Color color) {
+        let micro_sec = round(dt * 1000_000) as uint64;
+        vec2 size = { 2, 0.005 };
+        vec2 pos  = { 0, dt / (3.0*dt_avg) - 1 };
+        draw_rect(pos, size, color);
+        const text_height = 0.05;
+        draw_text(pos + make_vec(1 + text_height/2.0, 0), text_height, to_string(micro_sec), color);
+    }
+
+    dl(dt_max, dt_avg, Red);
+    dl(dt_min, dt_avg, Blue);
+    dl(dt_avg, dt_avg, Green);
+    // dl(app.frame_time as float32, dt_avg, Yellow);
+}
+

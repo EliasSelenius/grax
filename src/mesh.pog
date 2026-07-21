@@ -110,7 +110,9 @@ VAO* get_vao(Vertex_Attrib_Type[] attributes, Mesh_Primitive primitive) {
     vao.vertex_buffer_id  = ogl_buffer_generate();
     vao.index_buffer_id   = ogl_buffer_generate();
 
+    string label = {};
     vao.gl_handle = make_vao(
+        label,
         vao.vertex_buffer_id,
         vao.index_buffer_id,
         vao.attributes);
@@ -129,16 +131,21 @@ void vao_sync(VAO* vao) {
     vao.resync = false;
 }
 
-uint32 make_vao(uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
+uint32 make_vao(string label, uint32 vbo, ebo, Vertex_Attrib_Type[] attribs) {
     Vertex_Attrib_Type[] per_instance_attribs = {};
-    return make_vao(vbo, ebo, 0, attribs, per_instance_attribs);
+    return make_vao(label, vbo, ebo, 0, attribs, per_instance_attribs);
 }
 
-uint32 make_vao(uint32 vbo, ebo, instance_buffer, Vertex_Attrib_Type[] attribs, per_instance_attribs) {
+uint32 make_vao(string label, uint32 vbo, ebo, instance_buffer, Vertex_Attrib_Type[] attribs, per_instance_attribs) {
     uint32 vao = 0;
 
     glGenVertexArrays(1, *vao);
     glBindVertexArray(vao);
+
+    if label.chars {
+        glObjectLabel(GL_VERTEX_ARRAY, vao, label.length, label.chars);
+    }
+
     glBindBuffer(GL_ARRAY_BUFFER,         vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
@@ -566,41 +573,35 @@ void init_vertex_layout(uint32 base_index, divisor, int32 stride, Vertex_Attrib_
 
 
 DrawBuffers create_draw_buffers(Mesh mesh) {
-    return create_draw_buffers(sizeof vertex3D, vertex3D_attribs,
+    return create_draw_buffers(vertex3D_attribs,
                                 list_length(mesh.vertices) * sizeof vertex3D, mesh.vertices as void*,
                                 list_length(mesh.indices), mesh.indices as uint32*);
 }
 
 DrawBuffers create_draw_buffers(vertex3D[] verts, uint32[] inds) {
-    return create_draw_buffers(sizeof vertex3D, vertex3D_attribs,
+    return create_draw_buffers(vertex3D_attribs,
                                 verts.length * sizeof vertex3D, verts.data as void*,
                                 inds.length, inds.data as uint32*);
 }
 
-DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs) return create_draw_buffers(vertex_size, attribs, 0, null, 0, null);
+DrawBuffers create_draw_buffers(Vertex_Attrib_Type[] attribs) return create_draw_buffers(attribs, 0, null, 0, null);
 
-DrawBuffers create_draw_buffers(int32 vertex_size, Vertex_Attrib_Type[] attribs,
+DrawBuffers create_draw_buffers(Vertex_Attrib_Type[] attribs,
                                 uint32 vbo_bytes, void* vbo_data,
                                 uint32 elements_count, uint32* ebo_data) // TODO: glBufferData hint should be an argument here
 {
     DrawBuffers db = {};
     db.elements_count = elements_count as int32;
 
-    glGenVertexArrays(1, *db.vao);
-    glBindVertexArray(db.vao);
+    db.vbo = ogl_buffer_generate();
+    db.ebo = ogl_buffer_generate();
 
-    glGenBuffers(1, *db.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, db.vbo);
-    glGenBuffers(1, *db.ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, db.ebo);
+    if vbo_data ogl_buffer_init(db.vbo, vbo_bytes, vbo_data);
+    if ebo_data ogl_buffer_init(db.ebo, elements_count * sizeof uint32, ebo_data);
 
-    if vbo_data glBufferData(GL_ARRAY_BUFFER, vbo_bytes, vbo_data, GL_STATIC_DRAW);
-    if ebo_data glBufferData(GL_ELEMENT_ARRAY_BUFFER, elements_count * sizeof uint32, ebo_data, GL_STATIC_DRAW);
+    string label = {};
+    db.vao = make_vao(label, db.vbo, db.ebo, attribs);
 
-    init_vertex_layout(vertex_size, attribs);
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     return db;
 }
 
@@ -653,10 +654,19 @@ void update_buffer(uint32 buffer, size, void* data) {
     ogl_buffer_init(buffer, size, data);
 }
 
-
-uint32 ogl_buffer_generate() {
+uint32 ogl_buffer_generate() return ogl_buffer_generate(null);
+uint32 ogl_buffer_generate(char* label) return ogl_buffer_generate(make_string(label));
+uint32 ogl_buffer_generate(string label) {
     uint32 buffer_id = 0;
     glGenBuffers(1, *buffer_id);
+
+    if label.chars {
+        glBindBuffer(GL_ARRAY_BUFFER, buffer_id); // buffer must be bound at least once before taking a label, this is probably a driver bug
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        label = make_string(concat(to_string(buffer_id), make_string(":"), label));
+        glObjectLabel(GL_BUFFER, buffer_id, label.length, label.chars);
+    }
     return buffer_id;
 }
 
@@ -903,3 +913,46 @@ void add_plane(Mesh* mesh, uint32 size, float32 uv_scale, mat4 matrix) {
         }
     }
 }
+
+// void add_cube(Mesh* mesh, mat4 matrix) {
+//     vec3 center = {};
+
+//     vec2 uv_offset = vec2_zero;
+//     vec2 uv_scale  = vec2_one;
+
+//     add_quad(*m, center, make_ivec(1,0,0),  uv_offset, uv_scale);
+//     add_quad(*m, center, make_ivec(0,1,0),  uv_offset, uv_scale);
+//     add_quad(*m, center, make_ivec(0,0,1),  uv_offset, uv_scale);
+//     add_quad(*m, center, make_ivec(-1,0,0), uv_offset, uv_scale);
+//     add_quad(*m, center, make_ivec(0,-1,0), uv_offset, uv_scale);
+//     add_quad(*m, center, make_ivec(0,0,-1), uv_offset, uv_scale);
+
+// }
+
+// void add_quad(Mesh* mesh, vec2 uv_offset, uv_scale) {
+//     uint32 i = list_length(mesh.vertices);
+
+
+//     add_vert(mesh, {p + {cx.x, cy.x, cz.x}, n, uv + uv_s*{0,0}} as vertex3D);
+//     add_vert(mesh, {p + {cx.y, cy.y, cz.y}, n, uv + uv_s*{0,1}} as vertex3D);
+//     add_vert(mesh, {p + {cx.z, cy.z, cz.z}, n, uv + uv_s*{1,0}} as vertex3D);
+//     add_vert(mesh, {p + {cx.w, cy.w, cz.w}, n, uv + uv_s*{1,1}} as vertex3D);
+
+//     switch (mesh.primitive) {
+//         case .Triangles:
+//         add_tri(mesh, i0, i1, i3);
+//         add_tri(mesh, i0, i3, i2);
+//         break;
+
+//         case .Quad_Patches:
+//         add_patch(mesh, i0,i1,i2,i3);
+//         break;
+//     }
+
+
+//     add_tri(mesh, i+1, i+2, i+0);
+//     add_tri(mesh, i+3, i+2, i+1);
+
+//     vec2 uv   = uv_offset;
+//     vec2 uv_s = uv_scale;
+// }

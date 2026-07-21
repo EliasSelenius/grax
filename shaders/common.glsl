@@ -20,6 +20,10 @@ float max_axis(vec2 v) { return max(v.x, v.y); }
 float min_axis(vec3 v) { return min(v.x, min(v.y, v.z)); }
 float max_axis(vec3 v) { return max(v.x, max(v.y, v.z)); }
 
+int min_axis(ivec3 v) { return min(v.x, min(v.y, v.z)); }
+int max_axis(ivec3 v) { return max(v.x, max(v.y, v.z)); }
+
+
 vec2 rot90deg_ccw(vec2 v) {return vec2(-v.y, v.x);}
 vec2 rot90deg_cw(vec2 v)  {return vec2(v.y, -v.x);}
 

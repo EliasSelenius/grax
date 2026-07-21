@@ -31,7 +31,7 @@ struct RendererData {
 }
 
 void init_draw2d() {
-    draw2d_renderer.quad_db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+    draw2d_renderer.quad_db = create_draw_buffers(vertex2D_attribs);
     {
         float32 p = 0.5;
         vertex2D[] verts = { {-p, -p, 0, 0, White},
