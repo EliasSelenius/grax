@@ -16,7 +16,7 @@
 
     glGetQueryObject pname:
         GL_QUERY_RESULT
-        GL_QUERY_RESULT_NO_WAIT​
+        GL_QUERY_RESULT_NO_WAIT
         GL_QUERY_RESULT_AVAILABLE
 
     void glGetQueryiv(GLenum target, GLenum pname, GLint* params);
@@ -69,7 +69,7 @@ bool ogl_query_result_available(GLuint id) {
 
 uint64 ogl_query_result_nowait(GLuint id) {
     GLuint64 params = 0;
-    glGetQueryObjectui64v(id, GL_QUERY_RESULT_NO_WAIT​, *params);
+    glGetQueryObjectui64v(id, GL_QUERY_RESULT_NO_WAIT, *params);
     return params;
 }
 
@@ -80,10 +80,20 @@ uint64 ogl_query_result(GLuint id) {
 }
 
 
-struct GPU_Profiler {
-    Frame_Timestamps frame_timestamps
+const GPU_Profiler_Frame_Count = 60*3;
 
-    Frame_GPU_Timestamp[60*3] timestamps;
+GPU_Profiler profiler;
+
+struct GPU_Profiler {
+    Frame_Timestamps frame_timestamps;
+
+    uint32 frame_index;
+    GPU_Profiler_Frame[GPU_Profiler_Frame_Count] frames;
+}
+
+struct GPU_Profiler_Frame {
+    uint64[..] timestamps;
+    uint64 total_time;
 }
 
 void profiler_begin_frame() {
@@ -91,11 +101,28 @@ void profiler_begin_frame() {
 }
 
 void profiler_timestamp() {
-    
+    ogl_query_timestamp("profiler_timestamp");
 }
 
-struct Frame_GPU_Timestamp {
+void profiler_end_frame() {
+    GPU_Profiler_Frame* frame = profiler.frames + profiler.frame_index;
 
+    if !frame.timestamps  frame.timestamps = list_create(sizeof uint64);
+    list_clear(frame.timestamps);
+
+    uint64 base_ns = ogl_query_result(profiler.frame_timestamps.queries[0]);
+    for 1 .. profiler.frame_timestamps.timestamp_count {
+        uint64 ns = ogl_query_result(profiler.frame_timestamps.queries[it]) - base_ns;
+        // if it == 0  frame
+        list_add(*frame.timestamps, *ns);
+    }
+
+    if list_length(frame.timestamps) {
+        frame.total_time = @(list_last_item(frame.timestamps) as uint64*);
+    }
+
+    profiler.frame_timestamps.timestamp_count = 0;
+    profiler.frame_index = (profiler.frame_index + 1) % GPU_Profiler_Frame_Count;
 }
 
 struct Frame_Timestamps {
@@ -105,31 +132,74 @@ struct Frame_Timestamps {
     uint32 timestamp_count;
 }
 
-Frame_Timestamps frame_timestamps = {};
+// void ogl_query_timestamp(uint32* q) {
+//     if !glIsQuery(@q) {
+//         glGenQueries(1, q);
+//     }
 
-void ogl_query_timestamp(uint32* q) {
-    if !glIsQuery(@q) {
-        glGenQueries(1, q);
-    }
-
-    glQueryCounter(id, GL_TIMESTAMP);
-}
+//     glQueryCounter(id, GL_TIMESTAMP);
+// }
 
 void ogl_query_timestamp(char* label) {
 
+    Frame_Timestamps* fts = *profiler.frame_timestamps;
+
     if fts.timestamp_count == fts.query_count {
         fts.query_count += 1;
-        fts.queries = realloc(fts.query_count * sizeof GLuint);
+        fts.queries = realloc(fts.queries, fts.query_count * sizeof GLuint);
         glGenQueries(1, fts.queries + fts.timestamp_count);
     }
 
     GLuint id = fts.queries[fts.timestamp_count++];
+    glQueryCounter(id, GL_TIMESTAMP);
+
     GLsizei length = -1; // null-terminated
     glObjectLabel(GL_QUERY, id, length, label);
-    glQueryCounter(id, GL_TIMESTAMP);
 }
 
+void display_profiler(UI_Rect rect) {
+    uint32 frame_count = GPU_Profiler_Frame_Count;
 
+    uint64 total_ns = 0;
+    uint64 max_ns = 0;
+    uint64 min_ns = uint64_max;
+
+    for uint32 it: 0 .. frame_count {
+        let frame = profiler.frames[it];
+        uint64 ns = frame.total_time;
+        max_ns = max(ns, max_ns);
+        min_ns = min(ns, min_ns);
+        total_ns += ns;
+    }
+
+    float64 avg_ms = total_ns as float64 / frame_count / 1_000_000.0;
+    float gh = 0.05;
+    draw_text(point(rect, 1, 0) + {gh/4.0, 0}, gh, to_string(avg_ms as float), White);
+
+    float px = 2.0 / app.window_height;
+
+    // uint32 ns_res = 1_000_000;
+    // uint32 divis = 10;
+    // for 0 .. divis {
+    //     UI_Rect r0 = div_y(rect, divis, it);
+    //     draw_rect(pad(r0, 2.0*px), opacity(Black, 0.8));
+    // }
+
+    draw_rect(rect, opacity(Black, 0.8));
+
+    for uint32 it: 0 .. frame_count {
+        let frame = profiler.frames[it];
+        uint64 ns = frame.total_time;
+
+        // float64 s = ns / max_ns as float64;
+        float s = map(ns as float, min_ns as float, max_ns as float, 0, 1);
+
+        UI_Rect r0 = div_x(rect, frame_count, it);
+        UI_Rect r1 = scale_pivot(r0, 1, s as float, 0, -1);
+
+        draw_rect(r1, opacity(White, 0.9));
+    }
+}
 
 void measure_frametime() {
     UI_Rect rect_total;

@@ -114,10 +114,17 @@ vec2 window_size() {
 }
 
 bool grax_loop() {
-
     arena_reset(app.framearena);
 
+    profiler_timestamp();
+    profiler_end_frame();
+    // profiler_begin_frame();
+
+
     glfwSwapBuffers(app.main_window);
+
+    profiler_timestamp();
+
     input_state_reset();
     glfwPollEvents();
 
@@ -153,7 +160,8 @@ bool grax_loop() {
         // }
 
         // draw_opengl_debug_log();
-        measure_frametime();
+        // measure_frametime();
+        display_profiler(scale(rect_window, 0.25, 0.25));
 
         // ivec2 count_lines_and_columns(string str) {
         //     int32 max_col = 0, col = 0, row = 0;
@@ -205,6 +213,7 @@ bool grax_loop() {
 }
 
 void grax_init() {
+    if app.main_window  return;
 
     if !glfwInit() {
         print("[ERROR]: failed to initilize glfw.\n");
@@ -234,7 +243,10 @@ void grax_init() {
     register_glfw_callbacks(app.main_window);
 
     load_opengl(glfwGetProcAddress);
-    print("[INFO]: OpenGL version: ", glGetString(GL_VERSION) as char*, "\n");
+    print("[INFO]: OpenGL renderer: ", glGetString(GL_RENDERER) as char*, "\n");
+    print("[INFO]: OpenGL vendor:   ", glGetString(GL_VENDOR)   as char*, "\n");
+    print("[INFO]: OpenGL version:  ", glGetString(GL_VERSION)  as char*, "\n");
+
 
     if true {
         glEnable(GL_DEBUG_OUTPUT);
