@@ -172,9 +172,15 @@ void display_profiler(UI_Rect rect) {
         total_ns += ns;
     }
 
-    float64 avg_ms = total_ns as float64 / frame_count / 1_000_000.0;
+    float ns2ms(uint64 ns) {
+        return (ns as float64 / 1_000_000.0) as float;
+    }
+
+    float avg_ms = (total_ns as float64 / frame_count / 1_000_000.0) as float;
     float gh = 0.05;
-    draw_text(point(rect, 1, 0) + {gh/4.0, 0}, gh, to_string(avg_ms as float), White);
+    draw_text(point(rect, 1,  0) + {gh/4.0, 0}, gh, to_string(avg_ms), White);
+    draw_text(point(rect, 1,  1) + {gh/4.0, 0}, gh, to_string(ns2ms(max_ns)), White);
+    draw_text(point(rect, 1, -1) + {gh/4.0, 0}, gh, to_string(ns2ms(min_ns)), White);
 
     float px = 2.0 / app.window_height;
 
@@ -246,5 +252,103 @@ void measure_frametime() {
     dl(dt_min, dt_avg, Blue);
     dl(dt_avg, dt_avg, Green);
     // dl(app.frame_time as float32, dt_avg, Yellow);
+}
+
+struct OGL_Trace_Entry {
+    char* procname;
+    uint64 ns;
+}
+
+void append_ogl_trace(char* name) {
+
+    OGL_Trace_Entry[..] ogl_trace;
+
+    OGL_Trace_Entry en = {
+        procname = name
+    };
+    list_add(*ogl_trace, *en);
+}
+
+void hijack_opengl() {
+    static proc_glDrawTransformFeedbackStreamInstanced         _glDrawTransformFeedbackStreamInstanced        = glDrawTransformFeedbackStreamInstanced;        // void(GLenum mode, GLuint id, GLuint stream, GLsizei instancecount);
+    static proc_glDrawElementsInstancedBaseInstance            _glDrawElementsInstancedBaseInstance           = glDrawElementsInstancedBaseInstance;           // void(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount, GLuint baseinstance);
+    static proc_glDrawArraysInstancedBaseInstance              _glDrawArraysInstancedBaseInstance             = glDrawArraysInstancedBaseInstance;             // void(GLenum mode, GLint first, GLsizei count, GLsizei instancecount, GLuint baseinstance);
+    static proc_glDrawTransformFeedbackStream                  _glDrawTransformFeedbackStream                 = glDrawTransformFeedbackStream;                 // void(GLenum mode, GLuint id, GLuint stream);
+    static proc_glDrawArraysIndirect                           _glDrawArraysIndirect                          = glDrawArraysIndirect;                          // void(GLenum mode, /*const*/ void* indirect);
+    static proc_glDrawElementsInstancedBaseVertex              _glDrawElementsInstancedBaseVertex             = glDrawElementsInstancedBaseVertex;             // void(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount, GLint basevertex);
+    static proc_glDrawTransformFeedback                        _glDrawTransformFeedback                       = glDrawTransformFeedback;                       // void(GLenum mode, GLuint id);
+    static proc_glDrawElements                                 _glDrawElements                                = glDrawElements;                                // void(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices);
+    static proc_glDrawTransformFeedbackInstanced               _glDrawTransformFeedbackInstanced              = glDrawTransformFeedbackInstanced;              // void(GLenum mode, GLuint id, GLsizei instancecount);
+    static proc_glDrawArrays                                   _glDrawArrays                                  = glDrawArrays;                                  // void(GLenum mode, GLint first, GLsizei count);
+    static proc_glDrawElementsInstanced                        _glDrawElementsInstanced                       = glDrawElementsInstanced;                       // void(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount);
+    static proc_glDrawRangeElements                            _glDrawRangeElements                           = glDrawRangeElements;                           // void(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum _type, /*const*/ void* indices);
+    static proc_glDrawElementsIndirect                         _glDrawElementsIndirect                        = glDrawElementsIndirect;                        // void(GLenum mode, GLenum _type, /*const*/ void* indirect);
+    static proc_glDrawArraysInstanced                          _glDrawArraysInstanced                         = glDrawArraysInstanced;                         // void(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+    static proc_glDrawRangeElementsBaseVertex                  _glDrawRangeElementsBaseVertex                 = glDrawRangeElementsBaseVertex;                 // void(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum _type, /*const*/ void* indices, GLint basevertex);
+    static proc_glDrawElementsInstancedBaseVertexBaseInstance  _glDrawElementsInstancedBaseVertexBaseInstance = glDrawElementsInstancedBaseVertexBaseInstance; // void(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount, GLint basevertex, GLuint baseinstance);
+    static proc_glDrawElementsBaseVertex                       _glDrawElementsBaseVertex                      = glDrawElementsBaseVertex;                      // void(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLint basevertex);
+    static proc_glMultiDrawArraysIndirectCount                 _glMultiDrawArraysIndirectCount                = glMultiDrawArraysIndirectCount;                // void(GLenum mode, /*const*/ void* indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride);
+    static proc_glMultiDrawElementsIndirect                    _glMultiDrawElementsIndirect                   = glMultiDrawElementsIndirect;                   // void(GLenum mode, GLenum _type, /*const*/ void* indirect, GLsizei drawcount, GLsizei stride);
+    static proc_glMultiDrawElementsBaseVertex                  _glMultiDrawElementsBaseVertex                 = glMultiDrawElementsBaseVertex;                 // void(GLenum mode, /*const*/ GLsizei* count, GLenum _type, /*const*/ void*/*const*/* indices, GLsizei drawcount, /*const*/ GLint* basevertex);
+    static proc_glMultiDrawArrays                              _glMultiDrawArrays                             = glMultiDrawArrays;                             // void(GLenum mode, /*const*/ GLint* first, /*const*/ GLsizei* count, GLsizei drawcount);
+    static proc_glMultiDrawElementsIndirectCount               _glMultiDrawElementsIndirectCount              = glMultiDrawElementsIndirectCount;              // void(GLenum mode, GLenum _type, /*const*/ void* indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride);
+    static proc_glMultiDrawArraysIndirect                      _glMultiDrawArraysIndirect                     = glMultiDrawArraysIndirect;                     // void(GLenum mode, /*const*/ void* indirect, GLsizei drawcount, GLsizei stride);
+    static proc_glMultiDrawElements                            _glMultiDrawElements                           = glMultiDrawElements;                           // void(GLenum mode, /*const*/ GLsizei* count, GLenum _type, /*const*/ void*/*const*/* indices, GLsizei drawcount);
+    static proc_glDispatchComputeIndirect                      _glDispatchComputeIndirect                     = glDispatchComputeIndirect;                     // void(GLintptr indirect);
+    static proc_glDispatchCompute                              _glDispatchCompute                             = glDispatchCompute;                             // void(GLuint num_groups_x, GLuint num_groups_y, GLuint num_groups_z);
+
+    void wrap_glDrawTransformFeedbackStreamInstanced(GLenum mode, GLuint id, GLuint stream, GLsizei instancecount)                                                                           {_glDrawTransformFeedbackStreamInstanced(mode, id, stream, instancecount);                                             append_ogl_trace("glDrawTransformFeedbackStreamInstanced");}
+    void wrap_glDrawElementsInstancedBaseInstance(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount, GLuint baseinstance)                             {_glDrawElementsInstancedBaseInstance(mode, count, _type, indices, instancecount, baseinstance);                       append_ogl_trace("glDrawElementsInstancedBaseInstance");}
+    void wrap_glDrawArraysInstancedBaseInstance(GLenum mode, GLint first, GLsizei count, GLsizei instancecount, GLuint baseinstance)                                                         {_glDrawArraysInstancedBaseInstance(mode, first, count, instancecount, baseinstance);                                  append_ogl_trace("glDrawArraysInstancedBaseInstance");}
+    void wrap_glDrawTransformFeedbackStream(GLenum mode, GLuint id, GLuint stream)                                                                                                           {_glDrawTransformFeedbackStream(mode, id, stream);                                                                     append_ogl_trace("glDrawTransformFeedbackStream");}
+    void wrap_glDrawArraysIndirect(GLenum mode, /*const*/ void* indirect)                                                                                                                    {_glDrawArraysIndirect(mode, indirect);                                                                                append_ogl_trace("glDrawArraysIndirect");}
+    void wrap_glDrawElementsInstancedBaseVertex(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount, GLint basevertex)                                  {_glDrawElementsInstancedBaseVertex(mode, count, _type, indices, instancecount, basevertex);                           append_ogl_trace("glDrawElementsInstancedBaseVertex");}
+    void wrap_glDrawTransformFeedback(GLenum mode, GLuint id)                                                                                                                                {_glDrawTransformFeedback(mode, id);                                                                                   append_ogl_trace("glDrawTransformFeedback");}
+    void wrap_glDrawElements(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices)                                                                                              {_glDrawElements(mode, count, _type, indices);                                                                         append_ogl_trace("glDrawElements");}
+    void wrap_glDrawTransformFeedbackInstanced(GLenum mode, GLuint id, GLsizei instancecount)                                                                                                {_glDrawTransformFeedbackInstanced(mode, id, instancecount);                                                           append_ogl_trace("glDrawTransformFeedbackInstanced");}
+    void wrap_glDrawArrays(GLenum mode, GLint first, GLsizei count)                                                                                                                          {_glDrawArrays(mode, first, count);                                                                                    append_ogl_trace("glDrawArrays");}
+    void wrap_glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount)                                                              {_glDrawElementsInstanced(mode, count, _type, indices, instancecount);                                                 append_ogl_trace("glDrawElementsInstanced");}
+    void wrap_glDrawRangeElements(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum _type, /*const*/ void* indices)                                                               {_glDrawRangeElements(mode, start, end, count, _type, indices);                                                        append_ogl_trace("glDrawRangeElements");}
+    void wrap_glDrawElementsIndirect(GLenum mode, GLenum _type, /*const*/ void* indirect)                                                                                                    {_glDrawElementsIndirect(mode, _type, indirect);                                                                       append_ogl_trace("glDrawElementsIndirect");}
+    void wrap_glDrawArraysInstanced(GLenum mode, GLint first, GLsizei count, GLsizei instancecount)                                                                                          {_glDrawArraysInstanced(mode, first, count, instancecount);                                                            append_ogl_trace("glDrawArraysInstanced");}
+    void wrap_glDrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum _type, /*const*/ void* indices, GLint basevertex)                                   {_glDrawRangeElementsBaseVertex(mode, start, end, count, _type, indices, basevertex);                                  append_ogl_trace("glDrawRangeElementsBaseVertex");}
+    void wrap_glDrawElementsInstancedBaseVertexBaseInstance(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLsizei instancecount, GLint basevertex, GLuint baseinstance) {_glDrawElementsInstancedBaseVertexBaseInstance(mode, count, _type, indices, instancecount, basevertex, baseinstance); append_ogl_trace("glDrawElementsInstancedBaseVertexBaseInstance");}
+    void wrap_glDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum _type, /*const*/ void* indices, GLint basevertex)                                                                  {_glDrawElementsBaseVertex(mode, count, _type, indices, basevertex);                                                   append_ogl_trace("glDrawElementsBaseVertex");}
+    void wrap_glMultiDrawArraysIndirectCount(GLenum mode, /*const*/ void* indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride)                                                {_glMultiDrawArraysIndirectCount(mode, indirect, drawcount, maxdrawcount, stride);                                     append_ogl_trace("glMultiDrawArraysIndirectCount");}
+    void wrap_glMultiDrawElementsIndirect(GLenum mode, GLenum _type, /*const*/ void* indirect, GLsizei drawcount, GLsizei stride)                                                            {_glMultiDrawElementsIndirect(mode, _type, indirect, drawcount, stride);                                               append_ogl_trace("glMultiDrawElementsIndirect");}
+    void wrap_glMultiDrawElementsBaseVertex(GLenum mode, /*const*/ GLsizei* count, GLenum _type, /*const*/ void*/*const*/* indices, GLsizei drawcount, /*const*/ GLint* basevertex)          {_glMultiDrawElementsBaseVertex(mode, count, _type, indices, drawcount, basevertex);                                   append_ogl_trace("glMultiDrawElementsBaseVertex");}
+    void wrap_glMultiDrawArrays(GLenum mode, /*const*/ GLint* first, /*const*/ GLsizei* count, GLsizei drawcount)                                                                            {_glMultiDrawArrays(mode, first, count, drawcount);                                                                    append_ogl_trace("glMultiDrawArrays");}
+    void wrap_glMultiDrawElementsIndirectCount(GLenum mode, GLenum _type, /*const*/ void* indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride)                                {_glMultiDrawElementsIndirectCount(mode, _type, indirect, drawcount, maxdrawcount, stride);                            append_ogl_trace("glMultiDrawElementsIndirectCount");}
+    void wrap_glMultiDrawArraysIndirect(GLenum mode, /*const*/ void* indirect, GLsizei drawcount, GLsizei stride)                                                                            {_glMultiDrawArraysIndirect(mode, indirect, drawcount, stride);                                                        append_ogl_trace("glMultiDrawArraysIndirect");}
+    void wrap_glMultiDrawElements(GLenum mode, /*const*/ GLsizei* count, GLenum _type, /*const*/ void*/*const*/* indices, GLsizei drawcount)                                                 {_glMultiDrawElements(mode, count, _type, indices, drawcount);                                                         append_ogl_trace("glMultiDrawElements");}
+    void wrap_glDispatchComputeIndirect(GLintptr indirect)                                                                                                                                   {_glDispatchComputeIndirect(indirect);                                                                                 append_ogl_trace("glDispatchComputeIndirect");}
+    void wrap_glDispatchCompute(GLuint num_groups_x, GLuint num_groups_y, GLuint num_groups_z)                                                                                               {_glDispatchCompute(num_groups_x, num_groups_y, num_groups_z);                                                         append_ogl_trace("glDispatchCompute");}
+
+    glDrawTransformFeedbackStreamInstanced         = wrap_glDrawTransformFeedbackStreamInstanced;
+    glDrawElementsInstancedBaseInstance            = wrap_glDrawElementsInstancedBaseInstance;
+    glDrawArraysInstancedBaseInstance              = wrap_glDrawArraysInstancedBaseInstance;
+    glDrawTransformFeedbackStream                  = wrap_glDrawTransformFeedbackStream;
+    glDrawArraysIndirect                           = wrap_glDrawArraysIndirect;
+    glDrawElementsInstancedBaseVertex              = wrap_glDrawElementsInstancedBaseVertex;
+    glDrawTransformFeedback                        = wrap_glDrawTransformFeedback;
+    glDrawElements                                 = wrap_glDrawElements;
+    glDrawTransformFeedbackInstanced               = wrap_glDrawTransformFeedbackInstanced;
+    glDrawArrays                                   = wrap_glDrawArrays;
+    glDrawElementsInstanced                        = wrap_glDrawElementsInstanced;
+    glDrawRangeElements                            = wrap_glDrawRangeElements;
+    glDrawElementsIndirect                         = wrap_glDrawElementsIndirect;
+    glDrawArraysInstanced                          = wrap_glDrawArraysInstanced;
+    glDrawRangeElementsBaseVertex                  = wrap_glDrawRangeElementsBaseVertex;
+    glDrawElementsInstancedBaseVertexBaseInstance  = wrap_glDrawElementsInstancedBaseVertexBaseInstance;
+    glDrawElementsBaseVertex                       = wrap_glDrawElementsBaseVertex;
+    glMultiDrawArraysIndirectCount                 = wrap_glMultiDrawArraysIndirectCount;
+    glMultiDrawElementsIndirect                    = wrap_glMultiDrawElementsIndirect;
+    glMultiDrawElementsBaseVertex                  = wrap_glMultiDrawElementsBaseVertex;
+    glMultiDrawArrays                              = wrap_glMultiDrawArrays;
+    glMultiDrawElementsIndirectCount               = wrap_glMultiDrawElementsIndirectCount;
+    glMultiDrawArraysIndirect                      = wrap_glMultiDrawArraysIndirect;
+    glMultiDrawElements                            = wrap_glMultiDrawElements;
+    glDispatchComputeIndirect                      = wrap_glDispatchComputeIndirect;
+    glDispatchCompute                              = wrap_glDispatchCompute;
 }
 

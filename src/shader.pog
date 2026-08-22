@@ -850,22 +850,24 @@ void update_shader_program_info_log(Shader* shader) {
     }
 }
 
-void set_uniform(char* name, int32   x)          glUniform1i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
-void set_uniform(char* name, int32   x, y)       glUniform2i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, int32   x, y, z)    glUniform3i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, int32   x, y, z, w) glUniform4i (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, uint32  x)          glUniform1ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
-void set_uniform(char* name, uint32  x, y)       glUniform2ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, uint32  x, y, z)    glUniform3ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, uint32  x, y, z, w) glUniform4ui(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, float32 x)          glUniform1f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
-void set_uniform(char* name, float32 x, y)       glUniform2f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, float32 x, y, z)    glUniform3f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, float32 x, y, z, w) glUniform4f (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
-void set_uniform(char* name, float64 x)          glUniform1d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x);
-void set_uniform(char* name, float64 x, y)       glUniform2d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y);
-void set_uniform(char* name, float64 x, y, z)    glUniform3d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z);
-void set_uniform(char* name, float64 x, y, z, w) glUniform4d (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), x, y, z, w);
+GLint ogl_uniloc(char* name) return glGetUniformLocation(shader_manager.active_shader.gl_handle, name);
+
+void set_uniform(char* name, int32   x)          glUniform1i (ogl_uniloc(name), x);
+void set_uniform(char* name, int32   x, y)       glUniform2i (ogl_uniloc(name), x, y);
+void set_uniform(char* name, int32   x, y, z)    glUniform3i (ogl_uniloc(name), x, y, z);
+void set_uniform(char* name, int32   x, y, z, w) glUniform4i (ogl_uniloc(name), x, y, z, w);
+void set_uniform(char* name, uint32  x)          glUniform1ui(ogl_uniloc(name), x);
+void set_uniform(char* name, uint32  x, y)       glUniform2ui(ogl_uniloc(name), x, y);
+void set_uniform(char* name, uint32  x, y, z)    glUniform3ui(ogl_uniloc(name), x, y, z);
+void set_uniform(char* name, uint32  x, y, z, w) glUniform4ui(ogl_uniloc(name), x, y, z, w);
+void set_uniform(char* name, float32 x)          glUniform1f (ogl_uniloc(name), x);
+void set_uniform(char* name, float32 x, y)       glUniform2f (ogl_uniloc(name), x, y);
+void set_uniform(char* name, float32 x, y, z)    glUniform3f (ogl_uniloc(name), x, y, z);
+void set_uniform(char* name, float32 x, y, z, w) glUniform4f (ogl_uniloc(name), x, y, z, w);
+void set_uniform(char* name, float64 x)          glUniform1d (ogl_uniloc(name), x);
+void set_uniform(char* name, float64 x, y)       glUniform2d (ogl_uniloc(name), x, y);
+void set_uniform(char* name, float64 x, y, z)    glUniform3d (ogl_uniloc(name), x, y, z);
+void set_uniform(char* name, float64 x, y, z, w) glUniform4d (ogl_uniloc(name), x, y, z, w);
 
 void set_uniform(char* name, vec2 v)  set_uniform(name, v.x, v.y);
 void set_uniform(char* name, vec3 v)  set_uniform(name, v.x, v.y, v.z);
@@ -874,26 +876,30 @@ void set_uniform(char* name, ivec2 v) set_uniform(name, v.x, v.y);
 void set_uniform(char* name, ivec3 v) set_uniform(name, v.x, v.y, v.z);
 void set_uniform(char* name, ivec4 v) set_uniform(name, v.x, v.y, v.z, v.w);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform1dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform1fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform1iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform1uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform1dv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform1fv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform1iv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform1uiv(ogl_uniloc(name), count, value);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform2dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform2fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform2iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform2uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform2dv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform2fv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform2iv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform2uiv(ogl_uniloc(name), count, value);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform3dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform3fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform3iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform3uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform3dv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform3fv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform3iv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform3uiv(ogl_uniloc(name), count, value);
 
-// void set_uniform(char* name, int32 count, float64* value) glUniform4dv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, float32* value) glUniform4fv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, int32* value)   glUniform4iv (glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
-// void set_uniform(char* name, int32 count, uint32* value)  glUniform4uiv(glGetUniformLocation(shader_manager.active_shader.gl_handle, name), count, value);
+// void set_uniform(char* name, int32 count, float64* value) glUniform4dv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, float32* value) glUniform4fv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, int32* value)   glUniform4iv (ogl_uniloc(name), count, value);
+// void set_uniform(char* name, int32 count, uint32* value)  glUniform4uiv(ogl_uniloc(name), count, value);
 
+
+void set_uniform(char* name, mat2 value) glUniformMatrix2fv(ogl_uniloc(name), 1, false, *value as float*);
+void set_uniform(char* name, mat3 value) glUniformMatrix3fv(ogl_uniloc(name), 1, false, *value as float*);
+void set_uniform(char* name, mat4 value) glUniformMatrix4fv(ogl_uniloc(name), 1, false, *value as float*);
 
 
 // type proc_glUniform1d                 = void(GLint /*location*/, GLdouble /*x*/);
@@ -1025,9 +1031,9 @@ glsl_Type_Info decompose_glsl_type(glsl_Type ty) {
         case .bvec2:        return {.bool,   2};
         case .bvec3:        return {.bool,   3};
         case .bvec4:        return {.bool,   4};
-        // case .mat2:         return {.float, 1};
-        // case .mat3:         return {.float, 1};
-        // case .mat4:         return {.float, 1};
+        case .mat2:         return {.float,  2*2};
+        case .mat3:         return {.float,  3*3};
+        case .mat4:         return {.float,  4*4};
         // case .mat2x3:       return {.float, 1};
         // case .mat2x4:       return {.float, 1};
         // case .mat3x2:       return {.float, 1};

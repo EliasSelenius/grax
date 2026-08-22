@@ -349,4 +349,15 @@ uint z_order_index(uvec3 c) {
     return z_order_index(c.x, c.y, c.z);
 }
 
+// usage: gl_Position = screen_covering_quad(gl_VertexID);
+vec4 screen_covering_quad(uint vert_id) {
+    vec2 positions[] = vec2[](
+        vec2(-1, -1), vec2(1, -1), vec2(-1, 1),
+        vec2(1, -1), vec2(1, 1), vec2(-1, 1)
+    );
+
+    vec2 pos = positions[vert_id];
+    return vec4(pos, 0.0, 1.0);
+}
+
 #endif

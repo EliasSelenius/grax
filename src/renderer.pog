@@ -26,6 +26,20 @@ Grax_Shaders Shaders = {
     ui           = alloc_shader("../grax/shaders/ui.glsl"),
 };
 
+struct GLFW_Cursors {
+    GLFWcursor* cursor_arrow;
+    GLFWcursor* cursor_ibeam;
+    GLFWcursor* cursor_crosshair;
+    GLFWcursor* cursor_hand;
+    GLFWcursor* cursor_hresize;
+    GLFWcursor* cursor_vresize;
+}
+
+GLFW_Cursors Cursors;
+
+void set_cursor(GLFWcursor* cursor) {
+    glfwSetCursor(app.main_window, cursor);
+}
 
 Application app = {
     framearena = arena_create(),
@@ -159,9 +173,12 @@ bool grax_loop() {
         //     pos.y -= glyph_height;
         // }
 
+        static UI_Rect rect = {size={0.25,0.25}};
+        update_rect(*rect);
+
         // draw_opengl_debug_log();
         // measure_frametime();
-        display_profiler(scale(rect_window, 0.25, 0.25));
+        display_profiler(rect);
 
         // ivec2 count_lines_and_columns(string str) {
         //     int32 max_col = 0, col = 0, row = 0;
@@ -247,6 +264,17 @@ void grax_init() {
     print("[INFO]: OpenGL vendor:   ", glGetString(GL_VENDOR)   as char*, "\n");
     print("[INFO]: OpenGL version:  ", glGetString(GL_VERSION)  as char*, "\n");
 
+    // GLFWcursor* glfwCreateCursor(/*const*/ GLFWimage* image, int32 xhot, int32 yhot);
+    // GLFWcursor* glfwCreateStandardCursor(int32 shape);
+    // void glfwDestroyCursor(GLFWcursor* cursor);
+    // void glfwSetCursor(GLFWwindow* window, GLFWcursor* cursor);
+
+    Cursors.cursor_arrow     = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    Cursors.cursor_ibeam     = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+    Cursors.cursor_crosshair = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    Cursors.cursor_hand      = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+    Cursors.cursor_hresize   = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+    Cursors.cursor_vresize   = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
 
     if true {
         glEnable(GL_DEBUG_OUTPUT);

@@ -78,7 +78,8 @@ mat3 to_matrix(Transform2D tr) {
     return m;
 }
 
-mat3 to_matrix_inverse(Transform2D tr) {
+
+mat3 to_inverse_matrix(Transform2D tr) {
     float32 c = cosf(-tr.rot);
     float32 s = sinf(-tr.rot);
 
@@ -208,10 +209,10 @@ Camera make_camera(float32 fov, float32 near, float32 far) {
 void update_matrices(with Camera* cam) {
     cam.projection = perspective(cam.fov, app.width_over_height, cam.near_plane, cam.far_plane);
 
-    cam.view = to_matrix(cam.transform);
-    let xaxis = neg(xyz(cam.view.row1));
-    let yaxis = xyz(cam.view.row2);
-    let zaxis = neg(xyz(cam.view.row3));
+    let m = to_matrix(cam.transform);
+    let xaxis = xyz(m.row1) * -1;
+    let yaxis = xyz(m.row2);
+    let zaxis = xyz(m.row3) * -1;
 
     cam.view = {
         // the axises here are on the columns (insted of rows) because the transpose of an orthonormalized matrix is the same as its inverse
