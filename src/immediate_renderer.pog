@@ -484,3 +484,44 @@ void update_rect(UI_Rect* rect) {
     }
 }
 
+
+vec2 float_slider(vec2 pos, float height, float* value) {
+    float px = 2.0 / app.window_height;
+
+    string str = to_string(@value);
+
+    UI_Rect rect = {};
+    rect.size = text_size(str, height);
+    rect.center = pos + {str.length/2.0 * height/2.0 - height/4.0, 0};
+    // rect.center = rect.center - text_start_pos(rect, -1, 0, height, str) + {height/4.0, 0};
+
+    static float* current_value;
+
+    MouseButton left = .Left;
+    bool holding = mouse_down(left);
+
+    float opa = 0.0;
+
+    if current_value == null {
+        if hover(rect, Input.mouse_pos) {
+            opa = 0.5;
+            if holding   current_value = value;
+        }
+    }
+
+    if holding == false {
+        current_value = null;
+        enable_cursor();
+    }
+
+    if current_value == value {
+        opa = 0.3;
+        disable_cursor();
+        @value += Input.mouse_delta.x;
+    }
+
+
+    draw_rect(rect, opacity(White, opa));
+    return draw_text(pos, height, str, White);
+}
+

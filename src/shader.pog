@@ -421,6 +421,7 @@ struct Shader_Uniform {
     int32 matrix_stride;
     int32 atomic_counter_buffer_index;
     int32 location;
+    void* value_ptr;
 }
 
 struct Shader_Uniform_Block {
@@ -508,6 +509,7 @@ void shader_introspect(Shader* program) {
         uni.matrix_stride               = data.matrix_stride;
         uni.atomic_counter_buffer_index = data.atomic_counter_buffer_index;
         uni.location                    = data.location;
+        uni.value_ptr                   = arena_alloc(program.arena, glsl_bytesize(uni.ogl_type));
     }
 
     for 0 .. ubo_count {
@@ -603,11 +605,21 @@ void draw_ui_shader() {
         cursor = draw_text(cursor, text_size, " ", color_text);
         cursor = draw_text(cursor, text_size, uni.name,  color_text);
 
-        void* value = get_uniform(shader, uni.location, glsl_type);
-        string value_str = glsl_value_string(glsl_type, value);
-
         cursor = draw_text(cursor, text_size, " = ", color_text);
-        cursor = draw_text(cursor, text_size, value_str, White);
+        // void* value = get_uniform(shader, uni.location, glsl_type);
+        get_uniform(shader, uni.location, glsl_type, uni.value_ptr);
+
+        if glsl_type == .float {
+            float* fl = uni.value_ptr;
+            cursor = float_slider(cursor, text_size, fl);
+            @fl = clamp01(@fl);
+            // glUniform1f(uni.location, @fl);
+            glProgramUniform1f(shader.gl_handle, uni.location, @fl);
+        } else {
+            string value_str = glsl_value_string(glsl_type, uni.value_ptr);
+            cursor = draw_text(cursor, text_size, value_str, White);
+        }
+
 
         let sb = temp_builder();
         if uni.array_size != -1                   {sb_append(sb, " array_size:");                  sb_append(sb, uni.array_size);}
@@ -1067,10 +1079,14 @@ uint32 glsl_bytesize(glsl_Type ty) {
 }
 
 void* get_uniform(Shader* shader, int32 location, glsl_Type ty) {
-    uint32 prog = shader.gl_handle;
-
     uint32 bytes = glsl_bytesize(ty);
     void* value = talloc(bytes);
+    get_uniform(shader, location, ty, value);
+    return value;
+}
+
+void get_uniform(Shader* shader, int32 location, glsl_Type ty, void* value) {
+    uint32 prog = shader.gl_handle;
 
     glsl_Type_Info info = decompose_glsl_type(ty);
     switch (info.component_type) {
@@ -1079,8 +1095,6 @@ void* get_uniform(Shader* shader, int32 location, glsl_Type ty) {
         case .int:    glGetUniformiv (prog, location, value); break;
         case .uint:   glGetUniformuiv(prog, location, value); break;
     }
-
-    return value;
 }
 
 void glsl_value_string(StringBuilder* sb, glsl_Type ty, void* value) {
