@@ -16,7 +16,8 @@ struct InstanceData {
     vec4 uv_offset_scale;
     vec4 albedo_color;
     vec2 metallic_roughness;
-    sampler2D albedo_texture;
+    // sampler2D albedo_texture;
+    uvec2 albedo_texture;
 };
 
 // struct Material {
@@ -30,9 +31,9 @@ layout (std140) readonly buffer Instances {
 };
 
 // std430
-layout (std140) readonly buffer Textures {
-    sampler2D textures[];
-};
+// layout (std140) readonly buffer Textures {
+//     sampler2D textures[];
+// };
 
 
 #ifdef VertexShader /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

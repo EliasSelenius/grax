@@ -7,3 +7,4 @@
 // gl_BaseInstanceARB
 #extension GL_ARB_shader_draw_parameters : require
 
+// #extension GL_ARB_gpu_shader_int64 : require
