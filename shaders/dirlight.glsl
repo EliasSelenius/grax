@@ -10,10 +10,6 @@
 // #include "shaders/wave.glsl"
 #endif
 
-IO FragData {
-    vec2 uv;
-} v2f;
-
 
 uniform uint u_fog_enabled = 0;
 
@@ -21,12 +17,18 @@ uniform vec3 dirlight_direction;
 uniform vec3 dirlight_radiance;
 uniform float dirlight_ambient_factor;
 
+uniform float u_fog_distance;
+
 layout(binding = 0) uniform sampler2D g_buffer_pos;
 layout(binding = 1) uniform sampler2D g_buffer_normal;
 layout(binding = 2) uniform sampler2D g_buffer_albedo;
 
 
-#include "../grax/shaders/scq.glsl"
+#ifdef VertexShader /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void main() {
+    gl_Position = screen_covering_quad(gl_VertexID);
+}
+#endif
 
 
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +43,7 @@ vec3 apply_fog(vec3 light, vec3 view_pos, vec3 unlit_fog, vec3 lit_fog) {
     vec3 fog_color = mix(unlit_fog, lit_fog, pow(sun_amount, 8.0));
 
     float view_dist = length(view_pos);
-    float max_dist = 2000;
+    float max_dist = 100000*u_fog_distance;
     return mix(light, fog_color, 1 - exp(-view_dist / max_dist));
 }
 
@@ -62,14 +64,25 @@ void main() {
     g.roughness = normal_roughness.w;
     g.metallic  = pos_metallic.w;
 
+    Material mat;
+    mat.albedo    = albedo;
+    mat.roughness = normal_roughness.w;
+    mat.metallic  = pos_metallic.w;
+    // mat.F0        = ;
+
     vec3 world_pos = (inverse(camera.view) * vec4(view_pos, 1.0)).xyz;
     vec3 world_normal = inverse(mat3(camera.view)) * view_normal;
 
-    vec3 radiance = dirlight_radiance * max(0.0, dot(dirlight_direction, vec3(0,1,0)));
+    vec3 radiance = dirlight_radiance;// * max(0.0, dot(dirlight_direction, vec3(0,1,0)));
 
-    vec3 ambient = albedo * radiance * dirlight_ambient_factor;
-    vec3 light = ambient + calc_dir_light(dirlight_direction, radiance, g);
+    // vec3 ambient = albedo * radiance * dirlight_ambient_factor;
+    // vec3 light = ambient + calc_dir_light(dirlight_direction, radiance, g);
 
+    vec3 I = mat3(camera.view) * dirlight_direction;
+    vec3 N = view_normal; // world_normal;
+    vec3 R = -normalize(view_pos);
+
+    // vec3 light = cook_torrance_BRDF(I, N, R, radiance, mat);
 
     vec3 world_pos_camera_origin = (inverse(camera.view) * vec4(view_pos, 0.0)).xyz;
     vec3 ray_dir = normalize(world_pos_camera_origin);
@@ -79,12 +92,21 @@ void main() {
 
     float view_dist = length(view_pos);
     float max_dist = 2000;
-    // light = mix(light, atmo, 1 - exp(-view_dist / max_dist));
+    // light = mix(light, atmo, clamp01(1 - exp(-view_dist / max_dist)));
 
-    // vec3 sky_irradiance = skybox_irradiance(inverse(mat3(camera.view)) * view_normal, sky);
-    // light = max(vec3(0.0), sky_irradiance);
+    // vec3 sky_irradiance = skybox_irradiance(world_normal, sky);
+    // vec3 sky_irradiance = skybox_radiance(world_normal, sky);
+    // light = max(vec3(0.0), sky_irradiance) * albedo;
 
+    vec3 sun_radiance = skybox_radiance(dirlight_direction, sky);
+    vec3 light = vec3(0.0);
+    light += cook_torrance_BRDF(I, N, R, sun_radiance, mat);
+    light += cook_torrance_BRDF(N, N, R, skybox_radiance(world_normal, sky), mat);
 
+    // vec3 r = reflect(-R, N);
+    // light += cook_torrance_BRDF(r, N, R, skybox_radiance(inverse(mat3(camera.view)) * r, sky), mat);
+
+    light = max(vec3(0.0), light);
 
     if (u_fog_enabled != 0) {
         if (world_pos.y < 0) { // water
