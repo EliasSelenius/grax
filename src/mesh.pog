@@ -235,12 +235,22 @@ void clear_batch(Draw_Batch* batch) {
     }
 }
 
-void batch_dispatch(Draw_Batch* batch) {
+void batch_dispatch(Draw_Batch* batch) batch_dispatch(batch, false);
+void batch_dispatch(Draw_Batch* batch, bool wireframe) {
     uint32 draw_call_count = list_length(batch.draw_calls);
     for 0 .. draw_call_count {
         Draw_Call* call = *batch.draw_calls[it];
         if call.vao.resync   vao_sync(call.vao);
-        dispatch_draw_call(call);
+
+        Poly front_face = call.front_face;
+        Poly back_face  = call.back_face;
+
+        if wireframe {
+            front_face = .Line;
+            back_face  = .Line;
+        }
+
+        dispatch_draw_call(call, front_face, back_face);
     }
 
     // print("Batch Summary:\n");
@@ -251,7 +261,7 @@ void batch_dispatch(Draw_Batch* batch) {
     // }
 }
 
-void dispatch_draw_call(Draw_Call* call) {
+void dispatch_draw_call(Draw_Call* call, Poly front_face, back_face) {
     uint32 drawcount = call.command_count;
     GLenum mode = ogl_mode(call.vao.primitive);
     uint32 byte_offset = 0;
@@ -264,7 +274,7 @@ void dispatch_draw_call(Draw_Call* call) {
 
     glBindBuffer(indirect_target, call.command_buffer_id);
 
-    set_face_render_mode(call.front_face, call.back_face);
+    set_face_render_mode(front_face, back_face);
 
     glBindVertexArray(call.vao.gl_handle);
 

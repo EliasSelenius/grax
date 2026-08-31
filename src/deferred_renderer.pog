@@ -257,6 +257,7 @@ void begin_light_pass(DeferredRenderer* dr) {
 
     { // SKYBOX
         use(Shaders.skybox);
+        set_face_render_mode(Poly.Fill, Poly.Cull);
         draw_elements(dr.db_inverted_box);
     }
 
