@@ -18,6 +18,7 @@ uniform vec3 dirlight_radiance;
 uniform float dirlight_ambient_factor;
 
 uniform float u_fog_distance;
+uniform float u_water_color_strength = 0.15;
 
 layout(binding = 0) uniform sampler2D g_buffer_pos;
 layout(binding = 1) uniform sampler2D g_buffer_normal;
@@ -45,6 +46,14 @@ vec3 apply_fog(vec3 light, vec3 view_pos, vec3 unlit_fog, vec3 lit_fog) {
     float view_dist = length(view_pos);
     float max_dist = 100000*u_fog_distance;
     return mix(light, fog_color, 1 - exp(-view_dist / max_dist));
+}
+
+vec3 water_transmittance(float dist) {
+    vec3 extinction = vec3(0.45, 0.12, 0.05);
+
+    vec3 optical_depth = extinction * dist * u_water_color_strength;
+    vec3 transmittance = exp(-optical_depth);
+    return transmittance;
 }
 
 void main() {
@@ -132,7 +141,11 @@ void main() {
             float view_dist = length(view_pos);
             float view_atten = exp(-view_dist / max_dist);
             vec3 color_blue = vec3(0.1, 0.4, 0.7);
-            light = mix(color_blue, light, view_atten) * sun_atten;
+            // light = mix(color_blue, light, view_atten) * sun_atten;
+
+            vec3 color = light * water_transmittance(dist);
+
+            light = color * water_transmittance(view_dist);
 
         } else { // atmosphere
 
