@@ -284,6 +284,8 @@ void invoke_hdr2ldr(Framebuffer* hdr, Framebuffer fbo) {
     use(Shaders.hdr2ldr);
     disable_depth_test();
     disable_blending();
-    bind_texture2D(hdr.attachments[0].gl_handle, 0);
+    uint32 tex = hdr.attachments[0].gl_handle;
+    bind_texture2D(tex, 0);
+    // glGenerateTextureMipmap(tex);
     draw_screen_quad();
 }

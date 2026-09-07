@@ -425,8 +425,8 @@ void mesh_batch(Mesh* mesh, InstanceData data) {
 void batch_begin() {
 }
 
-void batch_end() {
-    batch_dispatch(*current_batch);
+void batch_end(bool wireframe) {
+    batch_dispatch(*current_batch, wireframe);
     clear_batch(*current_batch);
 }
 

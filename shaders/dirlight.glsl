@@ -87,7 +87,7 @@ void main() {
     // vec3 ambient = albedo * radiance * dirlight_ambient_factor;
     // vec3 light = ambient + calc_dir_light(dirlight_direction, radiance, g);
 
-    vec3 I = mat3(camera.view) * dirlight_direction;
+    vec3 I = normalize(mat3(camera.view) * dirlight_direction);
     vec3 N = view_normal; // world_normal;
     vec3 R = -normalize(view_pos);
 
@@ -109,8 +109,8 @@ void main() {
 
     vec3 sun_radiance = skybox_radiance(dirlight_direction, sky);
     vec3 light = vec3(0.0);
-    light += cook_torrance_BRDF(I, N, R, sun_radiance, mat);
-    light += cook_torrance_BRDF(N, N, R, skybox_radiance(world_normal, sky), mat);
+    light += max(vec3(0.0), cook_torrance_BRDF(I, N, R, sun_radiance, mat));
+    light += max(vec3(0.0), cook_torrance_BRDF(N, N, R, skybox_radiance(world_normal, sky), mat));
 
     // vec3 r = reflect(-R, N);
     // light += cook_torrance_BRDF(r, N, R, skybox_radiance(inverse(mat3(camera.view)) * r, sky), mat);

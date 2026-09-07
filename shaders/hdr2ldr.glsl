@@ -1,29 +1,50 @@
 
-
-IO FragData {
-    vec2 uv;
-} v2f;
+#include "../grax/shaders/common.glsl"
+#include "../grax/shaders/app.glsl"
 
 
-#include "../grax/shaders/scq.glsl"
+uniform sampler2D u_hdr_buffer;
+uniform float u_exposure = 1.0;
+// uniform int u_output_mode = 0;
+
+
+
+
+#ifdef VertexShader /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void main() {
+    gl_Position = screen_covering_quad(gl_VertexID);
+}
+#endif
+
 
 
 #ifdef FragmentShader ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-uniform sampler2D hdr_buffer;
-// uniform int u_output_mode = 0;
-
 out vec3 FragColor;
 
 void main() {
-    vec3 hdr_color = texture(hdr_buffer, v2f.uv).rgb;
+    vec2 uv = gl_FragCoord.xy / ViewportSize;
 
-    float exposure = 1.0;
-    vec3 ldr_color = vec3(1.0) - exp(-hdr_color * exposure);
+    int lods = textureQueryLevels(u_hdr_buffer);
 
-    ldr_color = pow(ldr_color, vec3(1.0 / 2.2));
+    int lod = 0;
+    vec2 size = textureSize(u_hdr_buffer, lod);
+    vec3 hdr = texelFetch(u_hdr_buffer, ivec2(uv*size), lod).rgb;
 
-    FragColor = ldr_color;
+    // vec3 hdr = texture(u_hdr_buffer, uv).rgb;
+    // vec3 hdr = textureLod(u_hdr_buffer, uv, 10.0).rgb;
+
+    // vec3 hdr = vec3(0.0);
+    // for (int i = 0; i < lods; i++) {
+    //     vec2 size = textureSize(u_hdr_buffer, i);
+    //     hdr += texelFetch(u_hdr_buffer, ivec2(uv*size), i).rgb;
+    // }
+    // hdr /= lods;
+
+    vec3 ldr = vec3(1.0) - exp(-hdr * u_exposure);
+
+    ldr = pow(ldr, vec3(1.0 / 2.2));
+
+    FragColor = ldr;
 
     // switch (u_output_mode) {
     //     case 0: { // Normal
@@ -32,9 +53,8 @@ void main() {
     // }
 
 
-    // vec3 avg_color = vec3((ldr_color.r + ldr_color.g + ldr_color.b) / 3.0);
+    // vec3 avg_color = vec3((ldr.r + ldr.g + ldr.b) / 3.0);
     // FragColor = avg_color;
-    // FragColor = (ldr_color + avg_color * 5.0) / 6.0;
+    // FragColor = (ldr + avg_color * 5.0) / 6.0;
 }
-
 #endif
