@@ -180,6 +180,8 @@ bool grax_loop() {
         // measure_frametime();
         display_profiler(rect);
 
+        draw_ui_shader();
+
         // ivec2 count_lines_and_columns(string str) {
         //     int32 max_col = 0, col = 0, row = 0;
         //     for 0 .. str.length {

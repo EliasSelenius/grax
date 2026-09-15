@@ -574,8 +574,9 @@ void draw_ui_shader() {
 
     Shader* shader = shader_manager.shaders[shader_index];
 
-    float text_size = 0.035;
+    float text_size  = 0.035;
     Color color_text = LightGray;
+    Color color_bkg  = opacity(Black, 1.0);
 
     UI_Rect rect_window = rect_pp(app.bottom_left, app.top_right);
 
@@ -591,7 +592,7 @@ void draw_ui_shader() {
 
     for 0 .. shader.uniforms.length {
         Shader_Uniform* uni = *shader.uniforms[it];
-        if uni.block_index != -1  continue;
+        // if uni.block_index != -1  continue;
         uniform_count++;
 
         glsl_Type glsl_type = uni.ogl_type as glsl_Type;
@@ -637,9 +638,51 @@ void draw_ui_shader() {
         cursor.x = left;
     }
 
+    Color bkg_color(UI_Rect rect) {
+        Color hov = opacity(Black, 0.8);
+        Color off = opacity(Black, 0.3);
+        return hover(rect, Input.mouse_pos) ? hov : off;
+    }
+
     vec2 ofs = {-text_size*0.5, text_size}*0.5;
     UI_Rect rect_bkg = rect_pp(start_cursor + ofs, make_vec(extent, cursor.y) + ofs);
-    draw_rect(rect_bkg, opacity(Black, 0.4));
+    draw_rect(rect_bkg, bkg_color(rect_bkg));
+
+    if shader.log_program.chars {
+        cursor.y -= text_size;
+        start_cursor = cursor;
+        cursor = draw_text(cursor, text_size, shader.log_program, color_text);
+
+        UI_Rect rect_log = rect_pp(start_cursor + ofs, make_vec(extent, cursor.y) + ofs);
+        draw_rect(rect_log, bkg_color(rect_log));
+    }
+
+    // struct OpenGL_Debug_Log_Entry {
+    //     uint32 count;
+    //     string message;
+
+    //     GLenum source;
+    //     GLenum _type;
+    //     GLuint id;
+    //     GLenum severity;
+    // }
+
+    cursor.y -= text_size;
+
+    static float ogl_log_scroll;
+    ogl_log_scroll += Input.mouse_scroll;
+
+    for 0 .. list_length(opengl_log) {
+        let entry = opengl_log[it];
+        start_cursor = cursor;
+        cursor = draw_text(cursor, text_size, entry.message, color_text);
+        cursor.y -= text_size;
+
+        UI_Rect rect_entry = rect_pp(start_cursor + ofs, make_vec(cursor.x, cursor.y) + ofs);
+        draw_rect(rect_entry, bkg_color(rect_entry));
+
+        cursor.x = start_cursor.x;
+    }
 }
 
 Shaderstages process_glsl_source(StringBuilder* sb, char* filename) {
