@@ -36,6 +36,12 @@ Shader load_shader(char* filename) {
     return program;
 }
 
+void reload_all_shaders() {
+    uint32 len = list_length(shader_manager.shaders);
+    for 0 .. len   shader_reload(shader_manager.shaders[it]);
+    print("RELOADED ", len, " SHADERS\n");
+}
+
 enum Shaderstages {
     Vertex      = 0b000001;
     TessControl = 0b000010;

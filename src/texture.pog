@@ -22,6 +22,8 @@ struct FramebufferAttachment {
 enum TextureFormat {
     rgb16f;  // 3 x float16
     rgba16f; // 4 x float16
+    rgb32f;  // 3 x float32
+    rgba32f; // 4 x float32
     rgb8;    // 3 x byte
     rgba8;   // 4 x byte
     depth_component;
@@ -66,6 +68,8 @@ GLint get_opengl_internal_format(TextureFormat format) {
     switch format {
         case .rgb16f:  return GL_RGB16F;
         case .rgba16f: return GL_RGBA16F;
+        case .rgb32f:  return GL_RGB32F;
+        case .rgba32f: return GL_RGBA32F;
         case .rgb8:    return GL_RGB8;
         case .rgba8:   return GL_RGBA8;
         case .depth_component: return GL_DEPTH_COMPONENT;

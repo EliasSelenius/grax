@@ -70,7 +70,7 @@ DeferredRenderer deferred_renderer_init() {
     DeferredRenderer dr = {};
 
     //                          pos/metallic  normal/roughness  albedo
-    TextureFormat[] g_attachments   = { .rgba16f, .rgba16f, .rgb8 };
+    TextureFormat[] g_attachments   = { .rgba16f, .rgba32f, .rgb8 };
     TextureFormat[] hdr_attachments = { .rgb16f };
 
     uint32 w = app.window_width;
@@ -286,6 +286,6 @@ void invoke_hdr2ldr(Framebuffer* hdr, Framebuffer fbo) {
     disable_blending();
     uint32 tex = hdr.attachments[0].gl_handle;
     bind_texture2D(tex, 0);
-    // glGenerateTextureMipmap(tex);
+    glGenerateTextureMipmap(tex);
     draw_screen_quad();
 }

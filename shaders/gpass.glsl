@@ -84,8 +84,8 @@ void main() {
     // sampler2D tex = albedo_texture;
 
     vec3 world_normal = normalize(frag_input.world_normal);
-    vec3 normal = mat3(camera.view) * normal_from_sampler(tex, frag_input.uv, world_normal);
-    // vec3 normal = frag_input.view_normal;
+    // vec3 normal = mat3(camera.view) * normal_from_sampler(tex, frag_input.uv, world_normal);
+    vec3 normal = frag_input.view_normal;
     if (!gl_FrontFacing)  normal = -normal;
 
     vec4 tex_color = texture(tex, frag_input.uv);
