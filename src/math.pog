@@ -30,6 +30,8 @@ const deg2rad = Pi / 180.0;
 const rad2deg = 180.0 / Pi;
 const uint64_max = 0xffff_ffff_ffff_ffff as uint64;
 
+const Infinity = 1.0 / 0.0;
+
 int32 sq(int32 a) return a*a;
 float32 sq(float32 a) return a*a;
 

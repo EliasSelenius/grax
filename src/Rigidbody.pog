@@ -222,27 +222,27 @@ bool triangle_intersects(vec2 a,b,c,  p) {
 // ray: origin(o) direction(d)
 // triangle(abc)
 bool ray_triangle_intersects(vec3 o,d,  a,b,c, vec3* out_pos) {
-    float32 epsilon = 0.0001;
+    float epsilon = 0.0001;
 
     vec3 ab = b - a;
     vec3 ac = c - a;
 
     vec3 v_cross_ac = cross(d, ac);
-    float32 det = dot(ab, v_cross_ac);
+    float det = dot(ab, v_cross_ac);
 
     if det > -epsilon and det < epsilon  return false;
 
-    float32 inv_det = 1.0 / det;
+    float inv_det = 1.0 / det;
     vec3 ao = o - a;
 
-    float32 u = inv_det * dot(ao, v_cross_ac);
+    float u = inv_det * dot(ao, v_cross_ac);
     if u < 0.0 or u > 1.0  return false;
 
     vec3 ao_cross_ab = cross(ao, ab);
-    float32 v = inv_det * dot(d, ao_cross_ab);
+    float v = inv_det * dot(d, ao_cross_ab);
     if v < 0.0 or u + v > 1.0  return false;
 
-    float32 t = inv_det * dot(ac, ao_cross_ab);
+    float t = inv_det * dot(ac, ao_cross_ab);
     if t <= epsilon  return false;
 
     @out_pos = o + d*t;
@@ -280,6 +280,7 @@ vec2 ray_aabb_intersects(vec3 o,d,  l,h) {
     return make_vec(max_axis(t_close), min_axis(t_far));
 }
 
+// TODO: wedge product?
 float32 cross2d(vec2 a, b) return a.x*b.y - a.y*b.x;
 
 
