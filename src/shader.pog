@@ -598,13 +598,17 @@ void draw_ui_shader() {
 
     for 0 .. shader.uniforms.length {
         Shader_Uniform* uni = *shader.uniforms[it];
-        // if uni.block_index != -1  continue;
         uniform_count++;
 
         glsl_Type glsl_type = uni.ogl_type as glsl_Type;
 
-        cursor = draw_text(cursor, text_size, "location:", color_text);
-        cursor = draw_text(cursor, text_size, to_string(uni.location), color_text);
+        if uni.block_index != -1 {
+            cursor = draw_text(cursor, text_size, "block_index:", color_text);
+            cursor = draw_text(cursor, text_size, to_string(uni.block_index), color_text);
+        } else {
+            cursor = draw_text(cursor, text_size, "location:", color_text);
+            cursor = draw_text(cursor, text_size, to_string(uni.location), color_text);
+        }
         cursor.x += text_size*0.5;
 
         char* type_name = glsl_type_name(glsl_type);
@@ -612,26 +616,28 @@ void draw_ui_shader() {
         cursor = draw_text(cursor, text_size, " ", color_text);
         cursor = draw_text(cursor, text_size, uni.name,  color_text);
 
-        cursor = draw_text(cursor, text_size, " = ", color_text);
-        // void* value = get_uniform(shader, uni.location, glsl_type);
-        get_uniform(shader, uni.location, glsl_type, uni.value_ptr);
+        if uni.location != -1 {
+            cursor = draw_text(cursor, text_size, " = ", color_text);
+            // void* value = get_uniform(shader, uni.location, glsl_type);
+            get_uniform(shader, uni.location, glsl_type, uni.value_ptr);
 
-        if glsl_type == .float {
-            float* fl = uni.value_ptr;
-            cursor = float_slider(cursor, text_size, fl);
-            @fl = clamp01(@fl);
-            // glUniform1f(uni.location, @fl);
-            glProgramUniform1f(shader.gl_handle, uni.location, @fl);
-        } else {
-            string value_str = glsl_value_string(glsl_type, uni.value_ptr);
-            cursor = draw_text(cursor, text_size, value_str, White);
+            if glsl_type == .float {
+                float* fl = uni.value_ptr;
+                cursor = float_slider(cursor, text_size, fl);
+                @fl = clamp01(@fl);
+                // glUniform1f(uni.location, @fl);
+                glProgramUniform1f(shader.gl_handle, uni.location, @fl);
+            } else {
+                string value_str = glsl_value_string(glsl_type, uni.value_ptr);
+                cursor = draw_text(cursor, text_size, value_str, White);
+            }
         }
 
 
         let sb = temp_builder();
         if uni.array_size != -1                   {sb_append(sb, " array_size:");                  sb_append(sb, uni.array_size);}
         if uni.offset != -1                       {sb_append(sb, " offset:");                      sb_append(sb, uni.offset);}
-        if uni.block_index != -1                  {sb_append(sb, " block_index:");                 sb_append(sb, uni.block_index);}
+        // if uni.block_index != -1                  {sb_append(sb, " block_index:");                 sb_append(sb, uni.block_index);}
         if uni.array_stride != -1                 {sb_append(sb, " array_stride:");                sb_append(sb, uni.array_stride);}
         if uni.matrix_stride != -1                {sb_append(sb, " matrix_stride:");               sb_append(sb, uni.matrix_stride);}
         if uni.atomic_counter_buffer_index != -1  {sb_append(sb, " atomic_counter_buffer_index:"); sb_append(sb, uni.atomic_counter_buffer_index);}
