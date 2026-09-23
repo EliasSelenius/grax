@@ -971,7 +971,7 @@ struct Mesh_Raycast_Result {
     int32 tri_index;
     vec3  hit_point;
     vec3  normal;
-    float sqdist;
+    float distance;
 }
 
 Mesh_Raycast_Result mesh_raycast(Mesh* mesh, Transform tr, vec3 o, d) {
@@ -990,7 +990,9 @@ Mesh_Raycast_Result mesh_raycast(Mesh* mesh, vec3 o, d) {
     res.tri_index = -1;
     res.hit_point = vec3_zero;
     res.normal    = vec3_unit_y;
-    res.sqdist    = Infinity;
+    res.distance  = Infinity;
+
+    float sqd = Infinity;
 
     int32 i = 0;
     while i < list_length(mesh.indices) {
@@ -1001,8 +1003,8 @@ Mesh_Raycast_Result mesh_raycast(Mesh* mesh, vec3 o, d) {
         vec3 p;
         if ray_triangle_intersects(o,d, p1, p2, p3, *p) {
             let s = sqdist(o, p);
-            if s < res.sqdist {
-                res.sqdist = s;
+            if s < sqd {
+                sqd = s;
                 res.tri_index = i;
                 res.hit_point = p;
             }
@@ -1016,6 +1018,7 @@ Mesh_Raycast_Result mesh_raycast(Mesh* mesh, vec3 o, d) {
         vec3 p2 = mesh.vertices[mesh.indices[res.tri_index+1]].pos;
         vec3 p3 = mesh.vertices[mesh.indices[res.tri_index+2]].pos;
         res.normal = normalize(cross(p2 - p1, p3 - p1));
+        res.distance = sqrtf(sqd);
     }
 
     return res;
