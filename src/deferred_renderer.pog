@@ -255,7 +255,7 @@ void begin_light_pass(DeferredRenderer* dr) {
     bind(dr.fbo_hdr);
     clear_color(Black);
 
-    { // SKYBOX
+    if false { // SKYBOX
         use(Shaders.skybox);
         set_face_render_mode(Poly.Fill, Poly.Cull);
         draw_elements(dr.db_inverted_box);
@@ -264,12 +264,14 @@ void begin_light_pass(DeferredRenderer* dr) {
     disable_depth_test();
     enable_additive_blending();
 
-    for uint32 it : 0 .. dr.fbo_geometry.attachments.length  bind_texture2D(dr.fbo_geometry.attachments[it].gl_handle, it);
+    for uint32 it : 0 .. dr.fbo_geometry.attachments.length {
+        bind_texture2D(dr.fbo_geometry.attachments[it].gl_handle, it);
+    }
 
     use(Shaders.dirlight);
-    set_uniform("dirlight_direction", normalize(dr.sun_dir));
-    set_uniform("dirlight_radiance",  dr.sun_radiance);
-    set_uniform("dirlight_ambient_factor", dr.sun_ambient_factor);
+    set_uniform("u_dirlight_direction", normalize(dr.sun_dir));
+    set_uniform("u_dirlight_radiance",  dr.sun_radiance);
+    set_uniform("u_dirlight_ambient_factor", dr.sun_ambient_factor);
 
     draw_screen_quad(); // render light volumes
 

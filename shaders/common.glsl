@@ -217,17 +217,57 @@ Skybox make_skybox(vec3 sun_dir) {
     sky.sun_intensity   = 22.0;
     sky.planet_radius   = 6371e3;
     sky.atmos_radius    = 6471e3;
-    sky.rlh_coff        = vec3(5.5e-6, 13.0e-6, 22.4e-6);
-    sky.mie_coff        = 21e-6;
+    sky.rlh_coff        = vec3(5.5e-6, 13.0e-6, 22.4e-6); // vec3(5.802, 13.558, 33.100) * 1e-6
+    sky.mie_coff        = 21e-6; // vec3(3.996,  3.996,  3.996) * 1e-6;
     sky.rlh_height      = 8e3;
     sky.mie_height      = 1200.0;
     sky.mie_g           = 0.95;
     return sky;
 }
 
-vec3 atmosphere(vec3 view_dir, Skybox sky) {
-    const int Primary_Ray_Stepcount   = 16;
-    const int Secondary_Ray_Stepcount = 8;
+vec3 absorb(vec2 od, Skybox sky) {
+    float atmos_density = 1.0;
+    float rlh_strength  = 1.0;
+    float mie_strength  = 1.0;
+
+    vec3 v = od.x * sky.rlh_coff * rlh_strength +
+             od.y * sky.mie_coff * mie_strength * 1.1;
+
+    return exp(-v * atmos_density);
+}
+
+
+vec2 atmosphere_density(float height, Skybox sky) {
+    return vec2(
+        exp(-max(0.0, height / sky.rlh_height)),
+        exp(-max(0.0, height / sky.mie_height))
+    );
+}
+
+vec2 atmosphere_density(vec3 pos, Skybox sky) {
+    float height = length(pos) - sky.planet_radius;
+    return atmosphere_density(height, sky);
+}
+
+vec2 integrate_optical_depth(vec3 start_pos, vec3 dir, int stepcount, float dist, Skybox sky) {
+    vec2 od = vec2(0.0);
+
+    float delta = dist / float(stepcount);
+    for (int i = 0; i < stepcount; i++) {
+        float t = delta * (float(i) + 0.5);
+        vec3 pos = start_pos + dir * t;
+        vec2 density = atmosphere_density(pos, sky);
+        od += density * delta;
+    }
+
+    return od;
+}
+
+vec3 atmosphere(vec3 view_dir, float max_dist, Skybox sky, out vec3 total_transmittance) {
+    // if (isinf(max_dist)) return vec3(100,0,0);
+
+    const int View_Ray_Samples  = 16;
+    const int Light_Ray_Samples = 8;
 
     vec3 r0 = vec3(0.0, sky.planet_radius + 2.0, 0.0); // eye slightly above ground
 
@@ -237,47 +277,42 @@ vec3 atmosphere(vec3 view_dir, Skybox sky) {
     vec2 dists_atmos = raycast_sphere(r0, view_dir, sky.atmos_radius);
     if (dists_atmos.x > dists_atmos.y) return vec3(100,0,0);
 
-    float dist_planet = raycast_sphere(r0, view_dir, sky.planet_radius).x;
-    float dist = min(dists_atmos.y, dist_planet);
-    float i_step = (dist - dists_atmos.x) / float(Primary_Ray_Stepcount);
-
-    vec3 rlh_total = vec3(0,0,0); // accumulators for Rayleigh and Mie scattering.
-    vec3 mie_total = vec3(0,0,0);
-
-    float i_optical_depth_rlh = 0.0; // optical depth accumulators for the primary ray.
-    float i_optical_depth_mie = 0.0;
-
-    for (int i = 0; i < Primary_Ray_Stepcount; i++) {
-        vec3 pos = r0 + view_dir * (i_step*i + i_step * 0.5);
-
-        float j_optical_depth_rlh = 0.0; // optical depth accumulators for the secondary ray.
-        float j_optical_depth_mie = 0.0;
-
-        float j_step = raycast_sphere(pos, sky.sun_dir, sky.atmos_radius).y / float(Secondary_Ray_Stepcount);
-        for (int j = 0; j < Secondary_Ray_Stepcount; j++) {
-            float t = j_step*j  +  j_step*0.5;
-            float height = length(pos + sky.sun_dir * t) - sky.planet_radius;
-            j_optical_depth_rlh += exp(-max(0.0, height / sky.rlh_height)) * j_step;
-            j_optical_depth_mie += exp(-max(0.0, height / sky.mie_height)) * j_step;
-        }
-
-        // Calculate the optical depth of the Rayleigh and Mie scattering for this step.
-        float height = length(pos) - sky.planet_radius;
-        float rlh_od_step = exp(-max(0.0, height / sky.rlh_height)) * i_step;
-        float mie_od_step = exp(-max(0.0, height / sky.mie_height)) * i_step;
-
-        i_optical_depth_rlh += rlh_od_step;
-        i_optical_depth_mie += mie_od_step;
-
-        vec3 optical_depth  = sky.mie_coff * (i_optical_depth_mie + j_optical_depth_mie)
-                            + sky.rlh_coff * (i_optical_depth_rlh + j_optical_depth_rlh);
-        vec3 attn = exp(-optical_depth);
-
-        // Accumulate scattering.
-        rlh_total += rlh_od_step * attn;
-        mie_total += mie_od_step * attn;
+    float view_step = 0.0;
+    if (isinf(max_dist)) {
+        float dist_planet = raycast_sphere(r0, view_dir, sky.planet_radius).x;
+        float dist = min(dists_atmos.y, dist_planet);
+        view_step = (dist - dists_atmos.x) / float(View_Ray_Samples);
+    } else {
+        float dist = min(dists_atmos.y - dists_atmos.x, max_dist);
+        view_step = dist / float(View_Ray_Samples);
     }
 
+
+    vec3 rlh_total = vec3(0.0); // Rayleigh scattering.
+    vec3 mie_total = vec3(0.0); // Mie scattering.
+
+    vec2 view_od = vec2(0.0);
+
+    for (int i = 0; i < View_Ray_Samples; i++) {
+        float t = view_step * (float(i) + 0.5);
+        vec3 pos = r0 + view_dir * t;
+
+        // lightray
+        float dist2atmos = raycast_sphere(pos, sky.sun_dir, sky.atmos_radius).y;
+        vec2 light_od = integrate_optical_depth(pos, sky.sun_dir, Light_Ray_Samples, dist2atmos, sky);
+
+        vec2 density = atmosphere_density(pos, sky);
+        view_od += density * view_step;
+
+        vec2 od = view_od + light_od;
+        vec3 transmittance = absorb(od, sky);
+
+        // Accumulate scattering.
+        rlh_total += density.x * view_step * transmittance;
+        mie_total += density.y * view_step * transmittance;
+    }
+
+    total_transmittance = absorb(view_od, sky);
 
     float mu = dot(view_dir, sky.sun_dir);
     float mumu = mu * mu;
@@ -293,7 +328,8 @@ vec3 atmosphere(vec3 view_dir, Skybox sky) {
 }
 
 vec3 skybox_radiance(vec3 dir, Skybox sky) {
-    return atmosphere(dir, sky);
+    vec3 total_transmittance;
+    return atmosphere(dir, Infinity, sky, total_transmittance);
 }
 
 vec3 skybox_irradiance(vec3 normal, Skybox sky) {

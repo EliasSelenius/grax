@@ -624,7 +624,7 @@ void draw_ui_shader() {
             if glsl_type == .float {
                 float* fl = uni.value_ptr;
                 cursor = float_slider(cursor, text_size, fl);
-                @fl = clamp01(@fl);
+                // @fl = clamp01(@fl);
                 // glUniform1f(uni.location, @fl);
                 glProgramUniform1f(shader.gl_handle, uni.location, @fl);
             } else {

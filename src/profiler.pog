@@ -49,9 +49,9 @@
 
 
 uint32 ogl_query_current(GLenum target) {
-    uint32 params = 0;
+    int32 params = 0;
     glGetQueryiv(target, GL_CURRENT_QUERY, *params);
-    return params;
+    return params as uint32;
 }
 
 int32 ogl_query_bits(GLenum target) {
