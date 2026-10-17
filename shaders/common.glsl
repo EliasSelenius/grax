@@ -13,6 +13,7 @@
 
 float maxdot(vec3 a, vec3 b) { return max(0.0, dot(a, b)); }
 float sq(float x) { return x*x; }
+int sq(int x) { return x*x; }
 
 float min_axis(vec2 v) { return min(v.x, v.y); }
 float max_axis(vec2 v) { return max(v.x, v.y); }
@@ -177,6 +178,32 @@ vec2 raycast_sphere(vec3 r0, vec3 rd, vec3 center, float sr) {
     return raycast_sphere(r0 - center, rd, sr);
 }
 
+/*
+    // My current implementation:
+    float mu = dot(view_dir, sky.sun_dir);
+    float mumu = mu * mu;
+    float mie_p = 3.0 / (8.0 * Pi) * (1.0 - gg) * (mumu + 1.0) / (pow(1.0 + gg - 2.0*mu*g, 1.5) * (2.0 + gg));
+
+    // My older impl
+    float fCos = dot(sun, -sky);
+    // float g = -0.95;
+    float g = -0.995;
+    float MiePhase = 1.5 * (1.0 - gg) * (mumu + 1.0) / (pow(1.0 + gg - 2.0*mu*g, 1.5) * (2.0 + gg));
+
+
+    // henyeyGreenstein:
+    return (1.0 - gg) / (4.0 * Pi * pow(1.0 + gg - 2.0*mu*g, 1.5));
+
+
+
+    // used in godot shader
+	g = min(g, 0.9381);
+	float k = 1.55*g - 0.55*g*g*g;
+	float kcosth = k*costh;
+	return (1.0 - k*k) / ((4.0 * Pi) * (1.0-kcosth) * (1.0-kcosth));
+
+*/
+
 
 
 float calc_mie_phase(vec3 sun, vec3 sky) {
@@ -263,8 +290,11 @@ vec2 integrate_optical_depth(vec3 start_pos, vec3 dir, int stepcount, float dist
     return od;
 }
 
-vec3 atmosphere(vec3 view_dir, float max_dist, Skybox sky, out vec3 total_transmittance) {
-    // if (isinf(max_dist)) return vec3(100,0,0);
+// TODO: ozone
+// TODO: sun disc
+// TODO: underwater scattering
+vec3 atmosphere(vec3 view_dir, float dist2ground, Skybox sky, out vec3 total_transmittance) {
+    // if (isinf(dist2ground)) return vec3(100,0,0);
 
     const int View_Ray_Samples  = 16;
     const int Light_Ray_Samples = 8;
@@ -278,12 +308,12 @@ vec3 atmosphere(vec3 view_dir, float max_dist, Skybox sky, out vec3 total_transm
     if (dists_atmos.x > dists_atmos.y) return vec3(100,0,0);
 
     float view_step = 0.0;
-    if (isinf(max_dist)) {
+    if (isinf(dist2ground)) {
         float dist_planet = raycast_sphere(r0, view_dir, sky.planet_radius).x;
         float dist = min(dists_atmos.y, dist_planet);
         view_step = (dist - dists_atmos.x) / float(View_Ray_Samples);
     } else {
-        float dist = min(dists_atmos.y - dists_atmos.x, max_dist);
+        float dist = min(dists_atmos.y - dists_atmos.x, dist2ground);
         view_step = dist / float(View_Ray_Samples);
     }
 
@@ -395,5 +425,15 @@ vec4 screen_covering_quad(uint vert_id) {
     vec2 pos = positions[vert_id];
     return vec4(pos, 0.0, 1.0);
 }
+
+
+
+float sd_rect(vec2 p, vec2 size) {
+    vec2 edge = abs(p) - size;
+    float inside = min(0.0, max_axis(edge));
+    float outside = length(max(edge, 0.0));
+    return inside + outside;
+}
+
 
 #endif

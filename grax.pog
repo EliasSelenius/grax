@@ -36,3 +36,4 @@ include "../grax/src/wav.pog";
 include "../grax/src/audio.pog";
 include "../grax/src/gltf.pog";
 include "../grax/src/profiler.pog";
+include "../grax/src/ogl_utils.pog";

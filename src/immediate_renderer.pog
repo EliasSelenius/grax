@@ -37,6 +37,16 @@ struct Trianglebatch {
     Texture2D texture;
 }
 
+// NOTE: pary with ui.glsl
+struct UI_Widget {
+    vec4 tint;
+    vec2 pos;
+    vec2 scale;
+    float rot;
+    float roundness;  // [0..1] from rectangular to elliptical
+    float smoothness; // smooth color gradient from center to edge of rect/ellipse. Negative values reverses the color
+    uint sprite_id;
+}
 
 // void layer_push() {}
 // void layer_pop() {}
@@ -472,10 +482,16 @@ void update_rect(UI_Rect* rect) {
     // set_cursor(Cursors.cursor_vresize);
 
 
-    vec2 p = Input.mouse_pos;
+    vec2 p = Input.mouse_pos_prev;
     bool h = hover(pad(@rect, 10.0*px), p);
     if hover(@rect, p) and !h {
         set_cursor(Cursors.cursor_crosshair);
+
+        if mouse_down(MouseButton.Left) {
+            vec2 i = make_vec(sign(rect.center - p));
+            let s = vec2_one - Input.mouse_delta * i;
+            @rect = scale_pivot(@rect, s.x, s.y, i.x, i.y);
+        }
     }
 
     if h and mouse_down(MouseButton.Left) {

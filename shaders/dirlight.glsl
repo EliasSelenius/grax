@@ -61,6 +61,16 @@ vec3 water_transmittance(float dist) {
     return transmittance;
 }
 
+uniform float sun_disc_feather = 0.1;
+float sun_disc(vec3 view_dir, vec3 sun_dir, float theta_r) {
+
+    float cos_angle = dot(view_dir, sun_dir);
+    float cos_inner = cos(theta_r * (1.0 - sun_disc_feather));
+    float cos_outer = cos(theta_r * (1.0 + sun_disc_feather));
+    return smoothstep(cos_outer, cos_inner, cos_angle);
+}
+
+
 void main() {
     vec2 uv = gl_FragCoord.xy / ViewportSize;
 
@@ -116,8 +126,11 @@ void main() {
     // vec3 r = reflect(-R, N);
     // light += cook_torrance_BRDF(r, N, R, skybox_radiance(inverse(view3) * r, sky), mat);
 
-    light = max(vec3(0.0), light);
+    if (draw_sky)  light += sun_disc(view_ray, sun_dir, 0.05) * 10.0;
 
+    // light += (vec3(0.9) - total_transmittance) * vec3(1,0,0);
+
+    light = max(vec3(0.0), light);
     light = light * total_transmittance + atmos_radiance;
 
 
