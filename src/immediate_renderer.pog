@@ -45,7 +45,7 @@ struct UI_Widget {
     float rot;
     float roundness;  // [0..1] from rectangular to elliptical
     float smoothness; // smooth color gradient from center to edge of rect/ellipse. Negative values reverses the color
-    uint sprite_id;
+    uint32 sprite_id;
 }
 
 // void layer_push() {}
@@ -214,7 +214,11 @@ vec2 draw_text(with RenderLayer* layer, vec2 pos, float32 size, string text, Col
         }
 
         if c != ' ' draw_glyph(layer, pos, size, c, color);
-        pos.x += size * 0.5;
+        if c == '\t' {
+            pos.x += 4.0 * size * 0.5;
+        } else {
+            pos.x += size * 0.5;
+        }
     }
 
     return pos;
@@ -233,6 +237,9 @@ vec2 draw_text(with RenderLayer* layer, vec2 pos, float32 size, char* text, Colo
                 draw_glyph(layer, pos, size, @text, color);
             case ' ':
                 pos.x += size * 0.5;
+                break;
+            case '\t':
+                pos.x += 4.0 * size * 0.5;
                 break;
         }
         text++;

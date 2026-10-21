@@ -50,7 +50,8 @@ Image load_bitmap(char* filename) {
         uint32 important_colors;
     }
 
-    char* file_contents = fileread(filename, "rb");
+    char* file_contents = fileread(filename);
+    if file_contents == null   return {};
 
     // TODO: assert correct magic number
 
