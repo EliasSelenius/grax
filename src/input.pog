@@ -211,3 +211,19 @@ enum Key {
 
     menu = 348;
 }
+
+Key keypad_convert_to_function(Key key) switch key {
+    case .kp_0: return .insert;
+    case .kp_1: return .end;
+    case .kp_2: return .down;
+    case .kp_3: return .page_down;
+    case .kp_4: return .left;
+    case .kp_5: return .kp_5;
+    case .kp_6: return .right;
+    case .kp_7: return .home;
+    case .kp_8: return .up;
+    case .kp_9: return .page_up;
+    case .kp_decimal: return .delete;
+    default:    return key;
+}
+
