@@ -244,6 +244,7 @@ UI_Rect rect_pp(vec2 p1, p2) {
 }
 
 bool hover(UI_Rect r, vec2 pos) return point_inside_bb(pos, bottom_left(r), top_right(r));
+bool hover(UI_Rect r) return hover(r, Input.mouse_pos);
 
 vec2 point(UI_Rect rect, vec2 p) return point(rect, p.x, p.y);
 vec2 point(UI_Rect rect, float x, y) return rect.center + rect.size*{x,y}*0.5;
