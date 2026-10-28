@@ -253,6 +253,11 @@ vec2 bottom_right(UI_Rect r) return point(r,  1, -1);
 vec2 top_left(UI_Rect r)     return point(r, -1,  1);
 vec2 top_right(UI_Rect r)    return point(r,  1,  1);
 
+float left(UI_Rect r)   return point(r, -1,  0).x;
+float right(UI_Rect r)  return point(r,  1,  0).x;
+float top(UI_Rect r)    return point(r,  0,  1).y;
+float bottom(UI_Rect r) return point(r,  0, -1).y;
+
 enum AnchorPoint { center; top_left; top_right; bottom_left; bottom_right; }
 
 vec2 anchor_point(UI_Rect r, AnchorPoint ap) {
